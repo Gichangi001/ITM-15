@@ -1,0 +1,29 @@
+# Claude Code project memory (local knowledge-graph store, machine-specific, never committed)
+.claude-memory/
+
+# Temporary extracted document text (never treated as authoritative)
+.tmp/
+
+# Node / package managers
+node_modules/
+.pnpm-store/
+
+# Next.js (added once the app is scaffolded)
+.next/
+out/
+
+# Environment secrets — never commit real values
+.env
+.env.local
+.env.*.local
+
+# Vercel local project link
+.vercel
+
+# Supabase local dev
+supabase/.branches/
+supabase/.temp/
+
+# OS/editor noise
+.DS_Store
+*.log
