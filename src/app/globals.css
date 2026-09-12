@@ -42,3 +42,52 @@ h2,
 h3 {
   font-family: var(--font-display), ui-serif, Georgia, serif;
 }
+
+/*
+ * Scene 0 cold-open (docs/ITM15_STORYLINE_EXPERIENCE_BUILD_BIBLE.md §8).
+ * Pure CSS, staggered by animation-delay — runs on page load with no JS
+ * dependency, so it degrades correctly if JS fails and needs no
+ * mount-gating/hydration guard the way a JS-driven sequence would.
+ * prefers-reduced-motion disables the delay/motion entirely (see the
+ * .scene-0-line rule below) rather than just running it faster.
+ */
+@keyframes scene0-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scene0-silhouette {
+  from {
+    transform: translateX(-10vw);
+  }
+  to {
+    transform: translateX(110vw);
+  }
+}
+
+.scene-0-line {
+  opacity: 0;
+  animation: scene0-fade-in 1.1s ease-out forwards;
+  animation-delay: var(--scene0-delay, 0s);
+}
+
+.scene-0-silhouette {
+  animation: scene0-silhouette 3.5s ease-in-out forwards;
+  animation-delay: var(--scene0-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-0-line {
+    opacity: 1;
+    animation: none;
+  }
+  .scene-0-silhouette {
+    display: none;
+  }
+}

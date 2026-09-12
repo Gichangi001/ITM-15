@@ -12,10 +12,10 @@ Current build phase: Phase 0 done except one user-blocked item; Phase 1 (Supabas
 
 ## Executive Status
 
-- Total requirements tracked here: 143
-- Verified complete: 12
+- Total requirements tracked here: 151
+- Verified complete: 13
 - In progress: 5
-- Pending: 124
+- Pending: 131
 - Blocked: 2 (both need a user action, not more engineering — see Critical Blockers)
 - Failed verification: 0
 - Deferred: 0
@@ -260,7 +260,24 @@ All pending — no admin UI exists yet:
   **Commit:** `ba2f64b`
   **Known limitations:** no historical timeline/map, no live countdown, no auth CTAs — see "Landing Page" section above.
 
+- [x] Pre-login cold open (Scene 0 / Scene 1, per `docs/ITM15_STORYLINE_EXPERIENCE_BUILD_BIBLE.md` §8)
+
+  **Requirement:** Build Bible §8 — Scene 0 (black-screen cold open: "15 years ago…" / "It started small." / `8` / context line / Wally silhouette / "Enter the story") and Scene 1 (the existing hero)
+  **Implementation:** `src/app/page.tsx` (new section prepended), `src/app/globals.css` (`scene0-fade-in`/`scene0-silhouette` keyframes, pure CSS `animation-delay` staging, no JS)
+  **Tests:** `pnpm verify` green; Playwright screenshots at t=0.5s/3s/7.5s (staged reveal confirmed), `prefers-reduced-motion: reduce` (everything visible immediately), mobile (390×844), and a click-through of "Enter the story" confirming the scroll-to-Scene-1 transition and that the rest of the page renders undisturbed
+  **Security:** N/A — static, no auth/data dependency
+  **Result:** PASS for this one scene. Not "the Build Bible implemented" — see `docs/PROJECT_STATE.md`'s "Storyline & Experience Build Bible" section for exactly what is and isn't covered, and why.
+  **Verified:** 2026-09-13
+  **Commit:** (pending, see git log)
+
 - [ ] Actual seven-day game loop (missions, challenges, unlocks) — Phase 6+, not started. This teaser page is not that.
+- [ ] Login experience, first-login identity sequence (Build Bible §9-10) — Phase 2, not started
+- [ ] Home screen "living lobby" (Build Bible §11) — Phase 4, not started
+- [ ] Daily rhythm engine (Build Bible §12) — Phase 6+, not started
+- [ ] Days 1-7 full experience choreography (Build Bible §13-19) — Phase 6+/13+, not started
+- [ ] Personalized recap (Build Bible §20) — Phase 17+, not started
+- [ ] Admin "live story director" Mission Control (Build Bible §29) — Phase 5, not started
+- [ ] Anti-cheat/fairness scoring model (Build Bible §37) — Phase 8, not started; the population-size-fairness question isn't decided yet either
 
 ## Wally (audit-control doc §12)
 
@@ -300,7 +317,7 @@ All pending — no admin UI exists yet:
 - [ ] I-B-E-L-O-N-G sequence — deliberately not implemented/displayed yet (would spoil the mechanic if built carelessly)
 - [ ] Wally analytics events — not built
 
-**Flagged, unresolved — needs the product owner:** `docs/WALLY.md` §3.1/§20 describes an explorer/traveller Wally with day-by-day costume changes. The actual `MASCOTTE.zip` art is one consistent Walumo-branded professional character, punctuality/clock-themed, no costume variants. Do not build the Day 1-7 skin system against this art as if it supports it.
+**Flagged, unresolved — needs the product owner, now reinforced by a second document:** `docs/WALLY.md` §3.1/§20 describes an explorer/traveller Wally with day-by-day costume changes; `docs/ITM15_STORYLINE_EXPERIENCE_BUILD_BIBLE.md` §13-19 independently specifies the same system in more scene-level detail (archivist/Day 1, traveller/Day 2, historian/Day 3, People Champion/Day 4, futuristic Builder/Day 5, Connector/Day 6, Future Wally/Day 7). The actual `MASCOTTE.zip` art is one consistent Walumo-branded professional character, punctuality/clock-themed, no costume variants. Do not build the Day 1-7 skin system against this art as if it supports it — two independent specs now agree it's a real requirement, which makes resolving it (new art, or an explicit scope decision) more urgent, not less.
 
 ## Themes and Cinematic Scenes (Phase 15 — Product Guide §19)
 

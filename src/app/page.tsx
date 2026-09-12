@@ -24,11 +24,55 @@ const HOW_IT_WORKS = [
 
 export default function Home() {
   const wally = WALLY_POSES.investigate;
+  const silhouette = WALLY_POSES["dance-pose"];
 
   return (
     <div className="flex flex-1 flex-col bg-bg text-ink">
-      {/* Hero */}
-      <section className="flex flex-col items-center px-6 pt-20 pb-16 text-center sm:pt-28">
+      {/*
+        Scene 0 — the cold open (Storyline Bible §8). Deliberately its own
+        full-viewport section in normal document flow, not a fixed overlay:
+        a fixed overlay would need JS to dismiss, which either flashes
+        unstyled content before hydration or permanently traps a visitor
+        with JS disabled. An in-flow section plus a plain <a href="#hero">
+        anchor works with or without JS, and the reveal itself is pure CSS
+        (animation-delay), so it runs even if JS never loads.
+      */}
+      <section className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-6 text-center">
+        <Image
+          aria-hidden
+          src={silhouette.src}
+          alt=""
+          width={silhouette.width}
+          height={silhouette.height}
+          className="scene-0-silhouette pointer-events-none absolute bottom-24 h-32 w-auto opacity-15 grayscale [--scene0-delay:1.6s] sm:h-40"
+        />
+
+        <p className="scene-0-line text-sm tracking-[0.15em] text-muted uppercase [--scene0-delay:0.3s]">
+          15 years ago…
+        </p>
+        <p className="scene-0-line mt-4 text-lg text-muted [--scene0-delay:2s]">
+          It started small.
+        </p>
+        <p className="scene-0-line font-display mt-6 text-8xl font-semibold text-walumo [--scene0-delay:3.7s] sm:text-9xl">
+          8
+        </p>
+        <p className="scene-0-line mt-6 max-w-sm text-sm text-muted [--scene0-delay:5.2s]">
+          Before the countries. Before the thousands. Before the Holding.
+          Before Walumo.
+        </p>
+        <a
+          href="#hero"
+          className="scene-0-line mt-10 inline-block rounded-full border border-walumo px-8 py-3 text-sm font-medium tracking-wide text-ink uppercase transition hover:bg-walumo [--scene0-delay:6.7s]"
+        >
+          Enter the story
+        </a>
+      </section>
+
+      {/* Scene 1 — hero */}
+      <section
+        id="hero"
+        className="flex scroll-mt-0 flex-col items-center px-6 pt-20 pb-16 text-center sm:pt-28"
+      >
         <p className="text-xs font-medium tracking-[0.2em] text-muted uppercase">
           Walumo · ITM Group
         </p>
