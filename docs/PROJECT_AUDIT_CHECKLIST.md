@@ -10,8 +10,8 @@ This is a first seed of this checklist (the file itself was added to the repo by
 
 ## Executive Status
 
-- Total requirements tracked here: 78
-- Verified complete: 6
+- Total requirements tracked here: 81
+- Verified complete: 9
 - In progress: 4
 - Pending: 68
 - Blocked: 0 (both prior blockers — Supabase project existence, Vercel linkage — are resolved; two smaller items need a user action, tracked in `docs/PROJECT_STATE.md`, not blocking further work)
@@ -174,7 +174,22 @@ Release readiness: **NOT READY** — nowhere close; this is expected at this sta
 
 - [ ] All items pending — Phase 5+, not started.
 
-## Game Engine / Missions & Challenges / Scoring & Unity Points / Voting / Photos & Media / Realtime / Seven-Day Story / Country & Squad Features / Passport & Achievements / Leaderboards / Notifications / Daily Wally Email / Theme Engine / Spectator-Event Screen / Analytics
+## Seven-Day Story
+
+- [x] Public storyline teaser (landing page)
+
+  **Requirement:** `docs/PRODUCT_GUIDE.md` §6.1 (hero copy), §6.2 ("teaser of seven locked chapters without spoiling missions"), §8 (day titles/themes)
+  **Implementation:** `src/app/page.tsx`, `src/content/story.ts`, `src/components/RevealOnScroll.tsx`, font/token setup in `src/app/layout.tsx` and `globals.css`
+  **Tests:** `src/content/story.test.ts` (2 tests); `pnpm verify` green; Playwright full-page screenshots (scrolled through in steps) at mobile and desktop, sent to the user
+  **Security:** N/A — static public content, no auth/data dependency
+  **Result:** PASS for what this is (a marketing teaser, not the interactive game). Two bugs found via screenshot review and fixed before this was marked done: a lint-flagged sync `setState` in an effect, and an absolute-positioning bug from a CSS containing-block change caused by a sibling `transform`.
+  **Verified:** 2026-09-13
+  **Commit:** (pending, see git log)
+  **Known limitations:** no "15 years in motion" historical timeline or multinational-presence map (§6.2) — would require real ITM historical/office data not available this session, and inventing specific company history was judged too risky; no live countdown (needs a real campaign start date from the database); no "Enter the Game"/"Sign In" CTAs (would be dead links before Phase 2 auth exists).
+
+- [ ] Actual seven-day game loop (missions, challenges, unlocks) — pending, Phase 6+, not started. This teaser page is not that.
+
+## Game Engine / Missions & Challenges / Scoring & Unity Points / Voting / Photos & Media / Realtime / Country & Squad Features / Passport & Achievements / Leaderboards / Notifications / Daily Wally Email / Theme Engine / Spectator-Event Screen / Analytics
 
 - [ ] All items pending — later phases, not started. Not enumerated line-by-line in this seed to avoid a wall of identical `[ ]` entries; see `docs/PRODUCT_GUIDE.md` §26 for the full phase list and `ITM15_MASTER_BUILD_RUNBOOK.md` §17 for the tooling mapped to each. Expand this section into the full item-by-item form (per the audit-control doc's §13–§16 templates) when each phase actually starts.
 

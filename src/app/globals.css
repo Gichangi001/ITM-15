@@ -1,26 +1,44 @@
 @import "tailwindcss";
 
+/*
+ * ITM@15 design tokens.
+ * Palette: deep navy ground (not neutral gray — ties to Walumo's brand
+ * blue), a single Walumo-blue accent, and a muted gold reserved for the
+ * campaign's closing/legacy moment. Keep the gold rare — it marks Day 7,
+ * nothing else.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-ink: #f4f6fa;
+  --color-muted: #93a0b4;
+  --color-bg: #090c12;
+  --color-surface: #131826;
+  /* "walumo" rather than "blue" — avoids colliding with Tailwind's
+     built-in blue-50..blue-950 scale, since this is a single flat token. */
+  --color-walumo: #3b6fed;
+  --color-gold: #c9a227;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ink: var(--color-ink);
+  --color-muted: var(--color-muted);
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-walumo: var(--color-walumo);
+  --color-gold: var(--color-gold);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "kern" 1;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
 }
