@@ -116,7 +116,15 @@ Release readiness: **NOT READY** — nowhere close; this is expected at this sta
   **Verified:** 2026-09-12
   **Commit:** `c3ac493`
 
-- [ ] `docs/adr/` populated (directory exists, empty — no decision has yet required one)
+- [x] `docs/adr/` populated — `0001-prisma-alongside-supabase-migrations.md`
+
+  **Requirement:** `ITM15_MASTER_BUILD_RUNBOOK.md` §40 (ADRs for decisions worth remembering)
+  **Implementation:** `docs/adr/0001-prisma-alongside-supabase-migrations.md`
+  **Tests:** N/A
+  **Security:** documents the RLS-vs-Prisma-migrations risk explicitly
+  **Result:** PASS
+  **Verified:** 2026-09-12
+  **Commit:** (pending, see git log)
 - [ ] This checklist (`docs/PROJECT_AUDIT_CHECKLIST.md`) kept current — STATUS: IN PROGRESS (seeded this session; full traceability matrix per §9 not yet built)
 
 ## Authentication & User Management

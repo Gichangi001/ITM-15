@@ -32,6 +32,7 @@ _Last updated: 2026-09-12, Phase 0 application-scaffolding session, on top of co
 | Project skills | 5/10 created |
 | `.claude/settings.json` | Scoped permissions (allow/ask/deny) + `PreToolUse` hook, both created and hook directly tested this session |
 | Docker | Not installed — blocks local Supabase dev stack (`supabase start`, `db lint`, `db reset`) |
+| Prisma | `prisma`/`@prisma/client` 7.10.0 installed (pinned — `prisma`'s npm `latest` tag is currently an `8.0.0-rc` pre-release). `prisma version` runs correctly. Not yet functional: `DATABASE_URL`/`DIRECT_URL` need the real DB password; introspection-only per `docs/adr/0001-prisma-alongside-supabase-migrations.md` |
 
 ## Rule for future updates to this file
 

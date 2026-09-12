@@ -1,0 +1,25 @@
+// ITM@15 Prisma schema.
+//
+// See docs/adr/0001-prisma-alongside-supabase-migrations.md before adding a
+// model here by hand. Short version: Supabase CLI migrations
+// (supabase/migrations/*.sql) are the single source of truth for schema,
+// including RLS policies Prisma cannot represent. This schema is meant to
+// be populated by INTROSPECTION (`prisma db pull`) after a migration has
+// been applied to the real database, not by hand-authoring `model` blocks
+// that could drift from the actual SQL. It is intentionally empty of
+// models until that first successful `prisma db pull` — do not write
+// `model Profile { ... }` etc. here from guesswork.
+//
+// Never run `prisma migrate dev` / `prisma migrate deploy` against this
+// project. Only `prisma db pull` (introspect) and `prisma generate`
+// (build the typed client) are part of this project's workflow.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
