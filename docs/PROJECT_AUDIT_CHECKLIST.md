@@ -13,7 +13,7 @@ Current build phase: Phase 0 done except one user-blocked item; Phase 1 (Supabas
 ## Executive Status
 
 - Total requirements tracked here: 151
-- Verified complete: 13
+- Verified complete: 14
 - In progress: 5
 - Pending: 131
 - Blocked: 2 (both need a user action, not more engineering — see Critical Blockers)
@@ -25,7 +25,7 @@ Release readiness: **NOT READY.** Expected at this stage — recorded as the hon
 
 ## Critical Blockers
 
-1. **Supabase database access — blocks all of Phase 1 onward.** Neither this session's Supabase MCP connector nor the CLI can reach `ysjjgzakswaohmnaowmv` (different account than the connector's authenticated one; no DB password supplied for CLI linking). User reported running `claude /mcp` to fix this; unconfirmed whether that was in this exact terminal session or requires a Claude Code restart to take effect. **Until resolved, neither migration (`20260912230000_init_foundation.sql`, `20260913000000_wally_w0_tables.sql`) can be applied, and no phase past 1 can build against a real schema.**
+1. **Supabase database access — blocks all of Phase 1 onward. Root cause now precisely identified.** `claude mcp list` shows the project's `.mcp.json` servers (`supabase`, `vercel`, `playwright`, `memory`) at `⏸ Pending approval (run claude to approve)` — a one-time trust-on-first-use gate for project-committed MCP servers, distinct from OAuth. `claude mcp login supabase` confirms directly: `"supabase" is from .mcp.json and awaiting approval. Run claude in this directory to review it first.` No CLI subcommand can clear this from a non-interactive session — it requires running the interactive `claude` REPL in this directory once. See `docs/PROJECT_STATE.md` for the exact steps. **Until resolved, neither migration (`20260912230000_init_foundation.sql`, `20260913000000_wally_w0_tables.sql`) can be applied, and no phase past 1 can build against a real schema.**
 2. **`.github/workflows/ci.yml` unpushed — blocks automated CI.** The `gh`/git OAuth token lacks the `workflow` scope. Fix: user runs `gh auth refresh -h github.com -s workflow` once. Lower severity than #1 — `pnpm verify` run manually every session substitutes for now.
 
 Neither blocker is something this session can resolve unilaterally (per `docs/PROJECT_STATE.md` — no pausing/deleting Supabase projects, no forcing an OAuth scope grant without the user's browser).
@@ -67,6 +67,15 @@ Neither blocker is something this session can resolve unilaterally (per `docs/PR
   **Commit:** `309efc0`
 
 - [ ] GitHub Actions CI running — STATUS: BLOCKED (see Critical Blockers #2)
+- [x] Supabase env vars configured in Vercel (Production)
+
+  **Requirement:** Product Guide §31, release-gate "Environment variables verified"
+  **Implementation:** `vercel env add` for `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWKS_URL`, `NEXT_PUBLIC_APP_URL`
+  **Tests:** `vercel env ls` confirms all 7 present, Encrypted, Production
+  **Security:** values read from `.env.local` via shell variable substitution; never appeared in any command text or tool output
+  **Result:** PASS for Production. **Preview environment not done** — `vercel env add <name> preview --value <value> --yes` fails identically on a disposable test variable (Vercel CLI v54.2.0 bug, not specific to these vars); needs a CLI upgrade or the dashboard.
+  **Verified:** 2026-09-13
+  **Commit:** N/A (Vercel project config, not repo state)
 - [x] `.claude/agents/` project agents created (all 6: architecture/security/database/test/ux/wally reviewers)
 
   **Requirement:** `ITM15_MASTER_BUILD_RUNBOOK.md` §8
@@ -506,7 +515,7 @@ Curated to the requirements with real evidence one way or another (verified or m
 - [x] Vercel Preview/Production verified
 - [ ] Supabase migrations verified — drafted, unapplied
 - [ ] RLS verified — drafted, unapplied
-- [ ] Environment variables verified — present locally; not yet in Vercel dashboard or GitHub Actions secrets
+- [x] Environment variables verified in Vercel — Production only (see evidence below); still not in GitHub Actions secrets (CI itself is blocked, see Critical Blockers #2)
 - [ ] Rollback procedure verified — not written
 - [x] Project state updated
 - [x] Quality status updated

@@ -29,9 +29,30 @@ Per the audit's priority engine (blockers → security → foundation → depend
 
 **Migration reviewed against the installed `supabase-postgres-best-practices` skill** (2026-09-12, still before this session's uncommitted work): added FK indexes on `entities.country_id`, `profiles.country_id`/`entity_id`, `user_roles.country_id`, `audit_logs.actor_id` (Postgres doesn't auto-index foreign keys); wrapped `auth.uid()` in `select` in both RLS policies (5-10x faster per Supabase's own RLS performance guidance — otherwise the function is called per row, not once per query). UUID primary keys were reconsidered against the same skill's "prefer sequential/UUIDv7 at scale" guidance and kept as-is — Product Guide §23 explicitly mandates UUID PKs, and these are low-volume tables for a one-company, seven-day campaign, not a high-throughput multi-tenant table where that trade-off matters. Still unapplied to any real database — this review improves the draft, it doesn't unblock it.
 
-**Still not done — needs the user:**
-1. **`claude /mcp` authentication has not reached this session.** The user reported running it, but this session's project MCP config (`~/.claude.json`'s project entry) shows zero registered MCP servers, and no new Supabase tools became available — confirmed by direct inspection, twice, in the same session. Two possibilities: (a) `/mcp` was run in a different terminal/session than the one running this conversation, or (b) this session needs a full restart to pick up a project-scoped `.mcp.json` server added mid-session (likely, since `.mcp.json` didn't exist when this session started). Next step: confirm `/mcp` was run in *this* terminal window; if it was and the tools still aren't available, restart `claude` in this repo.
-2. **Prisma is not yet functional** — `DATABASE_URL`/`DIRECT_URL` still need the real database password (both connection strings pasted so far kept the `[YOUR-PASSWORD]` placeholder), and `prisma db pull` can't introspect anything until the migration has actually been applied. This is a *separate* unblock from item 1 — the MCP route doesn't hand Prisma a raw Postgres connection string. If Prisma should become usable soon, the DB password needs to be supplied into `.env.local`'s `DATABASE_URL`/`DIRECT_URL`.
+**Root cause of the MCP blocker finally identified precisely (2026-09-13) — this is not an OAuth/account problem:**
+
+```
+$ claude mcp login supabase
+"supabase" is from .mcp.json and awaiting approval. Run `claude` in this directory to review it first.
+
+$ claude mcp list
+...
+supabase: https://mcp.supabase.com/mcp?project_ref=ysjjgzakswaohmnaowmv&... (HTTP) - ⏸ Pending approval (run `claude` to approve)
+vercel / playwright / memory: also ⏸ Pending approval
+```
+
+All four project-scoped `.mcp.json` servers sit behind a one-time **trust-on-first-use approval gate** — a security feature specific to project-committed MCP servers (anyone who can edit the repo could add one, so Claude Code requires explicit human review before ever connecting, separate from OAuth). This gate can only be cleared by running the **interactive** `claude` REPL in this directory — confirmed directly: no CLI subcommand (`claude mcp login`, `claude mcp add`, etc.) can approve it. This background session cannot clear it itself, and `claude /mcp` run inside a session that already has the gate pending doesn't clear it either — approval is a prompt shown when `claude` itself starts up in this directory.
+
+**Exact steps needed (interactive terminal required):**
+1. Open a normal terminal (not this session).
+2. `cd ~/ITM-15`
+3. Run `claude` — approve the project's `.mcp.json` servers when prompted (at least `supabase`).
+4. Inside that session: `/mcp` → select `supabase` → authenticate (opens a browser).
+5. Tell me once done — verification this time will be `claude mcp list` showing `✔ Connected`, not the flakier method used before.
+
+**Prisma remains separately blocked** — `DATABASE_URL`/`DIRECT_URL` still need the real database password; the MCP route above doesn't hand Prisma a raw Postgres connection string even once approved.
+
+**Progress made without needing either blocker (2026-09-13):** all 7 Supabase-related env vars added to Vercel's **Production** environment (encrypted, confirmed via `vercel env ls`) — read from `.env.local` via shell variable substitution, never printed in any command text or tool output. **Preview environment hit an apparent Vercel CLI v54.2.0 bug**: `vercel env add <name> preview --value <value> --yes` (the CLI's own suggested fix) fails identically even for a disposable test variable with no real value — not specific to these variables. Fix later via `npm i -g vercel@latest` (v59.10.0 available) or the dashboard.
 
 Phase 1 is **not complete** until the migration is actually applied and its two acceptance criteria are verified (database rebuilds from migrations; anonymous browser can't read private data).
 
