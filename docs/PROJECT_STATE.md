@@ -87,6 +87,14 @@ The user added this via GitHub web UI (`c153aed`) and asked to "implement" it. I
 
 **Everything else in the Bible remains correctly Pending**, tracked in `docs/PROJECT_AUDIT_CHECKLIST.md` phase-by-phase as before — this document adds creative/experience detail to those phases, it doesn't change what's buildable before their backend dependencies exist.
 
+## Narrative walkthrough preview (`/preview`)
+
+The user asked directly: "allow me to go through the full experience day 0 to 7 in one go." Built as `src/app/preview/page.tsx` / `src/components/WalkthroughPreview.tsx` / `src/content/walkthrough.ts` — a scripted, client-only slideshow through all 8 beats (Day 0 welcome/onboarding flavor, Days 1-7, final `I BELONG` reveal), using dialogue taken directly from the Build Bible's own starter lines (not fabricated), with the seven mystery letters accumulating day by day exactly as `docs/WALLY.md` §21 describes, culminating in the full reveal + closing lines from the Bible's §45 north star.
+
+**This is explicitly labeled and structurally kept separate from the real game** — its own header reads "Preview — narrative walkthrough," it lives at a distinct route, and `src/content/walkthrough.ts` has an extensive comment explaining exactly why it must never grow into simulating scoring, accounts, or anything that reads as functional gameplay (per the Bible's own §39 "no fake demos" rule). It's a demo of tone and pacing, not a stand-in for Phases 2-13.
+
+Verified: `pnpm verify` green (4 new tests covering slide order/content/letter sequencing), and an actual Playwright click-through of all 8 slides to the final reveal at both breakpoints, plus a mid-journey check (Day 5) confirming the letter tray correctly shows 5 of 7 letters unlocked. Screenshots sent to the user. Linked from the homepage footer ("Preview the full seven-day story →").
+
 **Reinforces an existing flagged conflict, doesn't resolve it:** the Bible independently specifies day-by-day Wally costumes (explorer Day 1, traveller Day 2, historian Day 3, etc.) in more depth than `docs/WALLY.md` §20 did. Two controlling documents now specify this; `MASCOTTE.zip`'s actual art still has none. See `docs/DOCS_INDEX.md`'s Conflicts section — this makes the case stronger that it's a real requirement needing new art or an explicit scope decision, not weaker.
 
 ## Seven-day storyline landing page (Product Guide §6, §8)

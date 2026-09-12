@@ -13,7 +13,7 @@ Current build phase: Phase 0 done except one user-blocked item; Phase 1 (Supabas
 ## Executive Status
 
 - Total requirements tracked here: 151
-- Verified complete: 14
+- Verified complete: 15
 - In progress: 5
 - Pending: 131
 - Blocked: 2 (both need a user action, not more engineering — see Critical Blockers)
@@ -279,7 +279,17 @@ All pending — no admin UI exists yet:
   **Verified:** 2026-09-13
   **Commit:** (pending, see git log)
 
-- [ ] Actual seven-day game loop (missions, challenges, unlocks) — Phase 6+, not started. This teaser page is not that.
+- [x] Narrative walkthrough preview (Day 0 → Day 7 → final reveal, in one sitting)
+
+  **Requirement:** direct user request ("allow me to go through the full experience day 0 to 7 in one go"); content drawn from the Build Bible's own starter dialogue (§8-19, §45)
+  **Implementation:** `src/app/preview/page.tsx`, `src/components/WalkthroughPreview.tsx`, `src/content/walkthrough.ts`, `globals.css` (`walkthrough-fade-in`, motion-reduce disabled). Linked from the homepage footer.
+  **Tests:** `src/content/walkthrough.test.ts` (4 tests — slide order, content non-empty, letters spell I-B-E-L-O-N-G in order, Day 0 has no letter yet); `pnpm verify` green; Playwright click-through of all 8 slides to the final reveal, both breakpoints, plus a mid-journey (Day 5) check confirming the letter tray correctly shows I-B-E-L-O unlocked and N-G still locked
+  **Security:** N/A — client-only, no auth/data, explicitly labeled "Preview — narrative walkthrough" in its own header so it's never mistaken for the live game
+  **Result:** PASS as exactly what it is: a scripted, narrated preview of the story arc. **This is explicitly NOT gameplay** — no accounts, no scoring, no real missions, no backend. Every quote is taken directly from the Build Bible's own text (not fabricated); "mission" descriptions are flavor text, not playable challenges. See the header comment in `src/content/walkthrough.ts` for the line this deliberately does not cross, per the Bible's own §39 "do not build a fake demo" rule.
+  **Verified:** 2026-09-13
+  **Commit:** (pending, see git log)
+
+- [ ] Actual seven-day game loop (missions, challenges, unlocks) — Phase 6+, not started. The walkthrough preview above is not that — it's a narrated slideshow, not playable.
 - [ ] Login experience, first-login identity sequence (Build Bible §9-10) — Phase 2, not started
 - [ ] Home screen "living lobby" (Build Bible §11) — Phase 4, not started
 - [ ] Daily rhythm engine (Build Bible §12) — Phase 6+, not started

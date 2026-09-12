@@ -91,3 +91,28 @@ h3 {
     display: none;
   }
 }
+
+/*
+ * Narrative walkthrough preview (src/app/preview/page.tsx) — a simple fade+
+ * rise on each slide change, keyed by React so it replays per slide.
+ */
+@keyframes walkthrough-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.walkthrough-slide {
+  animation: walkthrough-fade-in 0.5s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .walkthrough-slide {
+    animation: none;
+  }
+}

@@ -186,7 +186,13 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 py-10 text-center">
-        <p className="text-sm text-muted">
+        <a
+          href="/preview"
+          className="text-sm text-muted underline decoration-1 underline-offset-4 transition hover:text-walumo"
+        >
+          Preview the full seven-day story →
+        </a>
+        <p className="mt-4 text-sm text-muted">
           An experience by <span className="text-ink">Walumo</span>.
         </p>
       </footer>
