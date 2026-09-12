@@ -43,12 +43,20 @@ vercel / playwright / memory: also ⏸ Pending approval
 
 All four project-scoped `.mcp.json` servers sit behind a one-time **trust-on-first-use approval gate** — a security feature specific to project-committed MCP servers (anyone who can edit the repo could add one, so Claude Code requires explicit human review before ever connecting, separate from OAuth). This gate can only be cleared by running the **interactive** `claude` REPL in this directory — confirmed directly: no CLI subcommand (`claude mcp login`, `claude mcp add`, etc.) can approve it. This background session cannot clear it itself, and `claude /mcp` run inside a session that already has the gate pending doesn't clear it either — approval is a prompt shown when `claude` itself starts up in this directory.
 
-**Exact steps needed (interactive terminal required):**
-1. Open a normal terminal (not this session).
-2. `cd ~/ITM-15`
-3. Run `claude` — approve the project's `.mcp.json` servers when prompted (at least `supabase`).
-4. Inside that session: `/mcp` → select `supabase` → authenticate (opens a browser).
-5. Tell me once done — verification this time will be `claude mcp list` showing `✔ Connected`, not the flakier method used before.
+**RESOLVED by the user (2026-09-13) — confirmed via `claude mcp list`:**
+```
+supabase: https://mcp.supabase.com/mcp?project_ref=ysjjgzakswaohmnaowmv&... (HTTP) - ✔ Connected
+vercel / playwright / memory: also ✔ Connected
+```
+The approval + OAuth steps worked. **However, this specific long-running session (a background job) cannot pick up the newly-approved connection** — its tool bindings were fixed at session start, and `ToolSearch` confirms no `mcp__supabase__*` tools exist here despite the CLI-level config showing connected. The account-level `mcp__claude_ai_Supabase__*` tools (a separate, older connector) are unaffected and still only see the unrelated `soko-ai` project.
+
+**Next session (fresh background job or interactive `claude` in `~/ITM-15`) should, as its first action:**
+1. Verify via `ToolSearch` for `mcp__supabase__*` (or whatever prefix a fresh session assigns the project's `.mcp.json` `supabase` server) — this should now work immediately, no more approval dance needed.
+2. Get the project ID for `ysjjgzakswaohmnaowmv` (via `list_projects` or `get_project`) and apply both draft migrations: `supabase/migrations/20260912230000_init_foundation.sql` and `supabase/migrations/20260913000000_wally_w0_tables.sql` (via `apply_migration`, in that order — the Wally migration references `campaigns` from the foundation one).
+3. Verify the two Phase 1 acceptance criteria: database rebuilds cleanly, anonymous client can't read `profiles`/`user_roles`/`audit_logs`/`wally_event_receipts`.
+4. Run `get_advisors` (security + performance) after applying — the Supabase MCP server explicitly recommends this after any DDL change.
+5. Generate TypeScript types (`supabase gen types typescript` or the MCP equivalent) and wire `src/lib/supabase/*` up for real use.
+6. Update this file, `docs/QUALITY_STATUS.md`, and `docs/PROJECT_AUDIT_CHECKLIST.md` from "drafted, unapplied" to verified, with the real evidence (commit SHA, advisor output, acceptance-criteria proof) — not before.
 
 **Prisma remains separately blocked** — `DATABASE_URL`/`DIRECT_URL` still need the real database password; the MCP route above doesn't hand Prisma a raw Postgres connection string even once approved.
 
