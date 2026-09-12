@@ -1,6 +1,19 @@
+import Image from "next/image";
+import { WALLY_POSES } from "@/wally/rendering/assets";
+
 export default function Home() {
+  const wally = WALLY_POSES["open-arms"];
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-zinc-950 px-6 text-center text-zinc-50">
+      <Image
+        src={wally.src}
+        alt="Wally, the Walumo mascot, waving hello"
+        width={wally.width}
+        height={wally.height}
+        priority
+        className="h-40 w-auto sm:h-48"
+      />
       <p className="text-sm font-medium uppercase tracking-[0.3em] text-zinc-500">
         Walumo
       </p>

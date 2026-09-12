@@ -180,7 +180,17 @@ Release readiness: **NOT READY** — nowhere close; this is expected at this sta
 
 ## Wally
 
-- [ ] All 23 items in the audit-control document's §12 Wally checklist — pending. `docs/WALLY.md` fully read; no Wally implementation exists yet (Phase 13+).
+- [ ] All 23 items in the audit-control document's §12 Wally checklist — pending. `docs/WALLY.md` fully read; no Wally behaviour/controller/event engine exists yet (Phase 13+).
+- [x] W0 placeholder asset registry (docs/WALLY.md §37)
+
+  **Requirement:** `docs/WALLY.md` §37 W0 — "placeholder Wally asset registry"
+  **Implementation:** `src/wally/rendering/assets.ts` (8 poses from user-supplied `MASCOTTE.zip`, optimized with `sharp`), `supabase/migrations/20260913000000_wally_w0_tables.sql` (5 Wally tables), `supabase/seed.sql` (asset rows)
+  **Tests:** `src/wally/rendering/assets.test.ts` (2 tests); `pnpm verify` green; Playwright screenshots at mobile/desktop confirming the `open-arms` pose renders correctly on the homepage
+  **Security:** RLS enabled on all 5 new tables, reviewed against `supabase-postgres-best-practices` skill; migration itself still unapplied to any real database (same caveat as the Phase 1 migration)
+  **Result:** PASS for what exists (static registry + one page wiring); the Supabase tables remain unverified against a live database
+  **Verified:** 2026-09-13
+  **Commit:** (pending, see git log)
+  **Known limitations:** spec-vs-art conflict flagged, not resolved — see `docs/PROJECT_STATE.md`. Assets served from Next.js `public/`, not Supabase Storage's `wally-assets` bucket, pending the same DB access blocker.
 
 ## Accessibility / Performance
 

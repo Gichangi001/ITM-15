@@ -29,6 +29,17 @@ _Last updated: 2026-09-12, foundation + Phase 1 draft session._
 
 Phase 1 is **not complete** until the migration is actually applied and its two acceptance criteria are verified (database rebuilds from migrations; anonymous browser can't read private data).
 
+## Wally placeholder assets (W0, per docs/WALLY.md §37)
+
+The user supplied `MASCOTTE.zip` (8 pre-rendered PNGs of the Walumo brand mascot, transparent background). This session:
+- Optimized all 8 with `sharp` (added as a devDependency, `pnpm-workspace.yaml`'s `allowBuilds.sharp` flipped to `true`): originals were 500KB-1.3MB PNGs up to 1536px; now 35-55KB WebP capped at 700px on the long edge. 7.3MB → 360KB total.
+- Registered them in `src/wally/rendering/assets.ts` (`WALLY_POSES`), each with a tentative mapping to `docs/WALLY.md`'s event/animation vocabulary, plus a unit test (`assets.test.ts`).
+- Wired the `open-arms` pose into the current homepage (`src/app/page.tsx`) — replaced the text-only placeholder with a real, on-brand visual. Verified with Playwright screenshots at mobile (390×844) and desktop (1280×800) widths — both clean; sent to the user.
+- Added `supabase/migrations/20260913000000_wally_w0_tables.sql`: the five Wally tables from `docs/WALLY.md` §8 (`wally_dialogues`, `wally_events`, `wally_assets`, `wally_skins`, `wally_event_receipts`), RLS from the start, reviewed against the same best-practices skill as the foundation migration (FK indexes, `auth.uid()` wrapped in `select`). **Same caveat as the Phase 1 migration: drafted, not applied to any database.**
+- Seeded the 8 images into `wally_assets` via `supabase/seed.sql`, `storage_path` pointing at the Next.js `public/wally/` path as an interim placeholder — not the Supabase Storage `wally-assets` bucket the Product Guide calls for, since that requires the same unresolved Supabase access.
+
+**Flagged, not resolved — needs the product owner's input, not a unilateral choice on my part:** `docs/WALLY.md` §3.1/§20 describes Wally as an explorer/traveller character with day-by-day costume changes (backpack, camera, medal, hoodie, festival gear) narrating ITM's history. The actual production art in `MASCOTTE.zip` is a single, consistent Walumo-branded professional character in situational poses built around a punctuality/time theme (leaning on/sleeping against a giant clock, a STOP sign, a magnifying glass) — no costume variation, and a different thematic register than the written character bible. This registry uses the real art as-is and documents the discrepancy (see the header comment in `assets.ts`) rather than picking a side. Surface this before Phase 13 (Wally 2D behaviour prototype) actually starts building against the Day 1-7 skin system — building that against art that doesn't have day-by-day variants would be built on a guess.
+
 ## Last verified commit
 
 `3e08875` on `main` (origin `Gichangi001/ITM-15`), pushed and deployed. This session's additions (`.claude/settings.json`, `.claude/hooks/`, `supabase/` scaffold + draft migration + seed) are staged for commit — see "In progress."
