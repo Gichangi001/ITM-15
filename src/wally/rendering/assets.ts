@@ -2,11 +2,12 @@
  * Wally 2D/Lite image asset registry — W0 scope per docs/WALLY.md §37
  * ("placeholder Wally asset registry", "no heavy 3D yet").
  *
- * SOURCE: `MASCOTTE.zip` (provided by the user, 2026-09-12) — 8 pre-rendered,
- * transparent-background poses of the Walumo brand mascot. Optimized from
- * the originals (500KB-1.3MB PNGs, up to 1536px) down to ~35-55KB WebP each
- * capped at 700px on the long edge, using `sharp` — see git history around
- * this file's introduction for the one-off conversion script.
+ * SOURCE: `docs/assets/MASCOTTE.zip` (provided by the user, 2026-09-12/13) —
+ * 8 pre-rendered, transparent-background poses of the Walumo brand mascot.
+ * Optimized from the originals (500KB-1.3MB PNGs, up to 1536px) down to
+ * ~35-55KB WebP each capped at 700px on the long edge, using `sharp` — see
+ * git history around this file's introduction for the one-off conversion
+ * script (not committed; re-derive from the zip with sharp if needed again).
  *
  * INTERIM STORAGE NOTE: these live in `public/wally/` (served directly by
  * Next.js) rather than the Supabase Storage `wally-assets` bucket the
