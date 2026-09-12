@@ -23,7 +23,7 @@ This session could not invoke the interactive `/skills`, `/agents`, `/hooks`, `/
 
 Source: skill listing injected into this session (equivalent to `/skills` output) plus `~/.claude/skills/` directory listing.
 
-**Project skills (`.claude/skills/` in this repo):** 5 of the runbook's 10 (§7) now exist — `project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate`. Created deliberately curated to what's usable now: the first four operate on documentation/state/memory, which already exist; `security-gate` was added early per the "RLS first" ethos even though there's no code yet, so it's ready the moment Phase 1 starts. The remaining 5 — `supabase-review`, `test-gate`, `visual-qa`, `wally-qa`, `release-gate` — are deliberately **not** created yet: each reviews an artifact (a database, a test suite, a UI, Wally's runtime behaviour, a release) that doesn't exist. Add each when its phase starts, not before.
+**Project skills (`.claude/skills/` in this repo):** 5 of the runbook's 10 (§7) — `project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate` — plus 2 official third-party skills installed via `npx skills add supabase/agent-skills`: `supabase` and `supabase-postgres-best-practices` (stored at `.agents/skills/`, symlinked into `.claude/skills/`; both scanned "Safe"/low-risk by the installer's Socket/Snyk checks before accepting). The remaining 5 runbook-recommended skills — `supabase-review`, `test-gate`, `visual-qa`, `wally-qa`, `release-gate` — are deliberately **not** created yet: each reviews an artifact (a database, a test suite, a UI, Wally's runtime behaviour, a release) that doesn't exist. Add each when its phase starts, not before.
 
 **Relevant user/global skills available now:**
 
@@ -126,7 +126,7 @@ The global `~/.claude/settings.local.json` allow-list (mostly artifacts of unrel
 |---|---|---|
 | GitHub | Connected, authenticated | Yes — `Gichangi001/ITM-15` |
 | Vercel | CLI authenticated | **Partially** — a project named `itm-15` exists (`prj_NGrGE4LBFHh3eSx1JoXXkmqUpXRs`, created 2026-09-12, under `alexanderworkforceafrica-9452's projects`), but it is empty (Framework Preset "Other", `https://itm-15.vercel.app` → `404 NOT_FOUND`), not `vercel link`-ed to this local repo, and not confirmed Git-connected to `Gichangi001/ITM-15`. Needs explicit confirmation this is the intended project before linking (the account also has `soko-ai`, `itm-green-mobility`, `frontend`). |
-| Supabase | Connector authenticated | **No** — re-checked this session: only organization is "Soko ai," only project is the unrelated `soko-ai` app. No ITM@15 project exists under this account, despite an earlier claim it was "fully set up." Needs user confirmation of org/region before creating one (billable action). |
+| Supabase | Connector authenticated (different account than the project below) | **Yes, now exists — `ysjjgzakswaohmnaowmv`.** The user supplied its URL and keys directly. It is **not** visible via this session's Supabase connector (still only shows the unrelated `soko-ai` project under org "Soko ai"), so it lives under a different Supabase account/login than the one this session is authenticated as. `.mcp.json`'s `supabase` entry is now scoped to `project_ref=ysjjgzakswaohmnaowmv`, but needs the user to run `claude /mcp` interactively to authenticate it against the right account before any MCP tool call (including migration application) can reach this project. |
 
 ## 11. Known missing capabilities (ranked by when they'll block work)
 

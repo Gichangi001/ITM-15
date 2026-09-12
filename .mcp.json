@@ -4,10 +4,6 @@
       "type": "http",
       "url": "https://mcp.vercel.com/"
     },
-    "supabase": {
-      "type": "http",
-      "url": "https://mcp.supabase.com/mcp?features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
-    },
     "playwright": {
       "type": "stdio",
       "command": "npx",
@@ -26,6 +22,10 @@
       "env": {
         "MEMORY_FILE_PATH": ".claude-memory/itm15-memory.jsonl"
       }
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=ysjjgzakswaohmnaowmv&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
     }
   }
 }

@@ -9,6 +9,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // See test/empty-module.ts for why these need aliasing under Vitest.
+      "server-only": path.resolve(__dirname, "./test/empty-module.ts"),
+      "client-only": path.resolve(__dirname, "./test/empty-module.ts"),
     },
   },
 });
