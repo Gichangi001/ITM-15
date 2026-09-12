@@ -26,7 +26,9 @@ Generated during the discovery/bootstrap session. Regenerate whenever a controll
 | `docs/QUALITY_STATUS.md` | Markdown | Last known result of lint/typecheck/tests/build/security/etc. | Internal (Claude Code process record) | Uncommitted | — | See file | Yes | N/A |
 | `docs/adr/` | Directory | Architecture Decision Records | Internal | Created, empty | — | — | N/A | N/A |
 | `.claude/skills/*/SKILL.md` (5 files) | Markdown | Project skills: `project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate` | Internal (process authority) | Uncommitted | — | See runbook §7.1 | Yes | N/A |
-| `.mcp.json` | JSON | Project-scoped MCP server definitions: `vercel`, `supabase`, `playwright`, `memory` (no secrets — OAuth/local-stdio only) | Internal (process config) | Uncommitted | — | Per runbook §5.2–5.3, §5.4, §5.6 | Yes | N/A |
+| `.mcp.json` | JSON | Project-scoped MCP server definitions: `vercel`, `supabase` (scoped to `project_ref=ysjjgzakswaohmnaowmv`), `playwright`, `memory` (no secrets — OAuth/local-stdio only) | Internal (process config) | Uncommitted | — | Per runbook §5.2–5.3, §5.4, §5.6 | Yes | N/A |
+| `docs/ITM15_PROJECT_AUDIT_AND_PENDING_CONTROL.md` | Markdown | Mandatory audit/completion-control process: definition-of-done gates (A–K), required `docs/PROJECT_AUDIT_CHECKLIST.md` structure, audit procedure, release-gate rule | 3 (process authority, alongside the runbook) | `a6ddca5` (2026-09-12, added via GitHub web UI) | — | No checkbox may be `[x]` without evidence; reopen anything that fails re-verification; never report "everything looks good" without measurable state | **Yes** (full document read this session) | No |
+| `docs/PROJECT_AUDIT_CHECKLIST.md` | Markdown | The verification checklist the above document requires — executive status, per-area checklists, release gate | Internal (Claude Code process record), authoritative for completion status per the audit-control doc | Uncommitted (seeded this session) | — | See file | Yes (authored this session) | N/A |
 
 ## Conflicts identified
 
