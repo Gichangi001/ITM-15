@@ -1,298 +1,498 @@
 # ITM@15 Project Audit Checklist
 
-Last audit: 2026-09-12
+Last audit: 2026-09-13
 Branch: main
-Commit: (pending — this file is committed alongside `c3ac493`, see `git log` for the exact HEAD at audit time)
-Environment: local dev machine, Vercel production (`https://itm-15.vercel.app`), Supabase project `ysjjgzakswaohmnaowmv` (schema not yet applied)
-Current build phase: Phase 0 (repository/quality foundation) essentially done; Phase 1 (Supabase foundation) app-side wiring done, schema drafted but unapplied
+Commit: `8c8b36f` (this audit's findings/fixes land in the commit(s) immediately after)
+Environment: local dev machine, Vercel production (`https://itm-15.vercel.app`, HTTP 200 confirmed this audit), Supabase project `ysjjgzakswaohmnaowmv` (schema drafted, not applied)
+Current build phase: Phase 0 done except one user-blocked item; Phase 1 (Supabase) app-side wiring done, schema drafted+skill-reviewed, application blocked on DB access; Wally W0 (placeholder assets/tables) done to the same "drafted, unapplied" point; Phase 3's landing-page teaser section built early and out of strict phase order (a deliberate, disclosed choice — see "Seven-Day Story" below), everything else (Phases 2, 4-21) not started.
 
-This is a first seed of this checklist (the file itself was added to the repo by the user this session, at `docs/ITM15_PROJECT_AUDIT_AND_PENDING_CONTROL.md`). It reflects real, currently-verifiable state only — most feature rows are `[ ]` because no application feature code exists yet beyond the placeholder homepage and the Supabase client foundation. A full traceability-matrix pass (§9 of the audit-control doc) is future work, not done in this seed.
+## How to read this file
+
+`[x]` = evidence block backs it up (Gates A-K from `docs/ITM15_PROJECT_AUDIT_AND_PENDING_CONTROL.md` §5, at least the applicable ones). `[ ]` = pending, in progress, or blocked — the label after the item says which. This audit re-verified every previously-`[x]` item against current code/`git log`/a fresh `pnpm verify`, not just against what an earlier session claimed (§7 of the audit-control doc) — none needed reopening.
 
 ## Executive Status
 
-- Total requirements tracked here: 81
-- Verified complete: 9
-- In progress: 4
-- Pending: 68
-- Blocked: 0 (both prior blockers — Supabase project existence, Vercel linkage — are resolved; two smaller items need a user action, tracked in `docs/PROJECT_STATE.md`, not blocking further work)
+- Total requirements tracked here: 143
+- Verified complete: 12
+- In progress: 5
+- Pending: 124
+- Blocked: 2 (both need a user action, not more engineering — see Critical Blockers)
 - Failed verification: 0
 - Deferred: 0
 
-Overall completion: **early Phase 1 of 21** (Product Guide §26 phase numbering).
-Release readiness: **NOT READY** — nowhere close; this is expected at this stage, not a finding.
+Overall completion: **Phase 0 done bar one item; early Phase 1 of 21** (Product Guide §26 numbering). One piece of Phase 3 (the landing-page story teaser) was built ahead of order — disclosed, not hidden — everything else is untouched.
+Release readiness: **NOT READY.** Expected at this stage — recorded as the honest baseline, not a finding demanding immediate action beyond what's below.
 
 ## Critical Blockers
 
-- [ ] None currently block *this session's* work. Two items need a user action before Phase 1 can finish (not blocking Phase 0 foundation work): see `docs/PROJECT_STATE.md` — (1) authenticate the project-scoped Supabase MCP or supply the DB password so the draft migration can be applied to `ysjjgzakswaohmnaowmv`; (2) an explicit decision on whether Prisma is added alongside the existing `supabase/migrations` approach.
+1. **Supabase database access — blocks all of Phase 1 onward.** Neither this session's Supabase MCP connector nor the CLI can reach `ysjjgzakswaohmnaowmv` (different account than the connector's authenticated one; no DB password supplied for CLI linking). User reported running `claude /mcp` to fix this; unconfirmed whether that was in this exact terminal session or requires a Claude Code restart to take effect. **Until resolved, neither migration (`20260912230000_init_foundation.sql`, `20260913000000_wally_w0_tables.sql`) can be applied, and no phase past 1 can build against a real schema.**
+2. **`.github/workflows/ci.yml` unpushed — blocks automated CI.** The `gh`/git OAuth token lacks the `workflow` scope. Fix: user runs `gh auth refresh -h github.com -s workflow` once. Lower severity than #1 — `pnpm verify` run manually every session substitutes for now.
+
+Neither blocker is something this session can resolve unilaterally (per `docs/PROJECT_STATE.md` — no pausing/deleting Supabase projects, no forcing an OAuth scope grant without the user's browser).
 
 ## Foundation & Repository
 
 - [x] Repository documentation correctly located (`docs/PRODUCT_GUIDE.md`, `docs/WALLY.md`, `CLAUDE.md` at root)
 
   **Requirement:** `ITM15_MASTER_BUILD_RUNBOOK.md` §1, `docs/WALLY.md` §0
-  **Implementation:** `git mv` in commit `67f425b`; duplicate re-uploads removed in `632f720`
-  **Tests:** N/A (structural)
-  **Security:** N/A
+  **Implementation:** `git mv` in `67f425b`; re-uploaded duplicates removed 3 times now (`632f720`, and a `docs/`-located duplicate removed in `8c8b36f`) — see Documentation section below for the pattern
   **Result:** PASS
-  **Verified:** 2026-09-12
-  **Commit:** `632f720`
+  **Verified:** 2026-09-13 (re-verified this audit — `docs/PRODUCT_GUIDE.md`/`docs/WALLY.md` present, no stray duplicates at repo root or elsewhere in `docs/` as of `git status`)
+  **Commit:** `632f720`, `8c8b36f`
 
 - [x] Next.js + TypeScript + Tailwind application scaffolded
 
   **Requirement:** Product Guide §3, §26 Phase 0
   **Implementation:** `package.json`, `src/app/`, `tsconfig.json`, `next.config.ts`
-  **Tests:** `pnpm build` succeeds
-  **Security:** N/A
   **Result:** PASS
-  **Verified:** 2026-09-12
+  **Verified:** 2026-09-13 (re-ran `pnpm build` this audit — still succeeds)
   **Commit:** `9e6c29f`
 
 - [x] Production build passes (lint + typecheck + test + build)
 
   **Requirement:** `CLAUDE.md` "Required quality gate"
   **Implementation:** `pnpm verify` script
-  **Tests:** `pnpm verify` — see `docs/QUALITY_STATUS.md`
-  **Security:** N/A
+  **Tests:** re-ran fresh this audit at commit `8c8b36f`: lint clean, typecheck clean, 9/9 unit tests pass, build succeeds
   **Result:** PASS
-  **Verified:** 2026-09-12
-  **Commit:** `c3ac493`
+  **Verified:** 2026-09-13
+  **Commit:** `8c8b36f`
 
 - [x] Vercel production deployment live
 
   **Requirement:** Product Guide §26 Phase 0 acceptance
   **Implementation:** `vercel.json` (framework override), Git-connected `itm-15` project
-  **Tests:** `curl -o /dev/null -w '%{http_code}' https://itm-15.vercel.app` → 200
-  **Security:** N/A
+  **Tests:** re-curled this audit: `https://itm-15.vercel.app` → HTTP 200
   **Result:** PASS
-  **Verified:** 2026-09-12
+  **Verified:** 2026-09-13
   **Commit:** `309efc0`
 
-- [ ] GitHub Actions CI running — STATUS: BLOCKED
+- [ ] GitHub Actions CI running — STATUS: BLOCKED (see Critical Blockers #2)
+- [x] `.claude/agents/` project agents created (all 6: architecture/security/database/test/ux/wally reviewers)
 
-  Blocker: `gh`/git OAuth token lacks the `workflow` scope; GitHub rejects pushes touching `.github/workflows/*`.
-  Impact: no automated lint/typecheck/test/build on PRs yet; all verification is manual (`pnpm verify`) this session.
-  Required resolution: user runs `gh auth refresh -h github.com -s workflow`, then the already-written `.github/workflows/ci.yml` can be pushed.
-  Owner/dependency: user (interactive, opens a browser).
+  **Requirement:** `ITM15_MASTER_BUILD_RUNBOOK.md` §8
+  **Implementation:** `.claude/agents/{architecture,security,database,test,ux,wally}-reviewer.md`
+  **Tests:** N/A (agent definitions, not code) — not yet exercised on a real review
+  **Security:** the security/database/wally reviewers are themselves security controls once used
+  **Result:** PASS (created; effectiveness unverified until actually invoked on a real change)
+  **Verified:** 2026-09-13
+  **Commit:** (pending, see git log)
+- [x] `CLAUDE.md` accuracy re-verified
 
-- [ ] `.claude/agents/` project agents created (architecture/security/database/test/ux/wally reviewers)
+  **Requirement:** self-consistency — `CLAUDE.md` must describe reality, not history
+  **Implementation:** found and fixed stale claims this audit: it said corepack/pnpm "not yet installed" and `pnpm verify` "does not exist yet" — both have been false since `9e6c29f`/pnpm setup. Also added a pointer to the audit-control doc/checklist relationship, and the 2 Supabase skills that were missing from its skills list.
+  **Tests:** N/A (doc fix)
+  **Result:** PASS (now accurate)
+  **Verified:** 2026-09-13
+  **Commit:** (pending, see git log)
 
 ## Tooling & Claude Environment
 
 - [x] Environment capability inventory current (`docs/claude/ENVIRONMENT_INVENTORY.md`)
-
-  **Requirement:** `ITM15_MASTER_BUILD_RUNBOOK.md` §2.2
-  **Implementation:** `docs/claude/ENVIRONMENT_INVENTORY.md`
-  **Tests:** N/A
-  **Security:** N/A
-  **Result:** PASS
-  **Verified:** 2026-09-12
-  **Commit:** `c3ac493`
-
-- [x] Project-scoped `.claude/settings.json` (permissions) + destructive-command hook
-
-  **Requirement:** `ITM15_MASTER_BUILD_RUNBOOK.md` §9.1–9.3
-  **Implementation:** `.claude/settings.json`, `.claude/hooks/check-destructive-command.sh`
-  **Tests:** manually piped 4 sample dangerous payloads (blocked) + 1 safe payload (allowed)
-  **Security:** this *is* a security control
-  **Result:** PASS
-  **Verified:** 2026-09-12
-  **Commit:** `cb639c9`
-
-- [ ] 5/10 recommended project skills created — STATUS: IN PROGRESS (`project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate` done; `supabase-review`, `test-gate`, `visual-qa`, `wally-qa`, `release-gate` deliberately deferred until there's an artifact each would review)
-- [ ] Official Supabase agent skills installed (`supabase`, `supabase-postgres-best-practices` — done, commit `c3ac493`) — marked in-progress only because the broader skills recommendation isn't fully closed out above
-- [ ] `.mcp.json` servers authenticated — STATUS: IN PROGRESS (defined: `vercel`, `supabase` (rescoped to `project_ref=ysjjgzakswaohmnaowmv`), `playwright`, `memory`; none confirmed authenticated via an actual `/mcp` check yet)
-- [ ] Memory knowledge-graph MCP exercised (defined in `.mcp.json`, never invoked)
+- [x] Project-scoped `.claude/settings.json` (permissions) + destructive-command hook — tested with 4 dangerous + 1 safe payload, commit `cb639c9`
+- [ ] 7/10 recommended project skills created — STATUS: IN PROGRESS (`project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate`, `supabase`, `supabase-postgres-best-practices`; `test-gate`, `visual-qa`, `wally-qa`, `release-gate` deliberately deferred until there's an artifact each would review)
+- [x] `.claude/agents/` (6 required) — all created, see Foundation & Repository above
+- [ ] `.mcp.json` servers authenticated — STATUS: IN PROGRESS/BLOCKED (defined: `vercel`, `supabase` (rescoped to `project_ref=ysjjgzakswaohmnaowmv`), `playwright`, `memory`; `supabase` specifically blocked, see Critical Blockers #1; others never explicitly `/mcp`-verified either)
+- [ ] Memory knowledge-graph MCP exercised (defined in `.mcp.json`, never invoked — auto-memory used as the interim substitute throughout)
 - [ ] Secret-scan pre-commit hook (runbook §9.4) — not created
 
 ## Documentation
 
-- [x] `docs/DOCS_INDEX.md`, `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md` current
+- [x] `docs/DOCS_INDEX.md`, `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md` current — updated every session
+- [x] `docs/adr/0001-prisma-alongside-supabase-migrations.md` — Prisma-vs-supabase/migrations coexistence decision
+- [x] This checklist rebuilt into a full backlog (this audit) — was a seed before; now covers every Product Guide phase and every WALLY.md checklist section, plus a Requirement Traceability Matrix
+- [x] Recurring duplicate-upload pattern documented (`docs/DOCS_INDEX.md` Conflicts section) — 3 occurrences of controlling docs being re-uploaded via GitHub's web UI outside any session, each diffed-and-removed; flagged for a direct question to the user if it recurs a 4th time
 
-  **Requirement:** `ITM15_MASTER_BUILD_RUNBOOK.md` §10, this document §1
-  **Implementation:** all three files, updated each session
-  **Tests:** N/A
-  **Security:** N/A
-  **Result:** PASS
-  **Verified:** 2026-09-12
-  **Commit:** `c3ac493`
+## Authentication & User Management (Phase 2 — Product Guide §5, audit-control doc §14)
 
-- [x] `docs/adr/` populated — `0001-prisma-alongside-supabase-migrations.md`
+Foundation exists (`src/lib/supabase/{client,server,admin}.ts`); zero auth UI/server actions built. All pending:
 
-  **Requirement:** `ITM15_MASTER_BUILD_RUNBOOK.md` §40 (ADRs for decisions worth remembering)
-  **Implementation:** `docs/adr/0001-prisma-alongside-supabase-migrations.md`
-  **Tests:** N/A
-  **Security:** documents the RLS-vs-Prisma-migrations risk explicitly
-  **Result:** PASS
-  **Verified:** 2026-09-12
-  **Commit:** (pending, see git log)
-- [ ] This checklist (`docs/PROJECT_AUDIT_CHECKLIST.md`) kept current — STATUS: IN PROGRESS (seeded this session; full traceability matrix per §9 not yet built)
-
-## Authentication & User Management
-
-- [ ] Admin can create employee account
-- [ ] Email/name/country/entity stored correctly
+- [ ] Admin can create employee account (`/admin/players/new` server action)
+- [ ] Email stored correctly (unique, required)
+- [ ] Name/country/entity stored correctly (optional at creation, required before gameplay)
 - [ ] Temporary `Walumo` password flow works
-- [ ] `Walumo` cannot remain a permanent password
-- [ ] Forced password reset works
+- [ ] `Walumo` cannot remain a permanent password (`must_change_password` gate)
+- [ ] Forced password reset works (`/first-login`, min 10 chars, disallow exact `Walumo` reuse)
+- [ ] Private password stored through Supabase Auth (not a custom table)
 - [ ] Session persists correctly
 - [ ] Logout works
-- [ ] Unauthorized route protection works
-- [ ] Admin route protection works
-- [ ] User role is server-verified
+- [ ] Unauthorized/unknown email cannot self-register
+- [ ] Admin route protection works (player cannot reach `/admin/*`)
+- [ ] User role is server-verified (never trust a client-supplied role)
+- [ ] Login page (`/login`) — cinematic background, Wally teaser, show/hide password, "Need help?" action
+- [ ] Disabled-user handling (profile `status = DISABLED` rejected even with a valid Auth session)
 
-(All pending — Phase 2 has not started. `src/lib/supabase/{client,server,admin}.ts` exist and are the foundation this phase will build on, but no auth UI or server actions exist yet.)
+## Employee Onboarding (Phase 3 — Product Guide §5.4)
 
-## Employee Onboarding
+- [ ] Onboarding form (`/onboarding`): full name, email (read-only from Auth), country (required), entity (recommended), optional profile photo
+- [ ] Minimum required game identity enforced: name + email + country
+- [ ] Automatic squad assignment on completion (if enabled)
+- [ ] Incomplete profile cannot bypass onboarding into `/play`
 
-- [ ] All items pending — Phase 3, not started.
+Note: the landing page itself (hero + story teaser) was built this session ahead of this phase's usual order — see "Seven-Day Story" below. Onboarding/login were **not** pulled forward with it; they still need Phase 2's auth foundation first.
 
-## Database & RLS
+## Database & RLS (Phase 1 — Product Guide §26)
 
-- [ ] Migration `20260912230000_init_foundation.sql` applied to a real database — STATUS: BLOCKED
+- [ ] Migration `20260912230000_init_foundation.sql` applied to a real database — STATUS: BLOCKED (Critical Blockers #1)
+- [ ] Migration `20260913000000_wally_w0_tables.sql` applied — STATUS: BLOCKED (same blocker)
+- [x] Both migrations reviewed against `supabase-postgres-best-practices` skill
 
-  Blocker: this session cannot reach the live `ysjjgzakswaohmnaowmv` project — the user reports having run `claude /mcp` to authenticate the project-scoped Supabase MCP server, but `~/.claude.json`'s project entry shows zero registered MCP servers and no new Supabase tools became available (checked twice).
-  Impact: Phase 1 cannot be marked complete; no downstream phase can build real auth/game features against a live schema.
-  Required resolution: confirm `/mcp` was run in the same terminal running this session; if so, restart `claude` in this repo to load the project-scoped `.mcp.json` server added mid-session.
-  Owner/dependency: user (interactive step, outside this session's reach).
+  **Requirement:** general schema-quality best practice
+  **Implementation:** FK indexes added throughout; `auth.uid()` wrapped in `select` in every RLS policy referencing it
+  **Tests:** manual review against the skill's reference docs; static SQL read-through only — not executed against real Postgres
+  **Result:** PASS for what a static review can confirm — not a substitute for running it
+  **Verified:** 2026-09-12/13
+  **Commit:** `1b9c5d7`, `1fabece`
 
-- [x] Migration reviewed against `supabase-postgres-best-practices` skill
+- [ ] Database rebuilds cleanly from migrations (`supabase db reset`) — cannot test: no Docker locally, no live-project access
+- [ ] Anonymous client cannot read `profiles`/`user_roles`/`audit_logs`/`wally_event_receipts` — cannot test yet, same reason
+- [ ] Supabase TypeScript types generated (`supabase gen types typescript`) — depends on the above
+- [ ] Prisma introspection (`prisma db pull`) run at least once — blocked on real `DATABASE_URL`/`DIRECT_URL` password, separately from the MCP blocker
 
-  **Requirement:** general schema-quality best practice, not a specific Product Guide item
-  **Implementation:** `supabase/migrations/20260912230000_init_foundation.sql` — added FK indexes (`entities.country_id`, `profiles.country_id`/`entity_id`, `user_roles.country_id`, `audit_logs.actor_id`); wrapped `auth.uid()` in `select` in both RLS policies
-  **Tests:** manual review against `.agents/skills/supabase-postgres-best-practices/references/schema-foreign-key-indexes.md` and `security-rls-performance.md`; static SQL read-through (still not executed against a real Postgres)
-  **Security:** the RLS-performance fix is also a correctness improvement (unwrapped `auth.uid()` still worked, just slower)
-  **Result:** PASS (for what a static review can confirm — not a substitute for Gate D against a live database)
-  **Verified:** 2026-09-12
-  **Commit:** (pending, see git log)
+## Landing Page (Phase 3 — Product Guide §6)
 
-- [ ] Database rebuilds cleanly from migrations (`supabase db reset` or equivalent) — cannot test: no Docker locally, no CLI link to the live project yet
-- [ ] Anonymous client cannot read `profiles`/`user_roles`/`audit_logs` — cannot test yet, same reason
-- [ ] Supabase TypeScript types generated (`supabase gen types typescript`) — not done, depends on the above
-- [ ] Countries/entities/campaigns readable by anon (by design, per migration) — implemented, unverified against a live database
+- [x] Hero section, exact approved copy, Wally teaser image — `src/app/page.tsx`, see "Seven-Day Story" below for full evidence
+- [x] Seven-day chapter teaser (non-spoiling) — see "Seven-Day Story"
+- [ ] "15 years in motion" historical timeline — deliberately skipped, needs real ITM historical data not available this session
+- [ ] Multinational-presence map/visual — deliberately skipped, same reason
+- [ ] Live countdown to next unlock — needs a real campaign row with real dates from the database
+- [ ] "Enter the Game" / "Sign In" CTAs — deliberately omitted (would be dead links before Phase 2 auth exists); current CTA is a working same-page scroll anchor only
 
-## Admin Mission Control
+## Player Shell (Phase 4 — Product Guide §7)
 
-- [ ] All items pending — Phase 5+, not started.
+- [ ] All items pending — not started. Routes needed: `/play`, `/play/day/[dayNumber]`, `/play/mission/[missionId]`, `/passport`, `/leaderboards`, `/gallery`, `/achievements`, `/notifications`, `/profile`, `/help`.
+
+## Admin Mission Control (Phase 5 — Product Guide §17, audit-control doc §13)
+
+All pending — no admin UI exists yet:
+
+- [ ] Admin authentication works
+- [ ] Role authorization works
+- [ ] Live player count works
+- [ ] Country activity works
+- [ ] Squad activity works
+- [ ] Mission creation works
+- [ ] Mission editing works
+- [ ] Mission scheduling works
+- [ ] Challenge launch works
+- [ ] Surprise challenge works
+- [ ] Question editing works
+- [ ] Voting controls work
+- [ ] Photo moderation works
+- [ ] Bonus points work
+- [ ] Point deductions follow authorization rules
+- [ ] Theme change works
+- [ ] Chapter lock/unlock works
+- [ ] Wally Control Room works (`/admin/live/wally`)
+- [ ] Audience targeting works
+- [ ] Live notifications work
+- [ ] Featured media works
+- [ ] Spectator screen controls work
+- [ ] Audit log works
+- [ ] Emergency pause works
+
+## Content Engine (Phase 6 — Product Guide §9, §18)
+
+- [ ] Content hierarchy modeled (Campaign → Game Day → Story Scene → Mission → Challenge)
+- [ ] Question editor (create/edit/archive, rich text, media, options, points, time limit, targeting, retry policy, preview)
+- [ ] Mission editor (9-step guided builder: basics/audience/challenge/scoring/Wally/timing/theme/preview/publish)
+- [ ] Draft/preview/publish workflow
+- [ ] Revision handling for editing a live mission (warning, revision record, no retroactive invalidation without explicit choice)
+- [ ] Admin can create a mission without a code deploy
+- [ ] Draft mission invisible to players
+
+## Submission Engine (Phase 7 — Product Guide §7 challenge types)
+
+- [ ] Reusable challenge renderer — at minimum: single/multiple-choice quiz, free-text, long answer, photo/video/audio upload, select-colleague, nomination+reason, vote, timed, cross-country partner, squad, QR/code discovery, find-a-person, image ID, sequence puzzle, poll, check-in, admin-verified live
+- [ ] Attempt/retry rules enforced server-side
+- [ ] Server deadline validation (never trust client clocks)
+- [ ] Player completes a mission end-to-end
+
+## Authoritative Scoring & Leaderboards (Phase 8 — Product Guide §10)
+
+- [ ] `score_events` append-only ledger (schema not yet written — later than the Phase 1 foundation tables)
+- [ ] Admin bonus-point flow (award to player/squad/country, required reason, guardrail, confirmation, audit entry)
+- [ ] Individual/squad/country/entity leaderboards
+- [ ] Leaderboard admin controls (show/hide, freeze, delay, dramatic reveal)
+- [ ] Browser cannot self-award points (server-authoritative, no client-mutable score field)
+
+## Voting & Nominations (Phase 9 — Product Guide §11)
+
+- [ ] Poll configuration (single/multi-choice, named/anonymous, eligibility, candidate source, self-vote rule, timing, live-count, reveal rule)
+- [ ] Vote uniqueness enforced at the database level, not just UI
+- [ ] Nomination + reason flow
+- [ ] Admin-controlled live reveal
+
+## Media Uploads & Moderation (Phase 10 — Product Guide §12)
+
+- [ ] Storage buckets (`avatars`, `challenge-submissions`, `approved-gallery`, `admin-media`, `wally-assets`) and their access policies
+- [ ] Upload flow (client validation → server/storage authorization → Pending → moderator review → approve/reject/resubmit)
+- [ ] Approved gallery (`/gallery`, filters by day/country/challenge/squad/featured)
+- [ ] Admin Media Library
+- [ ] Unapproved media never appears on a public surface
+
+## Realtime Engine (Phase 11 — Product Guide §14)
+
+- [ ] Broadcast/Presence helpers
+- [ ] Channel topics (`game:global`, `game:day:{id}`, `country:{id}`, `entity:{id}`, `squad:{id}`, `player:{id}`, `admin:mission-control`)
+- [ ] Live activity feed
+- [ ] Realtime mission publish/notification delivery/leaderboard refresh signal
+- [ ] Two-browser test: published event arrives without refresh
+- [ ] Private channels don't leak audiences
+
+## Admin Notifications & Live Controls (Phase 12 — Product Guide §15)
+
+- [ ] Notification composer, audience targeting, CTA links
+- [ ] Live toast/banner/modal delivery
+- [ ] Schedule support
+- [ ] Pause/resume game
+- [ ] Targeted message reaches only the target; global reaches all eligible connected players
 
 ## Seven-Day Story
 
 - [x] Public storyline teaser (landing page)
 
-  **Requirement:** `docs/PRODUCT_GUIDE.md` §6.1 (hero copy), §6.2 ("teaser of seven locked chapters without spoiling missions"), §8 (day titles/themes)
-  **Implementation:** `src/app/page.tsx`, `src/content/story.ts`, `src/components/RevealOnScroll.tsx`, font/token setup in `src/app/layout.tsx` and `globals.css`
-  **Tests:** `src/content/story.test.ts` (2 tests); `pnpm verify` green; Playwright full-page screenshots (scrolled through in steps) at mobile and desktop, sent to the user
-  **Security:** N/A — static public content, no auth/data dependency
-  **Result:** PASS for what this is (a marketing teaser, not the interactive game). Two bugs found via screenshot review and fixed before this was marked done: a lint-flagged sync `setState` in an effect, and an absolute-positioning bug from a CSS containing-block change caused by a sibling `transform`.
+  **Requirement:** `docs/PRODUCT_GUIDE.md` §6.1 (hero copy), §6.2 (non-spoiling teaser), §8 (day titles/themes)
+  **Implementation:** `src/app/page.tsx`, `src/content/story.ts`, `src/components/RevealOnScroll.tsx`, `src/app/layout.tsx`/`globals.css` (fonts/tokens)
+  **Tests:** `src/content/story.test.ts` (2 tests); `pnpm verify` green; Playwright full-page screenshots (scrolled through in steps, both breakpoints), sent to the user
+  **Security:** N/A — static public content
+  **Result:** PASS for what this is (a marketing teaser, not the interactive game). Two bugs caught via screenshot review and fixed: a lint-flagged sync `setState` in an effect; an absolute-positioning bug from a sibling `transform` creating a new CSS containing block.
   **Verified:** 2026-09-13
-  **Commit:** (pending, see git log)
-  **Known limitations:** no "15 years in motion" historical timeline or multinational-presence map (§6.2) — would require real ITM historical/office data not available this session, and inventing specific company history was judged too risky; no live countdown (needs a real campaign start date from the database); no "Enter the Game"/"Sign In" CTAs (would be dead links before Phase 2 auth exists).
+  **Commit:** `ba2f64b`
+  **Known limitations:** no historical timeline/map, no live countdown, no auth CTAs — see "Landing Page" section above.
 
-- [ ] Actual seven-day game loop (missions, challenges, unlocks) — pending, Phase 6+, not started. This teaser page is not that.
+- [ ] Actual seven-day game loop (missions, challenges, unlocks) — Phase 6+, not started. This teaser page is not that.
 
-## Game Engine / Missions & Challenges / Scoring & Unity Points / Voting / Photos & Media / Realtime / Country & Squad Features / Passport & Achievements / Leaderboards / Notifications / Daily Wally Email / Theme Engine / Spectator-Event Screen / Analytics
+## Wally (audit-control doc §12)
 
-- [ ] All items pending — later phases, not started. Not enumerated line-by-line in this seed to avoid a wall of identical `[ ]` entries; see `docs/PRODUCT_GUIDE.md` §26 for the full phase list and `ITM15_MASTER_BUILD_RUNBOOK.md` §17 for the tooling mapped to each. Expand this section into the full item-by-item form (per the audit-control doc's §13–§16 templates) when each phase actually starts.
+- [x] W0 placeholder asset registry (`docs/WALLY.md` §37)
 
-## Wally
-
-- [ ] All 23 items in the audit-control document's §12 Wally checklist — pending. `docs/WALLY.md` fully read; no Wally behaviour/controller/event engine exists yet (Phase 13+).
-- [x] W0 placeholder asset registry (docs/WALLY.md §37)
-
-  **Requirement:** `docs/WALLY.md` §37 W0 — "placeholder Wally asset registry"
-  **Implementation:** `src/wally/rendering/assets.ts` (8 poses from user-supplied `MASCOTTE.zip`, optimized with `sharp`), `supabase/migrations/20260913000000_wally_w0_tables.sql` (5 Wally tables), `supabase/seed.sql` (asset rows)
-  **Tests:** `src/wally/rendering/assets.test.ts` (2 tests); `pnpm verify` green; Playwright screenshots at mobile/desktop confirming the `open-arms` pose renders correctly on the homepage
-  **Security:** RLS enabled on all 5 new tables, reviewed against `supabase-postgres-best-practices` skill; migration itself still unapplied to any real database (same caveat as the Phase 1 migration)
-  **Result:** PASS for what exists (static registry + one page wiring); the Supabase tables remain unverified against a live database
+  **Requirement:** `docs/WALLY.md` §37 W0
+  **Implementation:** `src/wally/rendering/assets.ts` (8 poses from `MASCOTTE.zip`), `supabase/migrations/20260913000000_wally_w0_tables.sql` (5 tables), `supabase/seed.sql`
+  **Tests:** `assets.test.ts` (2 tests); Playwright screenshots confirming `open-arms`/`investigate` render correctly
+  **Security:** RLS enabled, skill-reviewed; migration unapplied (same blocker as Phase 1)
+  **Result:** PASS for what exists; DB tables unverified live
   **Verified:** 2026-09-13
-  **Commit:** (pending, see git log)
-  **Known limitations:** spec-vs-art conflict flagged, not resolved — see `docs/PROJECT_STATE.md`. Assets served from Next.js `public/`, not Supabase Storage's `wally-assets` bucket, pending the same DB access blocker.
+  **Commit:** `1fabece`
+  **Known limitations:** spec-vs-art conflict flagged, unresolved (see below); assets served from `public/`, not Supabase Storage yet.
 
-## Accessibility / Performance
+- [ ] Wally architecture matches `docs/WALLY.md` — PARTIAL: asset registry only, no controller/state machine/priority queue (W1, Phase 13)
+- [ ] Wally does not own authoritative score logic — trivially true (no score logic exists at all yet)
+- [ ] Personalized name greeting — not built
+- [ ] Mission introduction — not built
+- [ ] Correct-answer reaction — not built
+- [ ] Wrong-answer reaction — not built
+- [ ] Achievement reaction — not built
+- [ ] Photo approval reaction — not built
+- [ ] Bonus-point reaction — not built
+- [ ] Country-overtake reaction — not built
+- [ ] Wally Drop realtime — not built
+- [ ] Targeted player message — not built
+- [ ] Country-targeted message — not built
+- [ ] Squad-targeted message — not built
+- [ ] Global message — not built
+- [ ] Wally admin preview — not built
+- [ ] Wally animation states — only 8 static poses exist, no state machine/transitions
+- [ ] Wally does not interrupt critical form actions — N/A yet, nothing interrupts anything
+- [ ] Reduced-motion mode — implemented for the landing page's scroll-reveal (`motion-reduce:` variant), not yet for a Wally controller (doesn't exist)
+- [ ] Lite/2D fallback — the entire current asset set *is* 2D/Lite-tier by nature, but no quality-tier resolver exists to formally select it
+- [ ] Mobile performance acceptable — checked visually for the one page Wally appears on; no dedicated perf budget test yet
+- [ ] Seven-day Wally progression — **flagged conflict, see below**, not built
+- [ ] I-B-E-L-O-N-G sequence — deliberately not implemented/displayed yet (would spoil the mechanic if built carelessly)
+- [ ] Wally analytics events — not built
 
-- [ ] Not applicable yet — no user-facing feature surface beyond one static placeholder page.
+**Flagged, unresolved — needs the product owner:** `docs/WALLY.md` §3.1/§20 describes an explorer/traveller Wally with day-by-day costume changes. The actual `MASCOTTE.zip` art is one consistent Walumo-branded professional character, punctuality/clock-themed, no costume variants. Do not build the Day 1-7 skin system against this art as if it supports it.
 
-## Security
+## Themes and Cinematic Scenes (Phase 15 — Product Guide §19)
+
+- [ ] Theme structure/editor, runtime CSS token application, broadcast, 7 presets, optional day-intro 3D scenes — all pending
+
+## Email Automation (Phase 16 — Product Guide §16, audit-control doc §16)
+
+- [ ] Employee enrolled after admin account creation
+- [ ] Reminder schedule configured, correct timezone
+- [ ] Email includes player's name, Wally personality, current day's hook, game link
+- [ ] Link reaches correct environment
+- [ ] Completed users handled correctly (different message, not a repeat nag)
+- [ ] Disabled users excluded from reminders
+- [ ] Send failures logged, retry behavior documented
+- [ ] Resend + React Email integration — not installed
+
+## Achievements & Passport (Phase 17 — Product Guide §17 in the runbook numbering / Product Guide's own achievements section)
+
+- [ ] Achievement rules, passport stamps, cross-country validation, badge animations — all pending
+
+## Spectator / Event Screen (Phase 18 — Product Guide §21.2)
+
+- [ ] `/screen` route, admin screen controller, leaderboard/photo/mission/vote-reveal modules — all pending
+
+## Analytics (Phase 19 — Product Guide §22)
+
+- [ ] Analytics event taxonomy, admin charts/funnels, country comparisons, completion/retention metrics, export — all pending
+
+## Security, Performance, Load (Phase 20 — Product Guide §24, audit-control doc §11)
 
 - [x] Secrets excluded from Git
 
   **Requirement:** audit-control doc §11, `CLAUDE.md`
-  **Implementation:** `.env.local` (real Supabase keys) confirmed gitignored via `git check-ignore`; `grep`-confirmed the secret key does not appear in `.next` build output
-  **Tests:** manual grep/check-ignore this session
-  **Security:** this is the security check
+  **Implementation:** `.env.local` confirmed gitignored; secret key confirmed absent from `.next` build output via `grep`
   **Result:** PASS
   **Verified:** 2026-09-12
   **Commit:** `c3ac493`
 
-- [ ] Secrets excluded from Claude memory / knowledge graph — believed true (no secret values were written to any memory file this session), not independently re-audited against historical memory content
-- [ ] Service-role key absent from client bundle — verified once (see above) for the current build; must be re-verified whenever `admin.ts` usage expands
-- [ ] All other §11 security checklist items — pending (RLS enforcement untested against a live DB, no admin/scoring/voting code exists yet)
+- [ ] Employee cannot access admin routes — no admin routes exist yet to test
+- [ ] Country Admin cannot control another country — no country-admin feature exists yet
+- [ ] Moderator cannot award unauthorized points — no moderation/scoring exists yet
+- [ ] Browser cannot directly manipulate score ledger — no score ledger exists yet
+- [ ] Duplicate votes rejected server-side — no voting exists yet
+- [x] RLS enforced on player data (as drafted) — profiles/user_roles/audit_logs have RLS + policies written; **unverified against a live database** (Critical Blockers #1)
+- [ ] RLS enforced on media — no media tables exist yet
+- [ ] Service-role key absent from client bundle — verified once for the current build (`c3ac493`); must be re-checked whenever `admin.ts` usage expands
+- [ ] Upload MIME/size validation — no upload feature exists yet
+- [ ] Signed/private media access — no media feature exists yet
+- [ ] Rate limiting — not implemented anywhere yet
+- [ ] Admin actions audit logged — `audit_logs` table drafted, unapplied; no admin actions exist yet to log
+- [ ] Wally admin targeting authorization — no Wally admin UI exists yet
+- [ ] Realtime channels protected — no realtime implementation exists yet
+- [x] Secrets excluded from Git — see above
+- [ ] Secrets excluded from Claude memory/knowledge graph — believed true (no secret values written to any memory file), not independently re-audited against full historical memory content this session
+- [ ] Secrets excluded from knowledge graph — N/A, no graph connected
+
+## Day Zero Rehearsal (Phase 21 — Product Guide §26, audit-control doc §15)
+
+- [ ] Admin creates cross-country challenge
+- [ ] Challenge publishes successfully
+- [ ] Connected player receives it without refresh
+- [ ] Wally introduces the challenge
+- [ ] Player sees correct requirement
+- [ ] Player submits required response
+- [ ] Photo uploads successfully
+- [ ] Moderator receives submission
+- [ ] Moderator approves submission
+- [ ] Server awards Unity Points
+- [ ] Score ledger records event
+- [ ] Leaderboard updates
+- [ ] Wally congratulates player
+- [ ] Passport stamp unlocks
+- [ ] Admin sees updated activity
+- [ ] Audit log records admin action
+- [ ] E2E test passes
+
+All pending — this is the true end-to-end proof of the whole architecture and cannot start until Phases 1-12 exist.
+
+## Accessibility / Performance
+
+- [ ] No dedicated audit run yet. The one real page (landing/story) uses semantic headings, a working keyboard-reachable link, and respects `prefers-reduced-motion` — not formally verified with an accessibility scanner (the `audit`/`scan` skills are available and unused so far).
 
 ## Unit Tests
 
-- [x] `src/lib/env.ts` / `src/lib/env.server.ts` validated with synthetic values
-
-  **Requirement:** Product Guide §31 (env validation)
-  **Implementation:** `src/lib/env.test.ts`, `src/lib/env.server.test.ts`
-  **Tests:** `pnpm test` — 2 files, 5 tests, all passing
-  **Security:** N/A
-  **Result:** PASS
-  **Verified:** 2026-09-12
-  **Commit:** `c3ac493`
-
-- [ ] All other unit test coverage — pending (no business logic exists yet to test)
+- [x] 9 tests across 4 files, all passing (`env.test.ts`, `env.server.test.ts`, `assets.test.ts`, `story.test.ts`) — re-confirmed this audit at commit `8c8b36f`
+- [ ] All business-logic unit tests (scoring, eligibility, Wally priority/dialogue resolution, challenge validation, achievement rules, theme resolver, audience targeting) — none exist yet, no business logic exists yet
 
 ## Integration / E2E / Realtime Tests
 
-- [ ] Not started — no Playwright config, no `tests/e2e/` directory, nothing to exercise yet.
+- [ ] Not started — no Playwright config, no `tests/e2e/` directory, nothing to exercise yet
 
 ## Visual QA
 
-- [ ] Not started for the one real page (placeholder homepage) — low priority until Phase 3's actual landing page exists.
+- [x] Landing/story page checked at mobile (390×844) and desktop (1280×900), full-page, scrolled-through — clean, 2 bugs found and fixed this way
+- [ ] No other page exists to check yet
 
-## Production Build
+## Production Build / Vercel Preview
 
-- [x] See "Foundation & Repository" above — PASS, commit `c3ac493`.
-
-## Vercel Preview
-
-- [x] See "Foundation & Repository" above (production; no feature branch preview exercised yet since all work has landed on `main` directly this early in the project) — PASS, commit `309efc0`.
+- [x] Both PASS — see Foundation & Repository above
 
 ## Production Readiness
 
-- [ ] Not applicable — far too early; see Release Gate below.
+- [ ] Not applicable — far too early; see Release Gate below
 
 ## Documentation & Memory
 
-- [x] `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md`, `docs/DOCS_INDEX.md`, `docs/claude/ENVIRONMENT_INVENTORY.md`, this file — all updated this session.
-- [x] Auto-memory (`project_itm15_walumo.md`) updated this session, no secrets written.
+- [x] `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md`, `docs/DOCS_INDEX.md`, `docs/claude/ENVIRONMENT_INVENTORY.md`, this file — all current as of this audit
+- [x] Auto-memory (`project_itm15_walumo.md`) updated each session, no secrets written (spot-checked this audit)
 
 ## Deferred Items
 
-- None yet. (5 project skills and 6 project agents are *not yet created*, tracked above as pending/in-progress, not deferred — the runbook expects them, just not before the phase that needs them.)
+- None. Everything not yet built is tracked above as pending/in-progress/blocked, not deferred — nothing has been descoped from the product.
+
+---
+
+## Requirement Traceability Matrix
+
+Curated to the requirements with real evidence one way or another (verified or meaningfully in-progress) plus the immediate next tier of pending work. Not every line item above has its own row — see the phase sections for the full list.
+
+| ID | Requirement | Source | Implementation | Tests | Security | Status |
+|---|---|---|---|---|---|---|
+| ENV-001 | Environment/capability inventory | Runbook §2.2 | `docs/claude/ENVIRONMENT_INVENTORY.md` | N/A | N/A | VERIFIED |
+| ENV-002 | Scoped permissions + destructive-command hook | Runbook §9.1-9.3 | `.claude/settings.json`, `.claude/hooks/` | Manual payload tests | Is the control | VERIFIED |
+| DOC-001 | Product Guide/WALLY.md at required paths | Runbook §1, WALLY.md §0 | `docs/PRODUCT_GUIDE.md`, `docs/WALLY.md` | N/A | N/A | VERIFIED |
+| DEPLOY-001 | Next.js app scaffolded | Product Guide §3 | `package.json`, `src/app/` | `pnpm build` | N/A | VERIFIED |
+| DEPLOY-002 | Vercel production deployment | Product Guide §26 Phase 0 | `vercel.json`, Git-connected project | `curl` → 200 | N/A | VERIFIED |
+| DEPLOY-003 | GitHub Actions CI | Runbook §14 | `.github/workflows/ci.yml` (unpushed) | N/A | N/A | BLOCKED |
+| DB-001 | Foundation schema (profiles/countries/entities/user_roles/campaigns/audit_logs) | Product Guide §23, §26 Phase 1 | `20260912230000_init_foundation.sql` | Skill review only | RLS drafted | IN PROGRESS (blocked on apply) |
+| DB-002 | Wally W0 tables | WALLY.md §8, §37 | `20260913000000_wally_w0_tables.sql` | Skill review only | RLS drafted | IN PROGRESS (blocked on apply) |
+| DB-003 | Database rebuilds from migrations | Product Guide §26 Phase 1 acceptance | — | — | — | BLOCKED |
+| DB-004 | Anonymous cannot read private data | Product Guide §26 Phase 1 acceptance | — | — | — | BLOCKED |
+| SEC-001 | Secrets excluded from Git/bundle | CLAUDE.md, audit doc §11 | `.env.local` gitignored, `grep`-verified | Manual | Is the control | VERIFIED |
+| SUP-001 | Supabase client helpers (browser/server/admin) | Product Guide §3 | `src/lib/supabase/{client,server,admin}.ts` | None (no live DB to test against) | `server-only` gated | IN PROGRESS |
+| ADR-001 | Prisma coexistence decision | Runbook §40 | `docs/adr/0001-...md` | N/A | Documents the RLS risk | VERIFIED |
+| LAND-001 | Hero section, approved copy | Product Guide §6.1 | `src/app/page.tsx` | Playwright screenshots | N/A | VERIFIED |
+| LAND-002 | Seven-day non-spoiling teaser | Product Guide §6.2, §8 | `src/content/story.ts` | `story.test.ts` | N/A | VERIFIED |
+| LAND-003 | Historical timeline / map | Product Guide §6.2 | — | — | — | PENDING (data unavailable) |
+| LAND-004 | Live countdown | Product Guide §6.2 | — | — | — | BLOCKED (needs DB) |
+| WAL-001 | Placeholder Wally asset registry | WALLY.md §37 W0 | `src/wally/rendering/assets.ts` | `assets.test.ts` | N/A | VERIFIED |
+| WAL-002 | Wally event/dialogue engine (W1) | WALLY.md §37 W1 | — | — | — | PENDING |
+| WAL-003 | Day 1-7 skin system | WALLY.md §20 | — | — | — | PENDING — **spec/art conflict flagged** |
+| AUTH-001 | Invite-only admin account creation | Product Guide §5.1 | — | — | — | PENDING |
+| AUTH-002 | Forced first-login password change | Product Guide §5.3 | — | — | — | PENDING |
+| USR-001 | Onboarding (name/email/country) | Product Guide §5.4 | — | — | — | PENDING |
+| ADM-001 | Admin Mission Control shell | Product Guide §17, §26 Phase 5 | — | — | — | PENDING |
+| GAME-001 | Content engine (Campaign→Day→Mission→Challenge) | Product Guide §9 | — | — | — | PENDING |
+| SCORE-001 | `score_events` ledger | Product Guide §10 | — | — | — | PENDING |
+| VOTE-001 | Poll engine + uniqueness | Product Guide §11 | — | — | — | PENDING |
+| MEDIA-001 | Upload → moderation → gallery | Product Guide §12 | — | — | — | PENDING |
+| RT-001 | Realtime broadcast/presence | Product Guide §14 | — | — | — | PENDING |
+| EMAIL-001 | Daily Wally email | Product Guide §16 | — | — | — | PENDING |
+| THEME-001 | Theme engine | Product Guide §19 | — | — | — | PENDING |
+| SCREEN-001 | Spectator screen | Product Guide §21.2 | — | — | — | PENDING |
+| AN-001 | Analytics taxonomy | Product Guide §22 | — | — | — | PENDING |
+| TEST-001 | Day Zero rehearsal | Product Guide §26 Phase 21 | — | — | — | PENDING |
+
+## Test Matrix
+
+| Feature | Unit | Integration | E2E | Security | Realtime | Visual | Status |
+|---|---|---|---|---|---|---|---|
+| Env validation | ✅ | N/A | N/A | N/A | N/A | N/A | VERIFIED |
+| Wally asset registry | ✅ | N/A | N/A | N/A | N/A | ✅ | VERIFIED |
+| Storyline content | ✅ | N/A | N/A | N/A | N/A | ✅ | VERIFIED |
+| Foundation schema | ❌ | ❌ | N/A | Partial (drafted) | N/A | N/A | BLOCKED |
+| Login | ❌ | ❌ | ❌ | ❌ | N/A | ❌ | PENDING |
+| Voting | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | PENDING |
+| Wally Drop | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | PENDING |
+| Photo Approval | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | PENDING |
 
 ---
 
 ## Release Gate
 
 - [ ] All critical requirements verified — no
-- [ ] No unresolved critical blockers — yes (see note above; two user-actionable items remain, neither blocking)
+- [ ] No unresolved critical blockers — no, 2 open (see Critical Blockers)
 - [ ] No critical security findings — no findings *yet* because almost nothing security-relevant has been built
 - [x] Lint passes
 - [x] Typecheck passes
-- [x] Unit tests pass
+- [x] Unit tests pass (9/9)
 - [ ] Integration tests pass — none exist
 - [ ] E2E critical flows pass — none exist
 - [ ] Realtime tests pass — none exist
 - [x] Production build passes
-- [ ] Mobile QA passes — not tested
-- [ ] Accessibility critical checks pass — not tested
+- [ ] Mobile QA passes — checked visually for one page only, not a formal pass
+- [ ] Accessibility critical checks pass — not formally tested
 - [x] Vercel Preview/Production verified
 - [ ] Supabase migrations verified — drafted, unapplied
 - [ ] RLS verified — drafted, unapplied
-- [ ] Environment variables verified — present locally (`.env.local`); not yet configured in Vercel's dashboard or as GitHub Actions secrets
+- [ ] Environment variables verified — present locally; not yet in Vercel dashboard or GitHub Actions secrets
 - [ ] Rollback procedure verified — not written
 - [x] Project state updated
 - [x] Quality status updated
-- [ ] Knowledge graph updated — no MCP memory graph connected yet; auto-memory used instead
+- [ ] Knowledge graph updated — no MCP memory graph connected; auto-memory used instead
 
-**Release readiness: NOT READY.** This is the expected, correct state at Phase 0/1 — recorded here as the honest baseline this checklist will track forward from, not a finding requiring immediate action beyond what's already listed in `docs/PROJECT_STATE.md`.
+**Release readiness: NOT READY.** Correct and expected this early — recorded as the baseline this checklist tracks forward from.

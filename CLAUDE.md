@@ -28,11 +28,11 @@ For current implementation state also read:
 
 ## Package manager
 
-Use pnpm. Do not switch package managers. (Corepack/pnpm are not yet installed in this environment — see `docs/claude/ENVIRONMENT_INVENTORY.md`; install before the first `pnpm install`.)
+Use pnpm (12.4.1, via corepack). Do not switch package managers.
 
 ## Required quality gate
 
-Run the repository `pnpm verify` command before declaring a slice complete. This script does not exist yet — it is a Phase 0 deliverable (see `docs/PROJECT_STATE.md`).
+Run `pnpm verify` (lint + typecheck + test + build) before declaring a slice complete. It exists and passes as of commit `8c8b36f`.
 
 ## Memory
 
@@ -40,4 +40,8 @@ At session start, retrieve relevant project memory and run `project-bootstrap`. 
 
 ## Project skills
 
-`.claude/skills/`: `project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate`. More (`supabase-review`, `test-gate`, `visual-qa`, `wally-qa`, `release-gate`) will be added when there is code/database/UI for them to review — see `docs/claude/ENVIRONMENT_INVENTORY.md` for the current rationale.
+`.claude/skills/`: `project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate`, plus the official `supabase` and `supabase-postgres-best-practices` skills. More (`test-gate`, `visual-qa`, `wally-qa`, `release-gate`) will be added when there is code/database/UI for them to review — see `docs/claude/ENVIRONMENT_INVENTORY.md` for the current rationale.
+
+## Audit process
+
+`docs/ITM15_PROJECT_AUDIT_AND_PENDING_CONTROL.md` governs how completion is tracked. `docs/PROJECT_AUDIT_CHECKLIST.md` is the authoritative backlog/checklist it requires — never maintain a second, competing completion list. A checkbox there is only `[x]` when its evidence block (requirement, implementation, tests, security, result, commit) actually backs it up.

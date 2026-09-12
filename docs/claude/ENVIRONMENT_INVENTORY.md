@@ -44,6 +44,10 @@ Source: skill listing injected into this session (equivalent to `/skills` output
 
 **Available, not applicable** (present in this account's skill roster but with no current ITM@15 use): `algorithmic-art`, `canvas-design`, `slack-gif-creator`, `hungarian-humanizer`, `bencium-aeo`, `bencium-code-conventions`, `bencium-*-designer` (Bence's personal conventions, not this project's), `insurgent-campaign`, `internal-comms`, `just-scrape`, `negentropy-lens`, `relationship-design`, `renaissance-architecture`, `pptx`, `xlsx`, `theme-factory`, `typography` (useful eventually for UI text but not a discovery-phase concern), `react-native-skills` (this is a web app, not React Native), `composition-patterns` (generic React guidance — may become relevant during Wally component work), `mcp-builder` (only relevant if ITM@15 ever ships its own MCP server), `skill-creator`, `keybindings-help`, `update-config`, `fewer-permission-prompts`, `loop`, `schedule`, `claude-in-chrome`, `run`, `init`, `writing-guidelines`, `doc-coauthoring`, `brand-guidelines` (Anthropic's own brand, not Walumo's), `human-architect-mindset`, `vanity-engineering-review` (worth revisiting at a later architecture-review milestone), `frontend-design` / `bencium-impact-designer` / `bencium-innovative-ux-designer` (candidates for Phase 3+ visual polish, but redundant with `web-design-guidelines`/`design-audit` — pick one lane later rather than stacking all).
 
+## 2b. Project agents (`.claude/agents/`)
+
+**Resolved this session (2026-09-13).** All 6 runbook-required project agents now exist: `architecture-reviewer`, `security-reviewer`, `database-reviewer`, `test-reviewer`, `ux-reviewer`, `wally-reviewer`. Each is scoped with `tools: Read, Grep, Glob, Bash` (read-only-oriented — none can edit files directly, matching their review-not-implement purpose) and written against this actual codebase's real history rather than generic templates. Not yet exercised on a real review — effectiveness unverified until one is actually invoked via the Agent tool.
+
 ## 3. Agents (subagent types)
 
 Source: agent listing injected into this session (equivalent to `/agents` output).

@@ -1,6 +1,12 @@
 # ITM@15 Project State
 
-_Last updated: 2026-09-12, foundation + Phase 1 draft session._
+_Last updated: 2026-09-13, full audit session (per `docs/ITM15_PROJECT_AUDIT_AND_PENDING_CONTROL.md`)._
+
+## Full audit completed 2026-09-13
+
+Ran the audit-control doc's full procedure (§7): re-verified every previously-`[x]` checklist item against current code/git/a fresh `pnpm verify` (none needed reopening — no regressions found), rebuilt `docs/PROJECT_AUDIT_CHECKLIST.md` from a seed into a full backlog covering every Product Guide phase (0-21) and every WALLY.md checklist section, added a Requirement Traceability Matrix, and fixed a real doc-drift issue found along the way: `CLAUDE.md` still claimed pnpm/corepack "not yet installed" and `pnpm verify` "does not exist yet" — both false since early in this project. See `docs/PROJECT_AUDIT_CHECKLIST.md` for the complete backlog; this file stays the high-level narrative.
+
+Per the audit's priority engine (blockers → security → foundation → dependencies → current phase → polish), with both real blockers (Supabase access, CI push) needing the user and nothing broken or failing, this session's "next smallest safe item" was creating the 6 required project agents (`.claude/agents/architecture-reviewer.md`, `security-reviewer.md`, `database-reviewer.md`, `test-reviewer.md`, `ux-reviewer.md`, `wally-reviewer.md`) — zero-risk, explicitly required by the runbook since the start, untouched all session. Each is scoped to this actual codebase's real patterns and history (e.g. `ux-reviewer` references the two real bugs this session's screenshot-driven QA caught) rather than generic boilerplate.
 
 ## Current phase
 
