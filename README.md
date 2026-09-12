@@ -28,7 +28,7 @@ Make employees say **"Walumo built this?"** — and mean it as a compliment abou
 
 ## Current status
 
-This repository is in **Pre-Phase 0**: specifications are written and read, but no application code exists yet. See [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) for the live phase/blocker/next-step status, and [`docs/DOCS_INDEX.md`](docs/DOCS_INDEX.md) for what every document in this repo is and its authority level.
+**Phase 0 (repository and quality foundation), in progress.** The Next.js app is scaffolded, `pnpm verify` (lint/typecheck/test/build) passes, and CI runs on every push. Vercel is linked and Git-connected; the Supabase project for ITM@15 is blocked on a free-tier project-limit decision. See [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) for the live phase/blocker/next-step status, and [`docs/DOCS_INDEX.md`](docs/DOCS_INDEX.md) for what every document in this repo is and its authority level.
 
 ## Where to start reading
 

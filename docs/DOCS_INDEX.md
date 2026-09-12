@@ -36,4 +36,6 @@ Generated during the discovery/bootstrap session. Regenerate whenever a controll
 
 ## Non-Markdown/Word files found
 
-`docs/PRODUCT_GUIDE.docx` (relocated from repo root, unchanged). No PDFs. `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `.env.example`, `.github/`, `vercel.json`, `supabase/`, `tests/`, `playwright.config.*` still do not exist — those remain Phase 0 application-scaffolding deliverables, not documentation.
+`docs/PRODUCT_GUIDE.docx` (relocated from repo root, unchanged). No PDFs.
+
+`package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `.env.example`, `.github/workflows/ci.yml` now exist (Next.js 16 + TypeScript + Tailwind scaffold, added this session). `vercel.json` still doesn't exist (not needed — Vercel autodetects the Next.js app; `.vercel/` link config is gitignored, machine-specific). `supabase/`, `tests/e2e/`, `playwright.config.*` still don't exist — Phase 1 and later deliverables respectively.

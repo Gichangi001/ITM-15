@@ -4,11 +4,11 @@ _Last updated: 2026-09-12, foundation session (docs relocation, CLAUDE.md, READM
 
 ## Current phase
 
-**Pre-Phase 0, foundation in progress.** Documentation is now correctly placed (`docs/PRODUCT_GUIDE.md`, `docs/WALLY.md`), `CLAUDE.md` and `README.md` exist, project skills and MCP servers are configured. Still missing before Phase 0 itself can start: `package.json`/Next.js app, CI, pnpm/corepack, and an actual Supabase project for ITM@15. A Vercel project (`itm-15`) already exists but is empty and not yet linked to this repo.
+**Phase 0 — Repository and quality foundation. In progress, application scaffolding done.** Next.js + TypeScript + Tailwind app exists, `pnpm verify` (lint + typecheck + test + build) passes clean on commit `67f425b` + this session's uncommitted changes, CI workflow added, Vercel project `itm-15` linked and Git-connected. Remaining before Phase 0 is fully done: Supabase project for ITM@15 (blocked — see below), a project-scoped `.claude/settings.json`, and a real Vercel Preview/production deploy verified post-push.
 
 ## Last verified commit
 
-`011d959` on `main` (origin `Gichangi001/ITM-15`) as of session start. This session's changes (doc relocation, `CLAUDE.md`, `README.md`, `.claude/skills/`, `.mcp.json`, `.gitignore`) are pending commit — see "In progress."
+`67f425b` on `main` (origin `Gichangi001/ITM-15`). This session's changes (Next.js scaffold, CI, Vercel link, env validation, tests) are staged for commit — see "In progress."
 
 ## Completed
 
@@ -23,25 +23,29 @@ _Last updated: 2026-09-12, foundation session (docs relocation, CLAUDE.md, READM
 ## In progress
 
 Uncommitted working-tree changes, pending review/push:
-- `git mv` of the product guide → `docs/PRODUCT_GUIDE.md` (+ `.docx`) and `WALLY.md` → `docs/WALLY.md` (history preserved).
-- New `CLAUDE.md`, rewritten `README.md`.
-- New `.claude/skills/`: `project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate`.
-- New `.mcp.json` (project-scoped, no secrets): `vercel` (HTTP, `mcp.vercel.com`), `supabase` (HTTP, `mcp.supabase.com`), `playwright` (stdio, `npx @playwright/mcp@latest`), `memory` (stdio, `@modelcontextprotocol/server-memory`, local file `.claude-memory/itm15-memory.jsonl`).
-- New `.gitignore` (`.claude-memory/`, `.tmp/`, `node_modules/`, `.next/`, `.env*`, `.vercel`, etc.).
-- GitHub plugin (`github@claude-plugins-official`) installed at user scope.
-- `docs/adr/` directory created, currently empty.
+- Next.js 16 + TypeScript + Tailwind app scaffolded (`create-next-app`, App Router, `src/` layout), merged into the existing repo without touching `README.md`/`CLAUDE.md`/`docs/`.
+- `package.json` renamed to `itm-15`; scripts: `dev`, `build`, `start`, `lint`, `typecheck` (`next typegen && tsc --noEmit` — Next 16's typed routes need `next typegen` run once before a bare `tsc` will resolve `LayoutProps` etc.), `test` (Vitest), `test:watch`, `verify` (lint+typecheck+test+build).
+- `zod` added; `src/lib/env.ts` validates `NEXT_PUBLIC_APP_URL` (optional for now — nothing server-side depends on Supabase/Resend yet, so those aren't declared as required until Phase 1 actually reads them). `src/lib/env.test.ts` covers it.
+- `.env.example` added (names only).
+- `vitest.config.ts` + `tests/unit/` scaffold added.
+- `.github/workflows/ci.yml` added: install --frozen-lockfile, lint, typecheck, test, build on PRs and pushes to `main`.
+- Homepage (`src/app/page.tsx`) and `layout.tsx` metadata replaced with an honest "under construction, Phase 0" placeholder instead of the default `create-next-app` starter content (no lorem-ipsum-equivalent left in a production-facing view, per Product Guide §2.1).
+- `pnpm verify` passes clean on this working tree.
+- Vercel: `vercel link` bound this directory to the existing `itm-15` project; `vercel git connect` confirmed it's **already** Git-connected to `Gichangi001/ITM-15` (was set up before this session, contrary to the earlier assumption that it wasn't linked — corrected here).
+- Earlier: doc relocation (`docs/PRODUCT_GUIDE.md`, `docs/WALLY.md`), `CLAUDE.md`, `README.md`, `.claude/skills/` (5), `.mcp.json` (4 servers), `.gitignore`, GitHub plugin, `docs/adr/` — all from the previous commit `67f425b`, already pushed.
 
 ## Blockers
 
-1. ~~Structural doc-location conflict~~ — **Resolved this session.** `docs/PRODUCT_GUIDE.md` and `docs/WALLY.md` now exist at their required paths; `CLAUDE.md` exists.
-2. **No package manager foundation.** Corepack is not present under Node v26 (Node dropped the bundled binary); pnpm is not installed. The runbook mandates pnpm. Needs `npm install -g corepack && corepack enable` (or a direct pnpm install) before `pnpm install` can be run for the first time. **Still open.**
-3. **No Supabase project for ITM@15 — contradicts an earlier claim that Supabase was "fully set up."** Re-checked this session via the Supabase connector: the only organization visible is "Soko ai" (`nggtpbegxqnxjnyhpeix`), and the only project in it is the unrelated `soko-ai` app. No ITM@15/Walumo Supabase project exists under this account. Either it was set up under a different Supabase account not connected to this session, or it has not actually been created yet. **Needs user confirmation before proceeding** — creating a new Supabase project is a billable action requiring an explicit org choice and cost confirmation, so it was not done automatically.
-4. **Vercel project exists but is empty and unlinked.** `itm-15` (`prj_NGrGE4LBFHh3eSx1JoXXkmqUpXRs`) exists under `alexanderworkforceafrica-9452's projects`, created 2026-09-12, Framework Preset "Other" (nothing deployed — `https://itm-15.vercel.app` returns `404 NOT_FOUND`). This local repo is **not** `vercel link`-ed to it, and it does not appear to be Git-connected to `Gichangi001/ITM-15` yet. Linking + connecting Git is straightforward once confirmed as the intended project (four projects exist in this Vercel account: `itm-15`, `soko-ai`, `itm-green-mobility`, `frontend` — confirming `itm-15` is the right one before linking, since linking is easy to do but mildly annoying to unlink cleanly).
-5. **No project-scoped `.claude/settings.json` permissions/hooks.** ITM@15 still inherits an unrelated global allow-list; the runbook's destructive-command guard hook and secret-scan hook do not exist yet. **Still open** — deliberately not created yet since it requires deciding an ITM@15-specific allow-list, not just copying the runbook's example.
-6. **5 of 10 required project skills created** (`project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate`). The other 5 (`supabase-review`, `test-gate`, `visual-qa`, `wally-qa`, `release-gate`) are deliberately deferred — each reviews an artifact (database, tests, UI, Wally behaviour, release) that doesn't exist yet; creating them now would just be unusable boilerplate. Add each when its Phase starts. **No project agents created yet** (`architecture-reviewer`, `security-reviewer`, `database-reviewer`, `test-reviewer`, `ux-reviewer`, `wally-reviewer`) — not requested this session; same reasoning applies.
-7. **No memory knowledge-graph MCP server connected yet**, despite being defined in `.mcp.json` (`memory` entry uses local stdio + `npx`, no auth needed — should connect on next `/mcp` check or first invocation; not exercised this session). Durable facts remain tracked in this file, `docs/claude/ENVIRONMENT_INVENTORY.md`, and auto-memory in the meantime.
+1. ~~Structural doc-location conflict~~ — **Resolved.** `docs/PRODUCT_GUIDE.md` and `docs/WALLY.md` at their required paths; `CLAUDE.md` exists.
+2. ~~No package manager foundation~~ — **Resolved this session.** `npm install -g corepack && corepack enable` installed pnpm 12.4.1; `pnpm approve-builds esbuild` was needed once (pnpm's supply-chain policy blocks postinstall scripts by default — esbuild's is legitimate and required by Vitest).
+3. **No Supabase project for ITM@15 — genuinely blocked, needs a user decision.** Attempted to create one this session (org "Soko ai", region `eu-west-3`, cost confirmed at $0/mo). Supabase rejected it: **"Gichangi001 (2 project limit)... these users will need to either delete, pause or upgrade one or more of these projects."** This account is at its free-tier project cap across *all* organizations where it's admin/owner — not just the one visible via this connector (only `soko-ai` is visible here, so a second free project exists somewhere not visible to this session, or the count includes a paused project). **Needs the user to choose:** pause/delete an existing project, upgrade a project or org to a paid plan, or use a different Supabase account — this session will not pause or delete anything on its own initiative.
+4. ~~Vercel project exists but is empty and unlinked~~ — **Resolved this session, and one assumption corrected.** `vercel link --project itm-15` bound this directory to it. Running `vercel git connect` revealed it was **already** Git-connected to `Gichangi001/ITM-15` (this had not actually been verified before — the earlier note that it was "not confirmed Git-connected" undersold it; it turned out to already be wired). The project was still empty of any deployment before this session's push.
+5. **No project-scoped `.claude/settings.json` permissions/hooks.** Still open — deliberately deferred; requires deciding an ITM@15-specific allow-list, not just copying the runbook's example.
+6. **5 of 10 required project skills created** (`project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate`). The other 5 and all 6 project agents remain deliberately deferred until there's an artifact each would review (database, tests, UI, Wally runtime, a release).
+7. **Memory knowledge-graph MCP server defined in `.mcp.json` but still not exercised.** Durable facts remain tracked in this file, `docs/claude/ENVIRONMENT_INVENTORY.md`, and auto-memory.
+8. **`.github/workflows/ci.yml` exists locally but is not committed/pushed yet.** GitHub rejected the push: the `gh`/git OAuth token only has `gist, read:org, repo` scopes, not `workflow`, which GitHub requires to create or update files under `.github/workflows/` via API/push. Needs the user to run `gh auth refresh -h github.com -s workflow` (interactive — opens a browser) once; then this one file can be committed and pushed on its own.
 
-Item 2 must be resolved before Phase 0's application scaffolding can begin. Items 3–4 need a user decision before proceeding (see "Next smallest complete slice"). None of these are security-critical yet — no code or data exists to be insecure — so none trigger the runbook's §44 stop conditions.
+Item 3 is the only remaining blocker that needs a human decision before Phase 1 (database/RLS) can start. Item 8 needs one interactive auth step from the user, then is a one-line fix. Nothing above is security-critical yet — no code or data exists to be insecure — so none trigger the runbook's §44 stop conditions.
 
 ## Current architecture decisions
 
@@ -49,23 +53,21 @@ None made yet beyond what the Product Guide/runbook already prescribe (Next.js +
 
 ## Next smallest complete slice
 
-This session's slice (docs foundation + skills + MCP + README) is ready to commit and push:
+This session's slice (Next.js scaffold + CI + Vercel link) is ready to commit and push:
 
 ```
 git add -A
-git commit -m "docs(foundation): relocate product guide and Wally spec to docs/, add CLAUDE.md, README, project skills and MCP servers"
+git commit -m "feat(foundation): scaffold Next.js app, add CI, link Vercel project"
 git push
 ```
 
-After that, in order, each its own commit/verification pass:
+Pushing to `main` will trigger a real Vercel deployment via the existing Git connection (`itm-15` project) — worth watching once pushed to confirm it actually builds and serves on Vercel's infrastructure, not just locally.
 
-1. **Confirm intent, then act** on the two open decisions:
-   - Is `itm-15` (existing, empty Vercel project) the correct production target? If yes: `vercel link` this repo to it, then connect it to `Gichangi001/ITM-15` for auto-deploy on push.
-   - Where should the ITM@15 Supabase project be created (organization, region)? No Supabase project can be created without this, and it's a billable action requiring explicit confirmation.
-2. Install corepack/pnpm (`npm install -g corepack && corepack enable`), scaffold Next.js + TypeScript + Tailwind/shadcn, add `.env.example`, package scripts (`lint`/`typecheck`/`test`/`build`/`verify`), and a minimal CI workflow. This is Phase 0's actual application-scaffolding work — the first application code in the repo.
-3. Create the Supabase project (once confirmed) and the first migration set (profiles/countries/entities/roles/campaigns/audit) with RLS from the start — Phase 1.
+After that:
 
-None of this (application scaffolding, Supabase project creation, Vercel linking) has been done yet — this session stopped at the foundation/config layer pending the two confirmations above.
+1. **Resolve the Supabase free-tier project cap (blocker 3 above)** — this needs the user, not a retry: pause/delete an existing free project, upgrade to a paid plan, or point at a different account. Nothing further on the database happens until this is decided.
+2. Once unblocked, create the Supabase project, wire `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` into Vercel env vars (never into the repo) and local `.env.local`, extend `src/lib/env.ts` to require them, and add the first migration set (profiles/countries/entities/roles/campaigns/audit_logs) with RLS from the start — Phase 1.
+3. `shadcn/ui` init and Sentry placeholder config remain listed in the Product Guide's Phase 0 build list but weren't added this session (shadcn has nothing to style yet beyond the placeholder page; Sentry is explicitly deferred per the runbook to ~Phase 20). Add shadcn when Phase 3/4 UI work actually starts.
 
 ## Required verification before next phase
 

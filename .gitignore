@@ -24,6 +24,13 @@ out/
 supabase/.branches/
 supabase/.temp/
 
+# TypeScript build artifacts (Next.js regenerates these)
+next-env.d.ts
+*.tsbuildinfo
+
+# Test coverage
+/coverage
+
 # OS/editor noise
 .DS_Store
 *.log

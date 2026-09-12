@@ -1,39 +1,35 @@
 # ITM@15 Quality Status
 
-_Last updated: 2026-09-12, commit `011d959`, discovery/bootstrap session._
+_Last updated: 2026-09-12, Phase 0 application-scaffolding session, on top of commit `67f425b` (uncommitted at time of writing — see `docs/PROJECT_STATE.md`)._
 
-No application code exists yet, so no gate has a meaningful pass/fail result. Recorded here as a baseline so a future session can tell the difference between "never run" and "run and failing."
+| Gate | Status | Notes |
+|---|---|---|
+| Lint | **Pass** | `pnpm lint` (`eslint`, `eslint-config-next` core-web-vitals + typescript configs) — clean. |
+| Typecheck | **Pass** | `pnpm typecheck` = `next typegen && tsc --noEmit`. Next.js 16's typed routes (`LayoutProps<"/">` etc.) require `next typegen` to run once before a bare `tsc` resolves them — folded into the script so this isn't a trap for the next session. |
+| Unit tests | **Pass** | `pnpm test` (Vitest) — 1 test file, 1 test (`src/lib/env.test.ts`), passing. Coverage is minimal by design: only `src/lib/env.ts` exists to test so far. |
+| Integration tests | Not applicable yet | No server actions/Supabase queries exist. |
+| RLS / database tests | Not applicable yet | No Supabase project exists for ITM@15 (see blocker in `PROJECT_STATE.md`). |
+| E2E tests | Not applicable yet | No Playwright config/tests yet; `playwright` MCP server is defined in `.mcp.json` but unexercised. |
+| Build | **Pass** | `pnpm build` (`next build`, Turbopack) — compiles, typechecks, prerenders `/` and `/_not-found` as static. |
+| Visual QA | Not run | Only page is an intentional placeholder (`src/app/page.tsx`) — nothing to visually QA yet beyond "does it render," confirmed by the build succeeding. |
+| Security gate | Not run | No auth/RLS/upload/realtime surface exists yet to review. No secrets present in the repo or in `.env.example` (names only). `.gitignore` covers `.env*`, `.vercel`, `.claude-memory/`. |
+| Preview/production deployment | **Pending verification** | `vercel link` bound this repo to the existing `itm-15` project; `vercel git connect` confirmed the GitHub repo is already connected. No deployment has been observed succeeding yet — next push to `main` should trigger one; confirm it goes green before calling Phase 0 done. |
+| Load test | Not applicable | Far ahead of current phase (Phase 20 concern). |
 
-| Gate | Status | Commit | Date | Notes |
-|---|---|---|---|---|
-| Lint | Not applicable | `011d959` | 2026-09-12 | No `package.json`/lint config exists. |
-| Typecheck | Not applicable | `011d959` | 2026-09-12 | No TypeScript project exists. |
-| Unit tests | Not applicable | `011d959` | 2026-09-12 | No test runner configured. |
-| Integration tests | Not applicable | `011d959` | 2026-09-12 | No server/DB code exists. |
-| RLS / database tests | Not applicable | `011d959` | 2026-09-12 | No Supabase project or migrations exist for ITM@15. |
-| E2E tests | Not applicable | `011d959` | 2026-09-12 | No app to test; no Playwright config. |
-| Build | Not applicable | `011d959` | 2026-09-12 | No build target exists. |
-| Visual QA | Not applicable | `011d959` | 2026-09-12 | Nothing rendered yet. |
-| Security gate | Not applicable | `011d959` | 2026-09-12 | No code/auth/RLS surface exists yet to review. No secrets present in the repo (confirmed by file listing — only 5 Markdown/Word docs + README). |
-| Preview deployment | Not applicable | `011d959` | 2026-09-12 | No Vercel project linked to this repo yet. |
-| Load test | Not applicable | `011d959` | 2026-09-12 | Far ahead of current phase (Phase 20 concern). |
-
-## Tooling health (not a product gate, but relevant to when gates become runnable)
+## Tooling health
 
 | Check | Result |
 |---|---|
-| `git status` | Clean, up to date with `origin/main` |
-| Node.js | v26.0.0 present |
-| npm | 11.12.1 present |
-| corepack | **Missing** — `command not found`; must install before pnpm can be enabled |
-| pnpm | **Missing** — depends on corepack or a direct install |
+| `git status` | Clean tree pending this session's commit |
+| Node.js | v26.0.0 |
+| npm | 11.12.1 |
+| corepack | **Installed this session** (`npm install -g corepack && corepack enable`) |
+| pnpm | **12.4.1**, working; `esbuild` postinstall script approved via `pnpm approve-builds` (pnpm's supply-chain policy blocks unapproved postinstall scripts by default — legitimate here, required by Vitest) |
 | gh CLI | Authenticated (`Gichangi001`) |
-| Vercel CLI | v54.2.0, authenticated (`alexanderworkforceafrica-9452`); update to v59.10.0 available, not urgent |
-| Vercel project `itm-15` | Exists, empty, unlinked to this repo (see `PROJECT_STATE.md`) |
-| Supabase connector | Authenticated; no ITM@15 project created yet (see `PROJECT_STATE.md`) |
-| Project `.mcp.json` | Created: `vercel`, `supabase`, `playwright`, `memory` — not yet auth-tested |
-| GitHub plugin | Installed this session (`github@claude-plugins-official`, user scope) |
-| Project skills | 5/10 created: `project-bootstrap`, `repo-docs-audit`, `docs-sync`, `memory-sync`, `security-gate` |
+| Vercel CLI | v54.2.0, authenticated; `itm-15` project linked (`.vercel/`, gitignored) and confirmed Git-connected to this repo |
+| Supabase connector | Authenticated; **project creation blocked** — account is at the 2-project free-tier cap across all orgs where it's admin/owner (see `PROJECT_STATE.md` blocker 3) |
+| `.mcp.json` | `vercel`, `supabase`, `playwright`, `memory` — still not individually auth-tested/exercised beyond the account-level connector calls made directly |
+| Project skills | 5/10 created |
 
 ## Rule for future updates to this file
 
