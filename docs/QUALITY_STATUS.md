@@ -13,7 +13,7 @@ _Last updated: 2026-09-12, Phase 0 application-scaffolding session, on top of co
 | Build | **Pass** | `pnpm build` (`next build`, Turbopack) — compiles, typechecks, prerenders `/` and `/_not-found` as static. |
 | Visual QA | Not run | Only page is an intentional placeholder (`src/app/page.tsx`) — nothing to visually QA yet beyond "does it render," confirmed by the build succeeding. |
 | Security gate | Not run | No auth/RLS/upload/realtime surface exists yet to review. No secrets present in the repo or in `.env.example` (names only). `.gitignore` covers `.env*`, `.vercel`, `.claude-memory/`. |
-| Preview/production deployment | **Pending verification** | `vercel link` bound this repo to the existing `itm-15` project; `vercel git connect` confirmed the GitHub repo is already connected. No deployment has been observed succeeding yet — next push to `main` should trigger one; confirm it goes green before calling Phase 0 done. |
+| Preview/production deployment | **Pass** | `https://itm-15.vercel.app` — HTTP 200, confirmed by curl to serve the real app (not the earlier 404). First deploy (commit `9e6c29f`) failed — project's Framework Preset was `Other`, causing a "No Output Directory named public" error despite `next build` succeeding. Fixed with `vercel.json` (`{"framework":"nextjs"}`, commit `309efc0`); redeployed clean. |
 | Load test | Not applicable | Far ahead of current phase (Phase 20 concern). |
 
 ## Tooling health
