@@ -1,12 +1,12 @@
 # ITM@15 Quality Status
 
-_Last updated: 2026-09-12, Phase 0 application-scaffolding session, on top of commit `67f425b` (uncommitted at time of writing — see `docs/PROJECT_STATE.md`)._
+_Last updated: 2026-09-13, button/day-theme pass on the narrative walkthrough preview, commit pending (see `docs/PROJECT_STATE.md`)._
 
 | Gate | Status | Notes |
 |---|---|---|
 | Lint | **Pass** | `pnpm lint` (`eslint`, `eslint-config-next` core-web-vitals + typescript configs) — clean. |
 | Typecheck | **Pass** | `pnpm typecheck` = `next typegen && tsc --noEmit`. Next.js 16's typed routes (`LayoutProps<"/">` etc.) require `next typegen` to run once before a bare `tsc` resolves them — folded into the script so this isn't a trap for the next session. |
-| Unit tests | **Pass** | `pnpm test` (Vitest) — 4 test files, 9 tests (`src/lib/env.test.ts`, `src/lib/env.server.test.ts`, `src/wally/rendering/assets.test.ts`, `src/content/story.test.ts`), all passing. |
+| Unit tests | **Pass** | `pnpm test` (Vitest) — 6 test files, 16 tests, all passing. Adds `src/content/dayThemes.test.ts` (3 tests) since the 2026-09-12 count. |
 | Integration tests | Not applicable yet | No server actions/Supabase queries exist. |
 | RLS / database tests | **Not run — cannot run yet** | `supabase/migrations/20260912230000_init_foundation.sql` drafted and skill-reviewed (FK indexes added, `auth.uid()` wrapped in `select` per Supabase's RLS performance guidance) but still unverified against a real database: no Docker on this machine, and this session still cannot reach the live `ysjjgzakswaohmnaowmv` project (project-scoped MCP auth hasn't registered in this session despite the user reportedly running `claude /mcp` — see `PROJECT_STATE.md`). Do not treat this migration as tested; the skill review improves confidence in the SQL, it does not substitute for running it. |
 | E2E tests | Not applicable yet | No Playwright config/tests yet; `playwright` MCP server is defined in `.mcp.json` but unexercised. |

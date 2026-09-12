@@ -116,3 +116,131 @@ h3 {
     animation: none;
   }
 }
+
+/*
+ * Button & Interaction Design System (Build Bible §5) + Motion Language
+ * (§6) — primary actions get "a subtle luminous edge, slow breathing glow
+ * while actionable, brighter halo on hover/focus, small lift on hover,
+ * tactile press movement," and "glow should match current Day theme."
+ *
+ * The color comes from --btn-glow-solid / --btn-glow-soft, set inline per
+ * slide by WalkthroughPreview from src/content/dayThemes.ts — this rule
+ * block stays day-agnostic and just reacts to whichever color it's given,
+ * so it doesn't need per-day CSS variants. --btn-glow-soft is pre-mixed
+ * rgba (not derived with color-mix()) so the glow works without relying on
+ * newer color-mix() browser support.
+ */
+@keyframes btn-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px var(--btn-glow-solid, var(--color-walumo)) inset,
+      0 0 10px 0 var(--btn-glow-soft, rgba(59, 111, 237, 0.28));
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px var(--btn-glow-solid, var(--color-walumo)) inset,
+      0 0 22px 4px var(--btn-glow-soft, rgba(59, 111, 237, 0.28));
+  }
+}
+
+.btn-primary {
+  border-radius: 9999px;
+  border: 1px solid var(--btn-glow-solid, var(--color-walumo));
+  background: var(--btn-glow-soft, rgba(59, 111, 237, 0.28));
+  padding: 0.7rem 2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  animation: btn-breathe 3.2s ease-in-out infinite;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px var(--btn-glow-solid, var(--color-walumo)) inset,
+    0 0 30px 6px var(--btn-glow-soft, rgba(59, 111, 237, 0.28));
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+  animation-play-state: paused;
+}
+
+/* Secondary button (§5): "quieter outline/glass treatment... for
+   non-critical navigation" — used for Back. */
+.btn-secondary {
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.7rem 1.5rem;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.btn-secondary:hover {
+  color: var(--color-ink);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-secondary:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Rare/golden action (§5): "used sparingly... do not overuse gold. Rarity
+   creates value." Reserved here for the one moment that follows the I
+   BELONG reveal — restarting the walkthrough. */
+.btn-golden {
+  border-radius: 9999px;
+  border: 1px solid var(--color-gold);
+  background: rgba(201, 162, 39, 0.12);
+  padding: 0.7rem 2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  animation: btn-breathe 3.8s ease-in-out infinite;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.btn-golden:hover,
+.btn-golden:focus-visible {
+  transform: translateY(-1px);
+  background: var(--color-gold);
+  color: var(--color-bg);
+  box-shadow: 0 0 30px 6px rgba(201, 162, 39, 0.45);
+}
+
+.btn-golden:active {
+  transform: translateY(1px);
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary,
+  .btn-golden {
+    animation: none;
+    box-shadow: 0 0 0 1px var(--btn-glow-solid, var(--color-walumo)) inset;
+  }
+
+  .btn-golden {
+    box-shadow: 0 0 0 1px var(--color-gold) inset;
+  }
+}

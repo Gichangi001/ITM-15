@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import Image from "next/image";
 import {
   FINAL_REVEAL_LETTERS,
   WALKTHROUGH_SLIDES,
 } from "@/content/walkthrough";
+import { DAY_THEME_ACCENTS } from "@/content/dayThemes";
 import { WALLY_POSES } from "@/wally/rendering/assets";
+
+/** CSS custom properties, typed loosely since React's CSSProperties doesn't
+ * know about custom properties — consumed by .btn-primary in globals.css. */
+type ThemedStyle = CSSProperties & {
+  "--btn-glow-solid"?: string;
+  "--btn-glow-soft"?: string;
+};
 
 /**
  * A scripted, client-only narrative preview — Day 0 through Day 7 in one
@@ -39,8 +47,21 @@ export function WalkthroughPreview() {
     setIndex(0);
   }
 
+  // Day theme (Build Bible §34): the primary button's glow "should match
+  // current Day theme." Final reveal reuses Day 7's restrained gold, since
+  // it's the same legacy moment.
+  const themeDay = isFinalReveal ? 7 : slide!.day;
+  const accent = DAY_THEME_ACCENTS[themeDay];
+  const themeStyle: ThemedStyle = {
+    "--btn-glow-solid": accent.solid,
+    "--btn-glow-soft": accent.soft,
+  };
+
   return (
-    <div className="flex min-h-svh flex-col bg-bg text-ink">
+    <div
+      className="flex min-h-svh flex-col bg-bg text-ink"
+      style={themeStyle}
+    >
       <div className="flex items-center justify-between border-b border-white/5 px-6 py-4 text-xs text-muted">
         <span className="tracking-[0.15em] uppercase">
           Preview — narrative walkthrough
@@ -67,11 +88,7 @@ export function WalkthroughPreview() {
             <p className="mt-10 max-w-sm text-sm text-muted italic">
               What happens next belongs to you.
             </p>
-            <button
-              type="button"
-              onClick={restart}
-              className="mt-10 rounded-full border border-walumo px-8 py-3 text-sm font-medium tracking-wide text-ink uppercase transition hover:bg-walumo"
-            >
+            <button type="button" onClick={restart} className="btn-golden mt-10">
               Walk through it again
             </button>
           </div>
@@ -143,7 +160,7 @@ export function WalkthroughPreview() {
           type="button"
           onClick={back}
           disabled={index === 0}
-          className="text-sm text-muted underline decoration-1 underline-offset-4 disabled:opacity-0"
+          className="btn-secondary"
         >
           Back
         </button>
@@ -158,11 +175,7 @@ export function WalkthroughPreview() {
           ))}
         </div>
         {!isFinalReveal ? (
-          <button
-            type="button"
-            onClick={next}
-            className="text-sm font-medium text-ink underline decoration-walumo decoration-2 underline-offset-4 transition hover:text-walumo"
-          >
+          <button type="button" onClick={next} className="btn-primary">
             {index === WALKTHROUGH_SLIDES.length - 1 ? "See the reveal" : "Continue"}
           </button>
         ) : (
