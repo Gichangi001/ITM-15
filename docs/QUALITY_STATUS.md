@@ -8,7 +8,7 @@ _Last updated: 2026-09-12, Phase 0 application-scaffolding session, on top of co
 | Typecheck | **Pass** | `pnpm typecheck` = `next typegen && tsc --noEmit`. Next.js 16's typed routes (`LayoutProps<"/">` etc.) require `next typegen` to run once before a bare `tsc` resolves them — folded into the script so this isn't a trap for the next session. |
 | Unit tests | **Pass** | `pnpm test` (Vitest) — 1 test file, 1 test (`src/lib/env.test.ts`), passing. Coverage is minimal by design: only `src/lib/env.ts` exists to test so far. |
 | Integration tests | Not applicable yet | No server actions/Supabase queries exist. |
-| RLS / database tests | Not applicable yet | No Supabase project exists for ITM@15 (see blocker in `PROJECT_STATE.md`). |
+| RLS / database tests | **Not run — cannot run yet** | `supabase/migrations/20260912230000_init_foundation.sql` drafted (profiles/countries/entities/user_roles/campaigns/audit_logs, RLS from the start) but unverified: no Docker on this machine (`supabase db lint` confirmed fails — connection refused to local Postgres) and no live ITM@15 Supabase project exists (blocker 3, `PROJECT_STATE.md`). Do not treat this migration as tested. |
 | E2E tests | Not applicable yet | No Playwright config/tests yet; `playwright` MCP server is defined in `.mcp.json` but unexercised. |
 | Build | **Pass** | `pnpm build` (`next build`, Turbopack) — compiles, typechecks, prerenders `/` and `/_not-found` as static. |
 | Visual QA | Not run | Only page is an intentional placeholder (`src/app/page.tsx`) — nothing to visually QA yet beyond "does it render," confirmed by the build succeeding. |
@@ -30,6 +30,8 @@ _Last updated: 2026-09-12, Phase 0 application-scaffolding session, on top of co
 | Supabase connector | Authenticated; **project creation blocked** — account is at the 2-project free-tier cap across all orgs where it's admin/owner (see `PROJECT_STATE.md` blocker 3) |
 | `.mcp.json` | `vercel`, `supabase`, `playwright`, `memory` — still not individually auth-tested/exercised beyond the account-level connector calls made directly |
 | Project skills | 5/10 created |
+| `.claude/settings.json` | Scoped permissions (allow/ask/deny) + `PreToolUse` hook, both created and hook directly tested this session |
+| Docker | Not installed — blocks local Supabase dev stack (`supabase start`, `db lint`, `db reset`) |
 
 ## Rule for future updates to this file
 

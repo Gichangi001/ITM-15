@@ -56,9 +56,9 @@ None of these are ITM@15-specific reviewers; they are reasonable stand-ins (`Pla
 
 ## 4. Hooks
 
-`~/.claude/settings.json` (global) and `~/.claude/settings.local.json` (global permissions) contain **no `hooks` key** — confirmed by direct inspection. No project `.claude/settings.json` exists in this repo (no `.claude/` directory at all yet).
+**Resolved.** `.claude/settings.json` now exists (project-scoped) with a `PreToolUse` hook on `Bash`: `.claude/hooks/check-destructive-command.sh`. It blocks (exit 2) `rm -rf` against root/home/wildcard paths, `git push --force`/`-f`, `git reset --hard`, destructive SQL (`DROP DATABASE`/`DROP SCHEMA`/`TRUNCATE`), and commands that look like they print a known secret env var name. Tested directly this session by piping sample `PreToolUse` payloads to the script (blocked all four dangerous cases, allowed a plain `git status`) — **not yet confirmed via an interactive `/hooks` check**, which the runbook (§9.5) asks for; do that next session.
 
-**Result: zero hooks active.** Runbook §9.3–9.4 required hooks (`check-destructive-command.sh`, secret-scan pre-commit) do not exist. **This is a real gap**, not just an unconfigured nicety — there is currently no automated protection against destructive Bash commands or accidental secret commits in this repo.
+This is a string-matching safety net, not the primary guardrail — the `.claude/settings.json` permission rules (§8 below) remain primary. A secret-scan pre-commit hook (runbook §9.4) is **not** added yet.
 
 ## 5. MCP servers
 
@@ -101,9 +101,9 @@ A second, unrelated plugin, `ecc@ecc`, is installed project-scoped to a differen
 
 ## 8. Permissions
 
-`~/.claude/settings.local.json` contains a large **global** `permissions.allow` list. It is mostly artifacts of unrelated prior projects (the Alecrim/SOKO AI FastAPI+npm stack, Homebrew/pyenv setup, etc.) — e.g. `Bash(npm run *)`, `Bash(python3 *)`, `Bash(curl *)`, `Bash(git commit *)`, `Bash(git push *)`, `Bash(gh auth *)`. No `deny` rules were present in what was inspected.
+**Resolved.** `.claude/settings.json` (project-scoped) now defines a scoped `permissions.allow` (routine git/pnpm/gh reads and the standard verify commands), an `ask` list for explicitly risky-but-sometimes-legitimate actions (`git push --force*`, `git reset --hard*`, `vercel --prod*`/`vercel deploy --prod*`, `supabase db push*`/`db reset*`), and a minimal `deny` (`rm -rf /*`, `rm -rf ~*`). This is in addition to, not a replacement for, the destructive-command hook in §4.
 
-There is **no project-level `.claude/settings.json`** for ITM@15, so no ITM@15-specific allow/ask/deny policy exists yet. Runbook §9.1–9.2 wants a scoped, minimal allow-list (`git status`, `git diff`, `git log`, `pnpm lint/typecheck/test/build/verify`) rather than inheriting the broad global list, and explicitly wants deploys/destructive DB ops/force-pushes kept out of auto-allow. **Not yet created — Phase 0 task.**
+The global `~/.claude/settings.local.json` allow-list (mostly artifacts of unrelated prior projects — Alecrim/SOKO AI's FastAPI+npm stack, Homebrew/pyenv setup) still applies underneath this when not overridden, since Claude Code merges scopes; the project file narrows what's auto-allowed for ITM@15-specific risky commands but doesn't retract the global grants for unrelated tools.
 
 ## 9. Runtimes / package managers
 
