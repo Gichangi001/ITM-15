@@ -32,7 +32,7 @@ Generated during the discovery/bootstrap session. Regenerate whenever a controll
 
 **None found in content.** `ITM15_MASTER_BUILD_RUNBOOK.md`, `docs/PRODUCT_GUIDE.md`, and `docs/WALLY.md` are internally consistent — they were evidently authored as one coherent set (same upload commits, cross-referencing paths and phase numbers exactly).
 
-**Resolved this session:** the structural conflict between the documents' path assumptions and the actual repository layout (product guide and Wally spec at repo root under different filenames, no `CLAUDE.md`) has been fixed — files relocated with `git mv` (history preserved), `CLAUDE.md` created. See `docs/PROJECT_STATE.md` for the commit this lands in.
+**Resolved twice now — watch for a recurrence.** The structural conflict between the documents' path assumptions and the actual repository layout was fixed by relocating them into `docs/` (commit `67f425b`). A subsequent commit (`3860a23`, "Add files via upload," landed directly on GitHub via the web UI, outside this session) re-added byte-identical copies of `WALLY.md` and the Product Guide `.md`/`.docx` at repo root — confirmed identical with `diff` before removing them again (commit after `cb639c9`). If this happens a third time, it's worth asking whoever/whatever is doing the web-UI upload to stop targeting repo root, since it silently recreates the exact path-authority conflict the runbook warns about.
 
 ## Non-Markdown/Word files found
 
