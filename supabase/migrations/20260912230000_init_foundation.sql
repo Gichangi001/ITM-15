@@ -14,6 +14,18 @@
 --
 -- Scope: profiles, countries, entities, user_roles, campaigns, audit_logs —
 -- exactly the Phase 1 build list, nothing from later phases pulled forward.
+--
+-- Reviewed against the official `supabase-postgres-best-practices` agent
+-- skill (installed via `npx skills add supabase/agent-skills`) on 2026-09-12:
+-- added FK indexes (Postgres doesn't auto-index them) and wrapped auth.uid()
+-- in `select` in every RLS policy (5-10x faster per Supabase's own RLS
+-- performance guidance — the function would otherwise be called per row
+-- rather than once per query). UUID primary keys were considered against
+-- that skill's "prefer sequential/UUIDv7 for index locality at scale"
+-- guidance and kept as-is: Product Guide §23 explicitly mandates UUID
+-- primary keys, and these are all low-to-modest-volume tables for a
+-- company-wide, seven-day campaign, not a high-throughput multi-tenant SaaS
+-- table where that trade-off would matter.
 
 -- ---------------------------------------------------------------------------
 -- countries
@@ -52,6 +64,13 @@ create table public.entities (
   created_at timestamptz not null default now(),
   unique (name, country_id)
 );
+
+-- Postgres does not auto-index foreign key columns; without this, filtering
+-- entities by country (used constantly — onboarding's entity picker, admin
+-- country views) forces a sequential scan and any future
+-- `delete from countries` does a full table scan of entities to check the
+-- FK constraint.
+create index entities_country_id_idx on public.entities (country_id);
 
 alter table public.entities enable row level security;
 
@@ -106,14 +125,25 @@ create table public.profiles (
   updated_at timestamptz not null default now()
 );
 
+-- FK indexes: filtering/joining profiles by country or entity (leaderboards,
+-- admin country views, onboarding) is a core, frequent access pattern.
+create index profiles_country_id_idx on public.profiles (country_id);
+create index profiles_entity_id_idx on public.profiles (entity_id);
+
 alter table public.profiles enable row level security;
 
 -- Players may read their own profile (needed for the player shell / Wally
 -- greeting to resolve first_name, country_id, etc. client-side).
+--
+-- auth.uid() is wrapped in a `select` so Postgres evaluates it once per
+-- query (and can cache/inline it) rather than once per row — per Supabase's
+-- own RLS performance guidance, this is a 5-10x difference on tables with
+-- meaningful row counts. Apply the same wrapping to every future RLS policy
+-- in this project that references auth.uid()/auth.jwt().
 create policy "users can read own profile"
   on public.profiles for select
   to authenticated
-  using (id = auth.uid());
+  using (id = (select auth.uid()));
 
 -- Deliberately NO client-facing insert/update policy on profiles.
 --
@@ -155,16 +185,24 @@ create table public.user_roles (
   unique (user_id, role, country_id)
 );
 
+-- user_id is already the leading column of the (user_id, role, country_id)
+-- unique constraint above, so equality lookups on user_id alone already use
+-- that index — no separate index needed. country_id is NOT a leading column
+-- of any index, so a country-scoped query (e.g. "who are this country's
+-- moderators") would otherwise force a sequential scan.
+create index user_roles_country_id_idx on public.user_roles (country_id);
+
 alter table public.user_roles enable row level security;
 
 -- Players may read their own role grants (used for client-side navigation
 -- hints only — every admin server action independently re-checks the role
 -- server-side; a readable role row here is not itself an authorization
--- decision).
+-- decision). auth.uid() wrapped in `select` — see the comment on the
+-- profiles policy above.
 create policy "users can read own role grants"
   on public.user_roles for select
   to authenticated
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 -- No client-facing write policy: role assignment is a Super Admin action
 -- performed server-side with the service role, always audited (see
@@ -183,6 +221,10 @@ create table public.audit_logs (
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+-- FK index: any future admin "actions by this admin" view filters by
+-- actor_id.
+create index audit_logs_actor_id_idx on public.audit_logs (actor_id);
 
 alter table public.audit_logs enable row level security;
 

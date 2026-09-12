@@ -148,7 +148,23 @@ Release readiness: **NOT READY** — nowhere close; this is expected at this sta
 
 ## Database & RLS
 
-- [ ] Migration `20260912230000_init_foundation.sql` applied to a real database — STATUS: BLOCKED (see "Critical Blockers")
+- [ ] Migration `20260912230000_init_foundation.sql` applied to a real database — STATUS: BLOCKED
+
+  Blocker: this session cannot reach the live `ysjjgzakswaohmnaowmv` project — the user reports having run `claude /mcp` to authenticate the project-scoped Supabase MCP server, but `~/.claude.json`'s project entry shows zero registered MCP servers and no new Supabase tools became available (checked twice).
+  Impact: Phase 1 cannot be marked complete; no downstream phase can build real auth/game features against a live schema.
+  Required resolution: confirm `/mcp` was run in the same terminal running this session; if so, restart `claude` in this repo to load the project-scoped `.mcp.json` server added mid-session.
+  Owner/dependency: user (interactive step, outside this session's reach).
+
+- [x] Migration reviewed against `supabase-postgres-best-practices` skill
+
+  **Requirement:** general schema-quality best practice, not a specific Product Guide item
+  **Implementation:** `supabase/migrations/20260912230000_init_foundation.sql` — added FK indexes (`entities.country_id`, `profiles.country_id`/`entity_id`, `user_roles.country_id`, `audit_logs.actor_id`); wrapped `auth.uid()` in `select` in both RLS policies
+  **Tests:** manual review against `.agents/skills/supabase-postgres-best-practices/references/schema-foreign-key-indexes.md` and `security-rls-performance.md`; static SQL read-through (still not executed against a real Postgres)
+  **Security:** the RLS-performance fix is also a correctness improvement (unwrapped `auth.uid()` still worked, just slower)
+  **Result:** PASS (for what a static review can confirm — not a substitute for Gate D against a live database)
+  **Verified:** 2026-09-12
+  **Commit:** (pending, see git log)
+
 - [ ] Database rebuilds cleanly from migrations (`supabase db reset` or equivalent) — cannot test: no Docker locally, no CLI link to the live project yet
 - [ ] Anonymous client cannot read `profiles`/`user_roles`/`audit_logs` — cannot test yet, same reason
 - [ ] Supabase TypeScript types generated (`supabase gen types typescript`) — not done, depends on the above
