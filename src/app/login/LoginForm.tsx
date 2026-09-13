@@ -1,12 +1,23 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { signIn, type SignInState } from "./actions";
 
 const initialState: SignInState = null;
 
+/**
+ * Progressive reveal, UI-only: the password field is hidden until the
+ * visitor has typed something into email. Every account — staff or
+ * participant, any email domain — still authenticates with email+password
+ * (Product Guide §5.2); this doesn't change who can sign in or how, only
+ * when the second field appears. Conditionally rendered (not just
+ * CSS-hidden) so it's out of the tab order and not a hidden-but-focusable
+ * trap while collapsed.
+ */
 export function LoginForm() {
   const [state, formAction, isPending] = useActionState(signIn, initialState);
+  const [email, setEmail] = useState("");
+  const showPassword = email.trim().length > 0;
 
   return (
     <form action={formAction} className="flex w-full max-w-sm flex-col gap-4">
@@ -20,23 +31,28 @@ export function LoginForm() {
           type="email"
           autoComplete="username"
           required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-ink outline-none focus-visible:border-walumo"
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-xs font-semibold tracking-wide text-muted uppercase">
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-ink outline-none focus-visible:border-walumo"
-        />
-      </div>
+      {showPassword ? (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="password" className="text-xs font-semibold tracking-wide text-muted uppercase">
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            autoFocus
+            className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-ink outline-none focus-visible:border-walumo"
+          />
+        </div>
+      ) : null}
 
       {state?.error ? (
         <p role="alert" className="text-sm text-red-400">
