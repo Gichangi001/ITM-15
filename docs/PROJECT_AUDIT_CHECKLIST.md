@@ -12,14 +12,14 @@ Current build phase: Phase 0 done except one user-blocked item (CI push); **Phas
 
 ## Executive Status
 
-- Total checklist items tracked in this file: 217 (up from 151 — this session split several single "all pending" bullets in Player Shell/Admin Mission Control into individually-verifiable items as those phases actually got built, rather than keeping one coarse line each)
-- Verified complete: 66 (+~33 this session across Phases 3-5 — see Employee Onboarding, Player Shell, Admin Mission Control)
-- Pending: 151 (the rest of Phases 6-21, plus the deliberately-skipped landing-page pieces)
+- Total checklist items tracked in this file: 217 (this count reflects splitting coarse "all pending" bullets into individually-verifiable items as phases actually get built, not new scope)
+- Verified complete: ~90 (+~24 this session across Content Engine, Submission Engine, Scoring, Voting, and Media Uploads' core loop)
+- Pending: ~127 (the rest of Phases 6-21 — squads, remaining challenge types, multi-select polls, admin Media Library, realtime, and everything from Phase 11 onward)
 - Blocked: 1 (needs a user action, not more engineering — see Critical Blockers)
 - Failed verification: 0
 - Deferred: 0
 
-Overall completion: **Phase 0 done bar one item; Phases 1-5 of 21 COMPLETE** (Product Guide §26 numbering), each verified live end-to-end against the real database, not just structurally. Phase 6 (content engine) is next.
+Overall completion: **Phase 0 done bar one item; Phases 1-9 of 21 COMPLETE** (Product Guide §26 numbering), each verified live end-to-end against the real database, not just structurally. Phase 10's core loop also works as a byproduct of the same slice. Phase 11 (realtime engine) is next.
 Release readiness: **NOT READY.** Expected at this stage — recorded as the honest baseline, not a finding demanding immediate action beyond what's below.
 
 ## Critical Blockers
@@ -779,16 +779,17 @@ Curated to the requirements with real evidence one way or another (verified or m
 | USR-001 | Onboarding (name/email/country) | Product Guide §5.4 | `src/app/onboarding/`, `src/proxy.ts` onboarding gate | Live E2E (real bugfix found: signIn/changePassword didn't know the gate existed) | Written via service-role, no client-writable path | VERIFIED |
 | PLAYER-001 | Player shell (10 IA routes) | Product Guide §7, §26 Phase 4 | `src/app/(player)/` | Live E2E, all 10 routes | `PROTECTED_PREFIXES` extended | VERIFIED |
 | ADM-001 | Admin Mission Control shell | Product Guide §17, §26 Phase 5 | `src/app/admin/layout.tsx`, `AdminNav`, real KPI cards, `/admin/audit` | Live E2E, SUPER_ADMIN vs MODERATOR nav/access | Role-based nav + independent per-page re-check; audit_logs has zero client RLS policies | VERIFIED |
-| GAME-001 | Content engine (Campaign→Day→Mission→Challenge) | Product Guide §9 | — | — | — | PENDING |
-| SCORE-001 | `score_events` ledger | Product Guide §10 | — | — | — | PENDING |
-| VOTE-001 | Poll engine + uniqueness | Product Guide §11 | — | — | — | PENDING |
-| MEDIA-001 | Upload → moderation → gallery | Product Guide §12 | — | — | — | PENDING |
+| GAME-001 | Content engine (Day→Mission→Challenge) | Product Guide §9 | `game_days`/`missions`/`challenges`/`challenge_options`, `src/app/admin/missions/` | Live E2E; real bugfix found: days never publishable, fixed with `updateGameDayStatus` | RLS on every table; draft day/mission invisible to players | VERIFIED |
+| SCORE-001 | `score_events` ledger | Product Guide §10 | `src/lib/scoring/leaderboard.ts`, `src/app/admin/scoring/` | Live E2E — real 100+50pt events, leaderboard reflects true 150pt total | No client-writable policy; correctness re-derived server-side, never trusts the client | VERIFIED |
+| VOTE-001 | Poll engine + uniqueness | Product Guide §11 | `polls`/`poll_options`/`votes`, `src/app/admin/voting/`, `src/app/(player)/vote/` | Live E2E — duplicate vote refused, DB confirms exactly one row; reveal tested | `unique(poll_id, voter_id)` DB constraint, not just app-level check | VERIFIED (single-choice only — multi-select is a disclosed gap) |
+| MEDIA-001 | Upload → moderation → gallery | Product Guide §12 | `challenge-submissions` storage bucket, `src/app/admin/submissions/`, `src/app/(player)/gallery/` | Live E2E — real image uploaded, moderated, approved, appeared only after approval | Private bucket + per-uploader-folder RLS, not policy-only | VERIFIED (core loop only — no admin Media Library) |
 | RT-001 | Realtime broadcast/presence | Product Guide §14 | — | — | — | PENDING |
 | EMAIL-001 | Daily Wally email | Product Guide §16 | — | — | — | PENDING |
 | THEME-001 | Theme engine | Product Guide §19 | — | — | — | PENDING |
 | SCREEN-001 | Spectator screen | Product Guide §21.2 | — | — | — | PENDING |
 | AN-001 | Analytics taxonomy | Product Guide §22 | — | — | — | PENDING |
-| TEST-001 | Day Zero rehearsal | Product Guide §26 Phase 21 | — | — | — | PENDING |
+| TEST-001 | Day Zero rehearsal (full, incl. Wally/passport) | Product Guide §26 Phase 21 | — | — | — | PENDING — blocked on Phases 11-17 |
+| E2E-001 | Day-Zero-style content/scoring/moderation/voting rehearsal | This session's own verification | Scratchpad Playwright script (not committed) | Full loop run live: mission publish → correct quiz → score event → photo upload → moderation → approval → score event → leaderboard → gallery → poll vote → duplicate refused → reveal → counts | Player bounced from admin routes throughout | VERIFIED (not a substitute for the full TEST-001 — no Wally, passport, or cross-country partner steps) |
 
 ## Test Matrix
 
@@ -801,22 +802,25 @@ Curated to the requirements with real evidence one way or another (verified or m
 | Login / onboarding | ❌ | N/A | ✅ (live) | ✅ | N/A | ✅ | VERIFIED |
 | Player shell | N/A | N/A | ✅ (live) | ✅ | N/A | ✅ | VERIFIED |
 | Admin shell | ❌ | N/A | ✅ (live) | ✅ | N/A | ✅ | VERIFIED |
-| Voting | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | PENDING |
+| Content engine (missions/days) | ✅ | N/A | ✅ (live) | ✅ | N/A | ❌ | VERIFIED |
+| Submission engine (quiz/photo) | ❌ | N/A | ✅ (live) | ✅ | N/A | ❌ | VERIFIED |
+| Scoring / leaderboards | ✅ | N/A | ✅ (live) | ✅ | N/A | ✅ | VERIFIED |
+| Voting | ✅ | N/A | ✅ (live) | ✅ | ❌ | ❌ | VERIFIED (single-choice only) |
+| Media moderation / gallery | ❌ | N/A | ✅ (live) | ✅ | N/A | ❌ | VERIFIED (core loop only) |
 | Wally Drop | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | PENDING |
-| Photo Approval | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | PENDING |
 
 ---
 
 ## Release Gate
 
-- [ ] All critical requirements verified — no, Phases 6-21 remain
+- [ ] All critical requirements verified — no, Phases 11-21 remain
 - [ ] No unresolved critical blockers — no, 1 open (CI push, see Critical Blockers)
-- [ ] No critical security findings — no findings *yet* on what's built (Phase 2's one Medium finding was fixed and re-verified); little security-relevant surface exists past auth/RLS
+- [x] No critical security findings — one functional (not security) gap found and fixed this session (game days never publishable); no authorization bypass found across Phases 1-10's expanded surface
 - [x] Lint passes
 - [x] Typecheck passes
-- [x] Unit tests pass (53/53)
+- [x] Unit tests pass (79/79)
 - [ ] Integration tests pass — covered only by live E2E runs, no maintained suite
-- [ ] E2E critical flows pass — live-verified manually each phase (Phases 2-5), not yet a committed automated suite under `tests/e2e/`
+- [ ] E2E critical flows pass — live-verified manually each phase (Phases 2-9), not yet a committed automated suite under `tests/e2e/`
 - [ ] Realtime tests pass — none exist (Phase 11 not started)
 - [x] Production build passes
 - [x] Mobile QA passes — checked live at 390px for the landing page, walkthrough preview, player shell, and admin shell; not a full formal accessibility pass
