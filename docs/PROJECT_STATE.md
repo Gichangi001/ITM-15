@@ -20,6 +20,8 @@ Per the audit's priority engine (blockers → security → foundation → depend
 
 **Phase 4 (Player shell) — COMPLETE, verified live end-to-end 2026-09-13.** Product Guide §7, §26 Phase 4. Full write-up below ("Phase 4 — Player shell").
 
+**Phase 5 (Admin Mission Control shell) — COMPLETE, verified live end-to-end 2026-09-13.** Product Guide §17, §26 Phase 5. Full write-up below ("Phase 5 — Admin Mission Control shell").
+
 **Phase 1 (Supabase foundation) — COMPLETE, verified 2026-09-13.** The migration blocker described below is resolved: a fresh session picked up the project-scoped `mcp__supabase__*` tools immediately (confirmed via `ToolSearch`), and both draft migrations were applied to the live `ysjjgzakswaohmnaowmv` project.
 
 **What was done, in order, this session:**
@@ -179,6 +181,23 @@ Built and verified live against the real database.
 
 `pnpm verify` (lint/typecheck/51 unit tests/build — no new unit tests needed, these are routing/rendering changes verified live rather than logic with something to unit-test) passes clean throughout.
 
+## Phase 5 — Admin Mission Control shell (Product Guide §17, §26 Phase 5)
+
+Built and verified live against the real database. Phase 5's own acceptance bar is deliberately modest — "Admin can monitor account state... Responsive desktop/tablet dashboard... Role-based navigation works" — a real operations center needs the content/scoring/voting/moderation/realtime engines from Phases 6-12, not attempted here.
+
+**Scope delivered:**
+- **`src/app/admin/layout.tsx` + `src/components/admin/AdminNav.tsx`** — a shared shell across every `/admin/*` route. Which links render (Overview / Users / Add Player / Audit Log) depends on the signed-in admin's actual role capabilities, computed server-side once in the layout — a MODERATOR/COUNTRY_ADMIN/GAME_MASTER/ANALYTICS_VIEWER account sees only "Overview." The nav is presentation only; every gated page still independently re-checks the same capability server-side (the existing Phase 2 pattern), so hiding a link here isn't itself the security boundary.
+- **`/admin` rebuilt** from Phase 2's minimal placeholder into the real Phase 5 shell:
+  - **Real KPI cards** — Active accounts, Countries active (distinct `country_id` among active profiles), and Campaign status — all live-queried, not fabricated. Product Guide §17.1 also calls for players-online-now, mission completion rate, pending moderation count, live vote status, and current theme, none of which can exist yet (they need Phases 6-11/15) — listed honestly in a single line naming the exact phase each needs, rather than either omitting them or faking numbers for them.
+  - **Recent admin activity** — a real feed of the last 5 `audit_logs` rows (joined to the actor's email), shown only to roles that can view the audit log. This is server-rendered per page load, not a realtime push (Phase 11 territory) — an honest partial answer to §17.2's "Live Activity Feed," not a claim of realtime.
+  - **Quick actions (§17.3)** — all 9 (Launch Challenge, Send Notification, Trigger Wally, Award Bonus Points, Open Vote, Change Theme, Unlock Day, Feature Photo, Pause Game) rendered as visibly inert, `aria-disabled` cards naming the Product Guide phase each needs — deliberately not `<button>` elements, so there's no ambiguity that clicking one would silently do nothing. This is exactly the "Quick-action placeholders" the runbook's Phase 5 build list calls for, kept honest per the Storyline Build Bible §39.
+- **`/admin/players`** gains a role filter (`?role=` query param, plain GET form — no new client component needed) — Product Guide §26 Phase 5's "Role filters" line. Verified filtering to `MODERATOR` correctly shows only the moderator test account and excludes the super-admin one.
+- **`/admin/audit`** — new audit log viewer (Product Guide §4.5 "audit records," §27's route), Super-Admin-gated via a new `canViewAuditLog()` role helper (same underlying role set as `canManageUserRoles` today, named separately since the spec lists it as its own capability). Shows the last 50 `audit_logs` rows with actor email resolved, most recent first. Reads through the service-role admin client — `audit_logs` has RLS enabled with zero policies for anon/authenticated, so this is the only way to read it at all, from anywhere.
+
+**Verified live** (Playwright, headless Chromium, two synthetic fully-onboarded accounts — `admin.shell.super@itm15.test` SUPER_ADMIN and `admin.shell.moderator@itm15.test` MODERATOR, both service-role created and deleted after): the Super Admin sees all 4 nav links, real KPI numbers (3 active accounts, 0 countries active, the real `campaigns` row's actual name/status), an empty "no admin activity yet" state (the live `audit_logs` table is genuinely empty right now — Phase 2's own test accounts and their audit rows were cleaned up after verification), and the role filter correctly narrows the list; the Moderator sees only "Overview" in nav and is bounced back to `/admin` on a direct visit to either `/admin/players` or `/admin/audit`. Both desktop and 390px mobile widths checked. Screenshots sent to the user.
+
+`pnpm verify` (lint/typecheck/53 unit tests — 2 new `canViewAuditLog` cases — /build) passes clean throughout.
+
 ## Wally placeholder assets (W0, per docs/WALLY.md §37)
 
 The user supplied `MASCOTTE.zip` (8 pre-rendered PNGs of the Walumo brand mascot, transparent background). This session:
@@ -238,7 +257,7 @@ Verified with `pnpm verify` (lint/typecheck/9 unit tests/build, all passing) and
 
 ## Last verified commit
 
-`60e8fbb` on `main` (origin `Gichangi001/ITM-15`), pushed and deployed — Phase 1 completion. This session's Phase 2 changes (auth pages/actions, `src/proxy.ts`, `src/lib/auth/*`) are staged for commit — see "In progress."
+`629618a` on `main` (origin `Gichangi001/ITM-15`), pushed and deployed — Phase 4 completion. This session's Phase 5 changes (admin layout/nav, KPI dashboard, audit viewer, role filter) are staged for commit — see "In progress."
 
 ## Completed
 
@@ -254,14 +273,15 @@ Verified with `pnpm verify` (lint/typecheck/9 unit tests/build, all passing) and
 
 ## In progress
 
-Uncommitted working-tree changes, pending review/push (Phase 2):
-- `src/proxy.ts` (new — the route-protection gate; see its header comment for the Next.js 16 middleware→proxy rename gotcha).
-- `src/lib/supabase/middleware.ts` (new — the middleware-flavored Supabase client `proxy.ts` uses).
-- `src/lib/auth/roles.ts`, `schemas.ts` (+ `.test.ts` for both), `session.ts` (new).
-- `src/app/login/`, `src/app/first-login/`, `src/app/play/`, `src/app/admin/` (`page.tsx`, `players/new/`, `players/`), `src/app/logout/` (new — pages/forms/server actions).
-- `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md`, `docs/PROJECT_AUDIT_CHECKLIST.md` (this session's updates).
+Uncommitted working-tree changes, pending review/push (Phase 5):
+- `src/app/admin/layout.tsx`, `src/components/admin/AdminNav.tsx` (new — shared admin shell/nav).
+- `src/app/admin/page.tsx` (rebuilt — real KPI cards, recent activity, quick-action placeholders).
+- `src/app/admin/players/page.tsx` (role filter added).
+- `src/app/admin/audit/` (new — audit log viewer).
+- `src/lib/auth/roles.ts`, `roles.test.ts` (new `canViewAuditLog`).
+- `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md` (this session's updates).
 
-No new migrations this session — Phase 2 needed nothing Phase 1's `profiles`/`user_roles`/`audit_logs` didn't already provide.
+No new migrations this session — Phase 5 needed nothing the existing schema didn't already provide.
 
 ## Blockers
 
@@ -285,16 +305,16 @@ Item 3 is the only remaining blocker that needs a substantive human decision (Ph
 
 ## Next smallest complete slice
 
-Phase 2 is done. The next smallest complete slice is the start of **Phase 3 — Landing page and onboarding** (Product Guide §6/§26 Phase 3), specifically the parts not already pulled forward by the Storyline Build Bible work:
-1. `/onboarding` — capture name/country/entity for a signed-in player whose profile isn't complete yet (`profiles.onboarding_completed`). Note: `src/proxy.ts` deliberately does not gate on `onboarding_completed` yet (see its comments) — wiring that gate in is part of this slice, once the destination page actually exists.
-2. Wire the real landing page's "Enter the Game" / "Sign In" CTAs to `/login` (currently omitted — see the Landing Page section below — because they'd have been dead links before Phase 2 existed).
-3. Live campaign countdown once a real campaign row's `starts_at` is meaningful.
+Phases 1-5 are done. The next smallest complete slice is the start of **Phase 6 — Content engine** (Product Guide §9, §18, §26 Phase 6): the `Campaign → Game Day → Story Scene → Mission → Challenge` content hierarchy, a question/mission editor, and draft/preview/publish workflow. This is the real dependency almost everything else (Phases 7-13) is blocked on — Phase 5's "Launch Challenge"/"Unlock Day" quick actions, the player shell's "not live yet" pages, and Wally's mission-completion reactions all need real published content to react to.
 
-Remaining housekeeping, not blocking Phase 3:
+Remaining housekeeping, not blocking Phase 6:
 - `.github/workflows/ci.yml` still unpushed — still needs `gh auth refresh -h github.com -s workflow` (interactive, needs the user).
-- `shadcn/ui` init still deferred — Phase 2's forms were built with the project's existing custom design tokens (`.btn-primary`/`.btn-secondary`, Fraunces/Jakarta) for visual consistency with the landing page, rather than introducing a second component vocabulary; revisit once there's enough UI surface (Phase 3 onboarding, Phase 4 player shell) to justify a real component library.
+- Vercel Preview environment variables — CLI upgraded to v59.16.0 this session (fixes the earlier v54.2.0 bug), but the actual `vercel env add ... preview` write is a secret-store write this session's own permission classifier correctly declined to make unilaterally; the user has the exact script to run themselves.
+- `shadcn/ui` init still deferred — every page so far uses the project's existing custom design tokens (`.btn-primary`/`.btn-secondary`, Fraunces/Jakarta) for visual consistency, rather than introducing a second component vocabulary; revisit once Phase 6's content editor needs richer form primitives (rich text, drag-and-drop ordering) than plain HTML forms comfortably provide.
 - The pre-existing migration filename/version mismatch noted in the Phase 1 section — a cosmetic cleanup, not urgent.
-- **The real Super Admin's password (`SuperAdminRealPassw0rd!`, set during live Phase 2 verification) should be changed by the user to something only they know** — see the Phase 2 write-up above.
+- **The real Super Admin's password (`SuperAdminRealPassw0rd!`, set during live Phase 2 verification) should be changed by the user to something only they know.**
+- **Disclosed consequence of Phase 3's onboarding gate**: the real Super Admin account has never completed onboarding either — its next login will hit `/onboarding` before Mission Control, same as any account. Correct behavior per spec, flagged so it isn't a surprise.
+- No committed, CI-runnable E2E suite exists yet (`tests/e2e/`) — every phase's live verification this session used scratchpad Playwright scripts, not a maintained suite. A real, disclosed gap across Phases 2-5 alike.
 
 ## Required verification before Phase 1 is called complete — ALL MET, 2026-09-13
 

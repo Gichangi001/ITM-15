@@ -55,3 +55,14 @@ export function canCreateEmployeeAccounts(roles: readonly Role[]): boolean {
 export function canManageUserRoles(roles: readonly Role[]): boolean {
   return roles.some((role) => USER_ADMINISTRATION_ROLES.includes(role));
 }
+
+/**
+ * Product Guide §4.5 lists "audit records" as a Super Admin capability
+ * specifically (not shared with Game Master's §4.4 list). Same underlying
+ * role set as user administration today, but named as its own function —
+ * matching this file's existing pattern of one function per capability —
+ * so it can diverge later without every call site needing to change.
+ */
+export function canViewAuditLog(roles: readonly Role[]): boolean {
+  return roles.some((role) => USER_ADMINISTRATION_ROLES.includes(role));
+}

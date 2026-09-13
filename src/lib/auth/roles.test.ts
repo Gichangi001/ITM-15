@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canCreateEmployeeAccounts,
   canManageUserRoles,
+  canViewAuditLog,
   hasAdminSurfaceAccess,
 } from "./roles";
 
@@ -58,5 +59,17 @@ describe("canManageUserRoles", () => {
 
   it("denies an empty role list", () => {
     expect(canManageUserRoles([])).toBe(false);
+  });
+});
+
+describe("canViewAuditLog", () => {
+  it("denies every role except SUPER_ADMIN", () => {
+    expect(canViewAuditLog(["PLAYER"])).toBe(false);
+    expect(canViewAuditLog(["GAME_MASTER"])).toBe(false);
+    expect(canViewAuditLog(["MODERATOR"])).toBe(false);
+  });
+
+  it("allows SUPER_ADMIN", () => {
+    expect(canViewAuditLog(["SUPER_ADMIN"])).toBe(true);
   });
 });
