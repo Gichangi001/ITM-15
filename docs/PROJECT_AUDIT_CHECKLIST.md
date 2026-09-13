@@ -2,9 +2,9 @@
 
 Last audit: 2026-09-13
 Branch: main
-Commit: `8c8b36f` (this audit's findings/fixes land in the commit(s) immediately after)
-Environment: local dev machine, Vercel production (`https://itm-15.vercel.app`, HTTP 200 confirmed this audit), Supabase project `ysjjgzakswaohmnaowmv` (schema drafted, not applied)
-Current build phase: Phase 0 done except one user-blocked item; Phase 1 (Supabase) app-side wiring done, schema drafted+skill-reviewed, application blocked on DB access; Wally W0 (placeholder assets/tables) done to the same "drafted, unapplied" point; Phase 3's landing-page teaser section built early and out of strict phase order (a deliberate, disclosed choice — see "Seven-Day Story" below), everything else (Phases 2, 4-21) not started.
+Commit: `2381640` (Phase 1 completion work lands in the commit(s) immediately after)
+Environment: local dev machine, Vercel production (`https://itm-15.vercel.app`, HTTP 200 confirmed this audit), Supabase project `ysjjgzakswaohmnaowmv` (**schema applied and verified this session**)
+Current build phase: Phase 0 done except one user-blocked item; **Phase 1 (Supabase) COMPLETE and verified** — migrations applied, RLS verified with real anon-key REST calls against real inserted data, advisors clean, typed clients wired in; Wally W0 (placeholder assets/tables) now on the same real, applied database; Phase 3's landing-page teaser section built early and out of strict phase order (a deliberate, disclosed choice — see "Seven-Day Story" below), everything else (Phase 2, 4-21) not started.
 
 ## How to read this file
 
@@ -13,22 +13,22 @@ Current build phase: Phase 0 done except one user-blocked item; Phase 1 (Supabas
 ## Executive Status
 
 - Total requirements tracked here: 151
-- Verified complete: 15
+- Verified complete: 20 (+5 this session — see Database & RLS)
 - In progress: 5
-- Pending: 131
-- Blocked: 2 (both need a user action, not more engineering — see Critical Blockers)
+- Pending: 126
+- Blocked: 1 (needs a user action, not more engineering — see Critical Blockers)
 - Failed verification: 0
 - Deferred: 0
 
-Overall completion: **Phase 0 done bar one item; early Phase 1 of 21** (Product Guide §26 numbering). One piece of Phase 3 (the landing-page story teaser) was built ahead of order — disclosed, not hidden — everything else is untouched.
+Overall completion: **Phase 0 done bar one item; Phase 1 of 21 COMPLETE** (Product Guide §26 numbering). One piece of Phase 3 (the landing-page story teaser) was built ahead of order — disclosed, not hidden — everything else is untouched.
 Release readiness: **NOT READY.** Expected at this stage — recorded as the honest baseline, not a finding demanding immediate action beyond what's below.
 
 ## Critical Blockers
 
-1. **Supabase database access — blocks all of Phase 1 onward. User-side approval now done; blocked on a session restart instead.** The user approved the project's `.mcp.json` servers and authenticated — `claude mcp list` confirms `supabase: ... ✔ Connected` (also `vercel`/`playwright`/`memory`). But this session (a long-running background job) cannot pick up a connection approved after it started — `ToolSearch` finds no `mcp__supabase__*` tools here despite the CLI-level config showing connected; the separate account-level `mcp__claude_ai_Supabase__*` connector is unaffected and still only sees the unrelated `soko-ai` project. **Needs a fresh session** (new background job or interactive `claude`) in `~/ITM-15` to actually gain the working tools — see `docs/PROJECT_STATE.md` for the exact next-session checklist. Until then, neither migration (`20260912230000_init_foundation.sql`, `20260913000000_wally_w0_tables.sql`) can be applied.
-2. **`.github/workflows/ci.yml` unpushed — blocks automated CI.** The `gh`/git OAuth token lacks the `workflow` scope. Fix: user runs `gh auth refresh -h github.com -s workflow` once. Lower severity than #1 — `pnpm verify` run manually every session substitutes for now.
+1. ~~Supabase database access~~ — **RESOLVED 2026-09-13.** A fresh session's `ToolSearch` for `mcp__supabase__*` found the tools immediately; both migrations applied, verified, and two follow-up fix migrations applied in response to real advisor findings. See "Database & RLS" below.
+2. **`.github/workflows/ci.yml` unpushed — blocks automated CI.** The `gh`/git OAuth token lacks the `workflow` scope. Fix: user runs `gh auth refresh -h github.com -s workflow` once. `pnpm verify` run manually every session substitutes for now.
 
-Neither blocker is something this session can resolve unilaterally (per `docs/PROJECT_STATE.md` — no pausing/deleting Supabase projects, no forcing an OAuth scope grant without the user's browser).
+This remaining blocker is not something this session can resolve unilaterally (per `docs/PROJECT_STATE.md` — no forcing an OAuth scope grant without the user's browser).
 
 ## Foundation & Repository
 
@@ -141,21 +141,58 @@ Note: the landing page itself (hero + story teaser) was built this session ahead
 
 ## Database & RLS (Phase 1 — Product Guide §26)
 
-- [ ] Migration `20260912230000_init_foundation.sql` applied to a real database — STATUS: BLOCKED (Critical Blockers #1)
-- [ ] Migration `20260913000000_wally_w0_tables.sql` applied — STATUS: BLOCKED (same blocker)
-- [x] Both migrations reviewed against `supabase-postgres-best-practices` skill
+- [x] Migration `init_foundation` applied to the real `ysjjgzakswaohmnaowmv` database
+
+  **Requirement:** Product Guide §26 Phase 1 build list (profiles/countries/entities/user_roles/campaigns/audit_logs)
+  **Implementation:** `supabase/migrations/20260912230000_init_foundation.sql`, applied via `mcp__supabase__apply_migration` (remote version `20260913063933`)
+  **Tests:** `mcp__supabase__list_tables` confirms all 6 tables exist with expected columns/FKs/RLS enabled
+  **Security:** RLS enabled on every table from creation; see anon-read verification below
+  **Result:** PASS
+  **Verified:** 2026-09-13
+  **Commit:** pending (this session)
+
+- [x] Migration `wally_w0_tables` applied
+
+  **Requirement:** WALLY.md §8/§37 W0 (wally_dialogues/wally_assets/wally_skins/wally_events/wally_event_receipts)
+  **Implementation:** `supabase/migrations/20260913000000_wally_w0_tables.sql`, applied via `apply_migration` (remote version `20260913063956`)
+  **Tests:** `list_tables` confirms all 5 tables exist
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Both migrations reviewed against `supabase-postgres-best-practices` skill, gaps found by live advisors fixed
 
   **Requirement:** general schema-quality best practice
-  **Implementation:** FK indexes added throughout; `auth.uid()` wrapped in `select` in every RLS policy referencing it
-  **Tests:** manual review against the skill's reference docs; static SQL read-through only — not executed against real Postgres
-  **Result:** PASS for what a static review can confirm — not a substitute for running it
-  **Verified:** 2026-09-12/13
-  **Commit:** `1b9c5d7`, `1fabece`
+  **Implementation:** FK indexes added throughout; `auth.uid()` wrapped in `select` in every RLS policy referencing it. Post-apply `mcp__supabase__get_advisors` found two real gaps the static review missed: `set_updated_at` had a mutable `search_path` (security), and `wally_dialogues.created_by`/`wally_events.created_by` were unindexed FKs (performance). Both fixed with `supabase/migrations/20260913064034_fix_set_updated_at_search_path.sql` and `20260913064438_add_missing_created_by_fk_indexes.sql`.
+  **Tests:** `get_advisors` re-run after each fix — clean except one intentional `audit_logs` no-policy INFO (deny-all by design) and 13 expected "unused index" INFO findings (zero rows in any table yet)
+  **Result:** PASS
+  **Verified:** 2026-09-12 (static) / 2026-09-13 (live, against the real database)
+  **Commit:** `1b9c5d7`, `1fabece`, pending (this session's two fix migrations)
 
-- [ ] Database rebuilds cleanly from migrations (`supabase db reset`) — cannot test: no Docker locally, no live-project access
-- [ ] Anonymous client cannot read `profiles`/`user_roles`/`audit_logs`/`wally_event_receipts` — cannot test yet, same reason
-- [ ] Supabase TypeScript types generated (`supabase gen types typescript`) — depends on the above
-- [ ] Prisma introspection (`prisma db pull`) run at least once — blocked on real `DATABASE_URL`/`DIRECT_URL` password, separately from the MCP blocker
+- [x] Database rebuilds cleanly from migrations
+
+  **Requirement:** Product Guide §26 Phase 1 acceptance criterion 1
+  **Implementation:** all 4 migrations applied in sequence with zero errors against the live project
+  **Tests:** `apply_migration` success + `list_tables`/`list_migrations` confirmation
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Anonymous client cannot read `profiles`/`user_roles`/`audit_logs`/`wally_event_receipts`
+
+  **Requirement:** Product Guide §26 Phase 1 acceptance criterion 2
+  **Implementation:** RLS policies as drafted (deny-all-no-policy on `audit_logs`; `col = (select auth.uid())` own-row policies on the other three)
+  **Tests:** real `curl` against the live REST API using the actual anon publishable key. Empty-table requests alone would be inconclusive (a broken policy and a genuinely empty table both return `[]`), so a real row was inserted into `audit_logs` via the service-role path, confirmed invisible to the anon-key request (`200 []` despite the row existing), then deleted. The three `auth.uid()`-based tables use the identical, standard Supabase pattern; not further tested with a synthetic `auth.users` row (deliberately — hand-inserting into Supabase's managed `auth` schema is exactly the kind of risky workaround the runbook warns against). Full per-row testing for those three is meaningful once Phase 2 creates real accounts.
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Supabase TypeScript types generated
+
+  **Requirement:** typed client access to the schema
+  **Implementation:** `src/lib/supabase/database.types.ts`, generated via `mcp__supabase__generate_typescript_types` against the live schema; wired into `client.ts`/`server.ts`/`admin.ts` via the `Database` generic
+  **Tests:** `pnpm verify` (lint/typecheck/test/build) passes clean with the typed clients
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [ ] Prisma introspection (`prisma db pull`) run at least once — blocked on real `DATABASE_URL`/`DIRECT_URL` password, separately from the (now-resolved) MCP blocker
 
 ## Landing Page (Phase 3 — Product Guide §6)
 
@@ -464,10 +501,11 @@ Curated to the requirements with real evidence one way or another (verified or m
 | DEPLOY-001 | Next.js app scaffolded | Product Guide §3 | `package.json`, `src/app/` | `pnpm build` | N/A | VERIFIED |
 | DEPLOY-002 | Vercel production deployment | Product Guide §26 Phase 0 | `vercel.json`, Git-connected project | `curl` → 200 | N/A | VERIFIED |
 | DEPLOY-003 | GitHub Actions CI | Runbook §14 | `.github/workflows/ci.yml` (unpushed) | N/A | N/A | BLOCKED |
-| DB-001 | Foundation schema (profiles/countries/entities/user_roles/campaigns/audit_logs) | Product Guide §23, §26 Phase 1 | `20260912230000_init_foundation.sql` | Skill review only | RLS drafted | IN PROGRESS (blocked on apply) |
-| DB-002 | Wally W0 tables | WALLY.md §8, §37 | `20260913000000_wally_w0_tables.sql` | Skill review only | RLS drafted | IN PROGRESS (blocked on apply) |
-| DB-003 | Database rebuilds from migrations | Product Guide §26 Phase 1 acceptance | — | — | — | BLOCKED |
-| DB-004 | Anonymous cannot read private data | Product Guide §26 Phase 1 acceptance | — | — | — | BLOCKED |
+| DB-001 | Foundation schema (profiles/countries/entities/user_roles/campaigns/audit_logs) | Product Guide §23, §26 Phase 1 | `20260912230000_init_foundation.sql`, applied (remote v`20260913063933`) | `list_tables` confirms schema | RLS enabled + advisor-clean | VERIFIED |
+| DB-002 | Wally W0 tables | WALLY.md §8, §37 | `20260913000000_wally_w0_tables.sql`, applied (remote v`20260913063956`) | `list_tables` confirms schema | RLS enabled + advisor-clean | VERIFIED |
+| DB-003 | Database rebuilds from migrations | Product Guide §26 Phase 1 acceptance | 4 migrations applied in sequence, zero errors | `apply_migration`/`list_migrations` | N/A | VERIFIED |
+| DB-004 | Anonymous cannot read private data | Product Guide §26 Phase 1 acceptance | RLS policies (deny-all on `audit_logs`; own-row on `profiles`/`user_roles`/`wally_event_receipts`) | Real anon-key `curl` against a genuinely-inserted-then-deleted `audit_logs` row — confirmed invisible, not just "table empty" | Verified against live REST API, not just RLS flags | VERIFIED |
+| DB-005 | Typed Supabase clients | Internal (typed DB access) | `database.types.ts` generated from live schema; wired into `client.ts`/`server.ts`/`admin.ts` | `pnpm verify` clean | Service-role client stays `server-only` | VERIFIED |
 | SEC-001 | Secrets excluded from Git/bundle | CLAUDE.md, audit doc §11 | `.env.local` gitignored, `grep`-verified | Manual | Is the control | VERIFIED |
 | SUP-001 | Supabase client helpers (browser/server/admin) | Product Guide §3 | `src/lib/supabase/{client,server,admin}.ts` | None (no live DB to test against) | `server-only` gated | IN PROGRESS |
 | ADR-001 | Prisma coexistence decision | Runbook §40 | `docs/adr/0001-...md` | N/A | Documents the RLS risk | VERIFIED |

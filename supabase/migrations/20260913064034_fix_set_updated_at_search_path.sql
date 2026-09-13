@@ -1,0 +1,12 @@
+-- Applied live via mcp__supabase__apply_migration on 2026-09-13 immediately
+-- after the two Phase 1 migrations, in response to a real finding from
+-- mcp__supabase__get_advisors(type: "security"): "Function Search Path
+-- Mutable" — public.set_updated_at had no pinned search_path.
+--
+-- Without a pinned search_path, a function that references unqualified
+-- objects can in principle be hijacked by a caller who creates a same-named
+-- object earlier in their session's search_path. set_updated_at only
+-- touches NEW/OLD (no unqualified object references), so this was low risk
+-- in practice, but pinning it is the correct default for every function in
+-- this project and costs nothing.
+alter function public.set_updated_at() set search_path = '';

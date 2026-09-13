@@ -2,6 +2,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import { parseClientEnv } from "@/lib/env";
+import type { Database } from "@/lib/supabase/database.types";
 
 /**
  * Browser Supabase client. Uses the publishable (anon) key — RLS applies to
@@ -26,7 +27,7 @@ export function createClient() {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   });
 
-  return createBrowserClient(
+  return createBrowserClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   );

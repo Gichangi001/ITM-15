@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { parseServerEnv } from "@/lib/env.server";
+import type { Database } from "@/lib/supabase/database.types";
 
 /**
  * Service-role Supabase client. BYPASSES ROW LEVEL SECURITY ENTIRELY.
@@ -16,7 +17,7 @@ import { parseServerEnv } from "@/lib/env.server";
 export function createAdminClient() {
   const env = parseServerEnv(process.env);
 
-  return createSupabaseClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
+  return createSupabaseClient<Database>(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

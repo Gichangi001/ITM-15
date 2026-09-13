@@ -12,7 +12,25 @@ Per the audit's priority engine (blockers → security → foundation → depend
 
 **Phase 0 — done except one push blocked on the user.** Next.js + TypeScript + Tailwind app exists, `pnpm verify` (lint+typecheck+test+build) passes clean, Vercel is linked/Git-connected/**deployed** (https://itm-15.vercel.app, HTTP 200), `.claude/settings.json` (scoped permissions + destructive-command `PreToolUse` hook) exists. Only `.github/workflows/ci.yml` remains unpushed — blocked on a `gh` OAuth scope, needs the user (see blocker 8).
 
-**Phase 1 (Supabase foundation) — project now exists, app-side wiring done, migration still unapplied.** The user supplied a live Supabase project (`ysjjgzakswaohmnaowmv`) with its URL and keys. This session:
+**Phase 1 (Supabase foundation) — COMPLETE, verified 2026-09-13.** See the full write-up further down this file. Database rebuilds cleanly from migrations; RLS genuinely blocks anonymous access (tested with a real inserted-and-deleted row, not just an empty table); typed Supabase clients wired in; `pnpm verify` clean.
+
+**Phase 1 (Supabase foundation) — COMPLETE, verified 2026-09-13.** The migration blocker described below is resolved: a fresh session picked up the project-scoped `mcp__supabase__*` tools immediately (confirmed via `ToolSearch`), and both draft migrations were applied to the live `ysjjgzakswaohmnaowmv` project.
+
+**What was done, in order, this session:**
+1. Applied `init_foundation` (`countries`, `entities`, `campaigns`, `profiles`, `user_roles`, `audit_logs` — content matches the committed `supabase/migrations/20260912230000_init_foundation.sql`) — remote version `20260913063933`.
+2. Applied `wally_w0_tables` (`wally_dialogues`, `wally_assets`, `wally_skins`, `wally_events`, `wally_event_receipts` — content matches `supabase/migrations/20260913000000_wally_w0_tables.sql`) — remote version `20260913063956`.
+3. Ran `get_advisors(security)` — one real finding: `public.set_updated_at` had a mutable `search_path` (search_path-hijacking risk). Fixed with a new migration, `supabase/migrations/20260913064034_fix_set_updated_at_search_path.sql` (`alter function ... set search_path = ''`). Re-ran the advisor: clean except the expected `audit_logs` "RLS enabled, no policy" INFO — that's the intentional deny-all-to-clients design documented inline in the migration, not an oversight.
+4. Ran `get_advisors(performance)` — one real finding: `wally_dialogues.created_by` and `wally_events.created_by` (both FKs to `auth.users`) were missed in the original FK-indexing pass. Fixed with `supabase/migrations/20260913064438_add_missing_created_by_fk_indexes.sql`. Re-ran: clean except 13 "unused index" INFO findings, which are expected and not actionable — every table is brand new and empty, so no index has been exercised by a real query yet.
+5. **Verified both Phase 1 acceptance criteria for real, not just structurally:**
+   - *Database rebuilds from migrations*: all 4 migrations applied cleanly in sequence with zero errors; `list_tables` confirms all 11 tables exist with the expected columns/FKs/RLS flags.
+   - *Anonymous browser cannot read private player data*: tested with the actual anon publishable key against the live REST API (`curl` with `apikey`/`Authorization: Bearer <anon key>`), not just inspection of the RLS flag. For `profiles`/`user_roles`/`audit_logs`/`wally_event_receipts`, initial requests all returned `200 []` — but the tables were empty, which would also produce `200 []` even if RLS were broken. To rule that out, inserted a real row into `audit_logs` via the service-role migration path (`action: 'phase1_verification_test'`), re-ran the anon-key `curl` request, confirmed it still returned `[]` (the row was invisible to anon despite genuinely existing), then deleted the test row. This proves RLS is actually filtering, not just that the tables happen to be empty. The three `auth.uid()`-based "own row" policies (`profiles`, `user_roles`, `wally_event_receipts`) use the identical, standard Supabase pattern (`col = (select auth.uid())`, which evaluates to `NULL = x` → always false with no JWT) — deliberately did not fabricate a synthetic `auth.users` row via raw SQL to test these further, since hand-inserting into Supabase's managed `auth` schema is exactly the kind of risky workaround the runbook warns against. The real per-row test for those three tables (one player can't read another's profile) is naturally covered once Phase 2 creates actual accounts — the earliest point "another player's private data" meaningfully exists to leak.
+6. Generated real TypeScript types via `mcp__supabase__generate_typescript_types` against the live schema → `src/lib/supabase/database.types.ts`. Wired the `Database` generic into all three existing clients (`client.ts`'s `createBrowserClient<Database>`, `server.ts`'s `createServerClient<Database>`, `admin.ts`'s `createClient<Database>`) — `pnpm verify` passes clean with the typed clients.
+
+**Known pre-existing filename/version mismatch, not introduced this session**: `supabase/migrations/20260912230000_init_foundation.sql` and `20260913000000_wally_w0_tables.sql` were already committed under those filenames before this session, but Supabase's `apply_migration` assigns its own timestamp-based version at apply time (`20260913063933`/`20260913063956`), independent of the filename. The two new migrations added this session use their real applied versions as filenames. This mismatch is cosmetic (migration *content* matches exactly, confirmed by diffing what was applied against the committed files) but could confuse a future `supabase db push`/CLI-based workflow reconciliation — worth a rename-for-consistency pass later if the Supabase CLI ever needs to manage this project's migrations directly.
+
+Earlier context from when this was blocked, kept for history:
+
+The user supplied a live Supabase project (`ysjjgzakswaohmnaowmv`) with its URL and keys. This session:
 - Installed `@supabase/supabase-js`, `@supabase/ssr`, `@supabase/server`, `server-only` (via `pnpm add`, not the `npm install` in the pasted instructions — this project uses pnpm per `CLAUDE.md`).
 - Split env validation into `src/lib/env.ts` (client-safe: `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, now required) and `src/lib/env.server.ts` (server-only, gated by the `server-only` package: `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` required, `SUPABASE_JWKS_URL` optional until something reads it). Both expose a pure `parse*Env(source)` function rather than an eagerly-evaluated constant, so unit tests use synthetic fake values instead of depending on real secrets being present (works identically in CI with no secrets configured).
 - Added `src/lib/supabase/client.ts` (browser, `@supabase/ssr`'s `createBrowserClient`), `server.ts` (Server Component/Action, `createServerClient` + Next's `cookies()`), `admin.ts` (service-role, bypasses RLS, `server-only`-gated).
@@ -64,7 +82,7 @@ The approval + OAuth steps worked. **However, this specific long-running session
 
 **Progress made without needing either blocker (2026-09-13):** all 7 Supabase-related env vars added to Vercel's **Production** environment (encrypted, confirmed via `vercel env ls`) — read from `.env.local` via shell variable substitution, never printed in any command text or tool output. **Preview environment hit an apparent Vercel CLI v54.2.0 bug**: `vercel env add <name> preview --value <value> --yes` (the CLI's own suggested fix) fails identically even for a disposable test variable with no real value — not specific to these variables. Fix later via `npm i -g vercel@latest` (v59.10.0 available) or the dashboard.
 
-Phase 1 is **not complete** until the migration is actually applied and its two acceptance criteria are verified (database rebuilds from migrations; anonymous browser can't read private data).
+~~Phase 1 is **not complete** until the migration is actually applied and its two acceptance criteria are verified (database rebuilds from migrations; anonymous browser can't read private data).~~ **Superseded — see the "COMPLETE, verified 2026-09-13" block above.**
 
 ## Wally placeholder assets (W0, per docs/WALLY.md §37)
 
@@ -125,7 +143,7 @@ Verified with `pnpm verify` (lint/typecheck/9 unit tests/build, all passing) and
 
 ## Last verified commit
 
-`3e08875` on `main` (origin `Gichangi001/ITM-15`), pushed and deployed. This session's additions (`.claude/settings.json`, `.claude/hooks/`, `supabase/` scaffold + draft migration + seed) are staged for commit — see "In progress."
+`2381640` on `main` (origin `Gichangi001/ITM-15`), pushed and deployed. This session's changes (Phase 1 migrations actually applied to the live database, `database.types.ts`, typed Supabase clients) are staged for commit — see "In progress."
 
 ## Completed
 
@@ -142,15 +160,16 @@ Verified with `pnpm verify` (lint/typecheck/9 unit tests/build, all passing) and
 ## In progress
 
 Uncommitted working-tree changes, pending review/push:
-- `.claude/settings.json`, `.claude/hooks/check-destructive-command.sh`.
-- `supabase/config.toml`, `supabase/.gitignore`, `supabase/migrations/20260912230000_init_foundation.sql`, `supabase/seed.sql`.
-- `docs/claude/ENVIRONMENT_INVENTORY.md` updates reflecting the hook/permissions additions.
+- `src/lib/supabase/database.types.ts` (new — generated from the live schema).
+- `src/lib/supabase/client.ts`, `server.ts`, `admin.ts` (modified — wired to the `Database` generic).
+- `supabase/migrations/20260913064034_fix_set_updated_at_search_path.sql`, `20260913064438_add_missing_created_by_fk_indexes.sql` (new — mirror two fixes already applied live in response to real advisor findings).
+- `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md`, `docs/PROJECT_AUDIT_CHECKLIST.md` (this session's updates).
 
 ## Blockers
 
 1. ~~Structural doc-location conflict~~ — **Resolved.**
 2. ~~No package manager foundation~~ — **Resolved.** pnpm 12.4.1 via corepack.
-3. **No Supabase project for ITM@15 — blocks Phase 1, needs a user decision.** Creation attempted (org "Soko ai", `eu-west-3`, $0/mo confirmed) and rejected: **"Gichangi001 (2 project limit)... delete, pause or upgrade one or more of these projects."** The account is at its free-tier cap across *all* orgs where it's admin/owner — only `soko-ai` is visible via this connector, so a second free project exists somewhere not visible here. Needs the user to pause/delete/upgrade something, or point at a different account. This session will not pause or delete anything unilaterally.
+3. ~~No Supabase project for ITM@15~~ — **Resolved.** The user supplied a live project (`ysjjgzakswaohmnaowmv`) directly rather than this session creating one under the capped account. Migrations applied, RLS verified — see "Phase 1 — COMPLETE" above.
 4. ~~Vercel unlinked/undeployed~~ — **Resolved.** Linked, Git-connected, deployed at https://itm-15.vercel.app (had to fix a Framework Preset misconfiguration via `vercel.json` along the way).
 5. ~~No project-scoped `.claude/settings.json`/hooks~~ — **Resolved this session.** See "Completed."
 6. **5 of 10 project skills created**, all 6 project agents undone — deliberately deferred until there's an artifact each would review (database, tests, UI, Wally runtime, a release).
@@ -166,14 +185,20 @@ Item 3 is the only remaining blocker that needs a substantive human decision (Ph
 
 ## Next smallest complete slice
 
-1. Commit and push this session's changes (`.claude/settings.json`, hook, `supabase/` scaffold — **not** `.github/workflows/ci.yml`, still blocked).
-2. **Get the two user decisions**: which Supabase project to pause/delete/upgrade (or a different account), and run `gh auth refresh -h github.com -s workflow` — then push the CI file.
-3. Once Supabase is unblocked: create the project, apply `supabase/migrations/20260912230000_init_foundation.sql` (`supabase db push` or via MCP `apply_migration`), wire `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` into Vercel env vars and local `.env.local` (never the repo), extend `src/lib/env.ts` to require them, add the Supabase client helpers (`lib/supabase/server.ts`/`client.ts`), and verify the two Phase 1 acceptance criteria before calling it done.
-4. `shadcn/ui` init and Sentry config remain deferred — shadcn until there's real UI to build (Phase 3/4), Sentry per the runbook until ~Phase 20.
+Phase 1 is done. The next smallest complete slice is the start of **Phase 2 — Invite-only authentication** (Product Guide §5, §26 Phase 2):
+1. Login page (`/login`) — email/password form against Supabase Auth.
+2. Admin-only server action to create an employee account (temporary `Walumo` password, `must_change_password = true`).
+3. `/first-login` forced password-change flow.
+4. Role-aware redirect logic (disabled-user rejection, `must_change_password` gate, admin-vs-player routing).
 
-## Required verification before Phase 1 is called complete
+Remaining housekeeping, not blocking Phase 2:
+- `.github/workflows/ci.yml` still unpushed — still needs `gh auth refresh -h github.com -s workflow` (interactive, needs the user).
+- `shadcn/ui` init deferred until there's real UI to build (which Phase 2's login/first-login forms will need very soon).
+- The pre-existing migration filename/version mismatch noted above — a cosmetic cleanup, not urgent.
 
-- `supabase db reset` (or equivalent) rebuilds the database cleanly from migrations.
-- An anonymous Supabase client cannot read `profiles`, `user_roles`, or `audit_logs`.
-- `pnpm verify` still passes with any new Supabase client code added.
-- `docs/DOCS_INDEX.md`/`PROJECT_STATE.md`/`QUALITY_STATUS.md` updated to reflect verified (not drafted) state.
+## Required verification before Phase 1 is called complete — ALL MET, 2026-09-13
+
+- ~~`supabase db reset` (or equivalent) rebuilds the database cleanly from migrations.~~ **Met** — all 4 migrations applied cleanly in sequence against the live project via `apply_migration`.
+- ~~An anonymous Supabase client cannot read `profiles`, `user_roles`, or `audit_logs`.~~ **Met, and extended to `wally_event_receipts`** — verified with the real anon key via REST, including a real-row-present test against `audit_logs` (see the Phase 1 write-up above), not just an empty-table check.
+- ~~`pnpm verify` still passes with any new Supabase client code added.~~ **Met** — clean lint/typecheck/test/build with the `Database`-typed clients.
+- ~~`docs/DOCS_INDEX.md`/`PROJECT_STATE.md`/`QUALITY_STATUS.md` updated to reflect verified (not drafted) state.~~ **Met** — this update.
