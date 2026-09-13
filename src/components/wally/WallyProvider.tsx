@@ -11,6 +11,7 @@ import {
 import { shouldInterrupt, type WallyPriority } from "@/wally/behavior/priority";
 import { WallySpeechBubble } from "./WallySpeechBubble";
 import type { WallyPoseKey } from "@/wally/rendering/assets";
+import { useWallyTriggerTick } from "@/lib/realtime/onlinePresence";
 
 // See the comment inside fetchAndShowLatestTargetedEvent below for why
 // this exists.
@@ -55,6 +56,9 @@ export function WallyProvider({
 }) {
   const [active, setActive] = useState<ActiveWally | null>(null);
   const shownIds = useRef<Set<string>>(new Set());
+  // GLOBAL wally.triggered events — see PresenceHeartbeat.tsx's header
+  // comment: it, not this component, owns the "game:global" channel.
+  const wallyTriggerTick = useWallyTriggerTick();
 
   const tryShow = useCallback((incoming: ActiveWally) => {
     if (shownIds.current.has(incoming.id)) return;
@@ -177,21 +181,14 @@ export function WallyProvider({
   }, [tryShow]);
 
   // Catch up once on mount (an event published just before this tab
-  // opened), then react live to new ones for the rest of the session —
-  // "game:global" is the existing pause/resume/mission-publish channel,
-  // reused here for GLOBAL Wally events too (Supabase multiplexes
-  // multiple event names on one channel fine); "player:{id}" is this
-  // player's own channel for PLAYER-targeted events.
+  // opened). "player:{id}" is this player's own channel for
+  // PLAYER-targeted events — a distinct topic per player, so this
+  // component subscribing to it directly is fine, unlike "game:global"
+  // (see the effect below).
   useEffect(() => {
     fetchAndShowLatestTargetedEvent();
 
     const supabase = createClient();
-    const globalChannel = supabase.channel("game:global");
-    globalChannel.on("broadcast", { event: "wally.triggered" }, () => {
-      fetchAndShowLatestTargetedEvent();
-    });
-    globalChannel.subscribe();
-
     const playerChannel = supabase.channel(`player:${playerId}`);
     playerChannel.on("broadcast", { event: "wally.triggered" }, () => {
       fetchAndShowLatestTargetedEvent();
@@ -199,10 +196,21 @@ export function WallyProvider({
     playerChannel.subscribe();
 
     return () => {
-      supabase.removeChannel(globalChannel);
       supabase.removeChannel(playerChannel);
     };
   }, [playerId, fetchAndShowLatestTargetedEvent]);
+
+  // GLOBAL wally.triggered events arrive via PresenceHeartbeat, which owns
+  // the "game:global" channel for the whole player shell — this just
+  // reacts to its tick counter incrementing, never subscribes itself.
+  const isFirstWallyTick = useRef(true);
+  useEffect(() => {
+    if (isFirstWallyTick.current) {
+      isFirstWallyTick.current = false;
+      return;
+    }
+    fetchAndShowLatestTargetedEvent();
+  }, [wallyTriggerTick, fetchAndShowLatestTargetedEvent]);
 
   if (!active) return null;
 

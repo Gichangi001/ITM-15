@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { getPlayerLeaderboard, getCountryLeaderboard } from "@/lib/scoring/leaderboard";
 import { LiveRefresh } from "@/components/realtime/LiveRefresh";
+import { PlayerOnlineList } from "@/components/leaderboard/PlayerOnlineList";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Leaderboards — ITM@15" };
 
@@ -23,7 +25,24 @@ export const dynamic = "force-dynamic";
  * "fake demo" the Storyline Build Bible §39 forbids).
  */
 export default async function LeaderboardsPage() {
-  const [players, countries] = await Promise.all([getPlayerLeaderboard(50), getCountryLeaderboard()]);
+  const admin = createAdminClient();
+  const [players, countries, { data: recentJoins }] = await Promise.all([
+    getPlayerLeaderboard(50),
+    getCountryLeaderboard(),
+    admin
+      .from("profiles")
+      .select("id, full_name, email, country_id, created_at")
+      .eq("status", "ACTIVE")
+      .order("created_at", { ascending: false })
+      .limit(8),
+  ]);
+
+  const recentCountryIds = [...new Set((recentJoins ?? []).map((p) => p.country_id).filter(Boolean))] as string[];
+  const { data: recentCountries } =
+    recentCountryIds.length > 0
+      ? await admin.from("countries").select("id, flag_emoji").in("id", recentCountryIds)
+      : { data: [] as { id: string; flag_emoji: string | null }[] };
+  const flagByCountryId = new Map((recentCountries ?? []).map((c) => [c.id, c.flag_emoji]));
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-10 sm:px-6">
@@ -65,14 +84,29 @@ export default async function LeaderboardsPage() {
         {players.length === 0 ? (
           <p className="text-sm text-muted">No points awarded yet — be the first.</p>
         ) : (
+          <PlayerOnlineList players={players} />
+        )}
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-xs font-semibold tracking-[0.15em] text-muted uppercase">
+          Newest members
+        </h2>
+        {!recentJoins || recentJoins.length === 0 ? (
+          <p className="text-sm text-muted">No one has joined yet.</p>
+        ) : (
           <ol className="flex flex-col divide-y divide-white/5 rounded-xl border border-white/10 bg-surface">
-            {players.map((entry, index) => (
-              <li key={entry.playerId} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
+            {recentJoins.map((profile) => (
+              <li key={profile.id} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
                 <span className="text-ink">
-                  {index + 1}. {entry.displayName}
-                  {entry.countryFlag ? ` ${entry.countryFlag}` : ""}
+                  {profile.full_name || profile.email}
+                  {profile.country_id && flagByCountryId.get(profile.country_id)
+                    ? ` ${flagByCountryId.get(profile.country_id)}`
+                    : ""}
                 </span>
-                <span className="text-muted">{entry.points} pts</span>
+                <span className="text-xs text-muted">
+                  {new Date(profile.created_at).toLocaleDateString()}
+                </span>
               </li>
             ))}
           </ol>

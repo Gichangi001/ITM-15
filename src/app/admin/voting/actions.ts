@@ -7,6 +7,7 @@ import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminActivity } from "@/lib/admin/audit";
 import { broadcast } from "@/lib/realtime/broadcast";
+import { checkPollAchievement } from "@/lib/achievements/award";
 
 const POLL_STATUSES = ["DRAFT", "OPEN", "CLOSED", "REVEALED"] as const;
 
@@ -55,6 +56,13 @@ export async function updatePollStatus(formData: FormData) {
   // live-refresh — an OPEN poll appears without reload, a REVEALED one
   // shows counts immediately.
   await broadcast(`poll:${pollId}`, "poll.updated");
+
+  if (status === "REVEALED") {
+    // Product Guide §17's "crowd_favorite" achievement — only meaningful
+    // for a nomination-style poll with a real candidate_player_id; a
+    // no-op for an ordinary informational poll.
+    await checkPollAchievement(admin, pollId);
+  }
 
   revalidatePath("/admin/voting");
   redirect("/admin/voting?success=1");

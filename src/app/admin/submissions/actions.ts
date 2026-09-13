@@ -8,6 +8,7 @@ import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminActivity } from "@/lib/admin/audit";
 import { broadcast } from "@/lib/realtime/broadcast";
+import { checkMissionAchievements } from "@/lib/achievements/award";
 
 /**
  * Product Guide §12.2 (media/moderation flow) + §26 Phase 10 acceptance:
@@ -126,6 +127,9 @@ export async function moderateSubmission(formData: FormData) {
   // broadcast (see src/lib/realtime/broadcast.ts).
   if (pointsAwarded) {
     await broadcast("leaderboard", "points.awarded");
+    // Product Guide §17 — same real-score_events-derived check as the
+    // auto-graded path in play/mission/[missionId]/actions.ts.
+    await checkMissionAchievements(admin, submission.player_id);
   }
   if (decision === "APPROVE") {
     await broadcast("gallery", "submission.approved");

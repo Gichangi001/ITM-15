@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createEmployeeAccount, type CreateEmployeeState } from "./actions";
-import type { Role } from "@/lib/auth/roles";
+import { hasAdminSurfaceAccess, type Role } from "@/lib/auth/roles";
 
 const initialState: CreateEmployeeState = null;
 
@@ -16,6 +16,17 @@ export function NewPlayerForm({
   roles: readonly Role[];
 }) {
   const [state, formAction, isPending] = useActionState(createEmployeeAccount, initialState);
+  // Tracked in client state (not just the form's own DOM value) so the
+  // success message below can describe the right sign-in path for the
+  // role that was actually just submitted — this component doesn't
+  // unmount across the action call, so this state naturally survives it.
+  const [role, setRole] = useState<Role>("PLAYER");
+  // src/app/login/actions.ts's checkLoginMethod: every admin-surface role
+  // (everything but plain PLAYER) signs in with a password; PLAYER signs
+  // in with a one-time emailed link instead, regardless of the temporary
+  // Walumo password this action still stores on the account (harmless,
+  // just unused for a magic-link account — see that action's own comment).
+  const usesPassword = hasAdminSurfaceAccess([role]);
 
   if (state?.success) {
     return (
@@ -23,10 +34,17 @@ export function NewPlayerForm({
         <p className="text-sm text-ink">
           Account created for <span className="font-semibold">{state.success.email}</span>.
         </p>
-        <p className="text-sm text-muted">
-          Temporary password: <span className="text-ink">Walumo</span>. They must set
-          a private password on first sign-in.
-        </p>
+        {usesPassword ? (
+          <p className="text-sm text-muted">
+            Temporary password: <span className="text-ink">Walumo</span>. They must set
+            a private password on first sign-in.
+          </p>
+        ) : (
+          <p className="text-sm text-muted">
+            They sign in with a one-time emailed link — no password needed. Have them go
+            to <span className="text-ink">/login</span> and enter this email.
+          </p>
+        )}
         <a href="/admin/players/new" className="btn-secondary self-start">
           Add another
         </a>
@@ -88,15 +106,21 @@ export function NewPlayerForm({
         <select
           id="role"
           name="role"
-          defaultValue="PLAYER"
+          value={role}
+          onChange={(e) => setRole(e.target.value as Role)}
           className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-ink outline-none focus-visible:border-walumo"
         >
-          {roles.map((role) => (
-            <option key={role} value={role}>
-              {role}
+          {roles.map((r) => (
+            <option key={r} value={r}>
+              {r}
             </option>
           ))}
         </select>
+        <p className="text-xs text-muted">
+          {usesPassword
+            ? "Signs in with a temporary password (Walumo), then sets a private one."
+            : "Signs in with a one-time emailed link — no password needed."}
+        </p>
       </div>
 
       {state?.error ? (

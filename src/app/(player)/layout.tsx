@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { PlayerNav } from "@/components/player/PlayerNav";
 import { PresenceHeartbeat } from "@/components/realtime/PresenceHeartbeat";
-import { LiveRefresh } from "@/components/realtime/LiveRefresh";
 import { GamePausedBanner } from "@/components/realtime/GamePausedBanner";
 import { WallyProvider } from "@/components/wally/WallyProvider";
 import { createClient } from "@/lib/supabase/server";
@@ -20,15 +19,21 @@ import { getCurrentUser } from "@/lib/auth/session";
  *
  * The paused banner (Phase 12, §17.3) reads the real `campaigns.status`
  * on every request (campaigns has a public-read RLS policy, no service
- * role needed) and `LiveRefresh` re-runs this layout on `game.paused`/
- * `game.resumed` so it appears/disappears live, not just on next navigation.
+ * role needed); `PresenceHeartbeat` itself refetches on `game.paused`/
+ * `game.resumed` so it appears/disappears live, not just on next
+ * navigation — folded in there (not a standalone `LiveRefresh` mount)
+ * because that separate channel is exactly what was colliding with
+ * `PresenceHeartbeat`'s own "game:global" subscription; see that
+ * component's header comment.
  *
  * `WallyProvider` (Phase 13, docs/WALLY.md §15.5) lives here for the same
  * reason `PresenceHeartbeat` does — Wally is present anywhere in the
  * player shell, not just on `/play`. It needs a real, verified user id and
  * first name, fetched once here server-side (never trusted from a client
  * prop), so a login greeting and any admin-targeted event can never be
- * fabricated or misattributed to the wrong player.
+ * fabricated or misattributed to the wrong player. Its own GLOBAL Wally
+ * events also now arrive through `PresenceHeartbeat` (see
+ * `useWallyTriggerTick`), not a channel of its own.
  */
 export default async function PlayerLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -52,14 +57,20 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
     firstName = profile?.first_name ?? null;
   }
 
-  return (
+  const shell = (
     <div className="flex min-h-screen flex-col bg-bg text-ink">
-      <PresenceHeartbeat />
-      <LiveRefresh topic="game:global" events={["game.paused", "game.resumed"]} />
       <GamePausedBanner paused={campaign?.status === "PAUSED"} />
       {user ? <WallyProvider playerId={user.id} firstName={firstName} /> : null}
       <PlayerNav />
       <div className="flex-1">{children}</div>
     </div>
   );
+
+  // PresenceHeartbeat is the sole owner of the "game:global" Presence
+  // subscription for the whole player shell (see its own header comment
+  // for why a second independent subscription elsewhere on the page
+  // would collide) — it wraps everything else so any descendant can read
+  // live online-player-ids via useOnlinePlayerIds() without subscribing
+  // itself.
+  return user ? <PresenceHeartbeat playerId={user.id}>{shell}</PresenceHeartbeat> : shell;
 }

@@ -19,6 +19,81 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          key: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          icon?: string
+          id?: string
+          key: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          key?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      admin_notifications: {
+        Row: {
+          audience_id: string | null
+          audience_type: string
+          created_at: string
+          created_by: string | null
+          cta_href: string | null
+          cta_label: string | null
+          id: string
+          message: string
+          recipient_count: number
+          scheduled_at: string | null
+          sent_at: string | null
+          severity: string
+          title: string
+        }
+        Insert: {
+          audience_id?: string | null
+          audience_type: string
+          created_at?: string
+          created_by?: string | null
+          cta_href?: string | null
+          cta_label?: string | null
+          id?: string
+          message: string
+          recipient_count?: number
+          scheduled_at?: string | null
+          sent_at?: string | null
+          severity?: string
+          title: string
+        }
+        Update: {
+          audience_id?: string | null
+          audience_type?: string
+          created_at?: string
+          created_by?: string | null
+          cta_href?: string | null
+          cta_label?: string | null
+          id?: string
+          message?: string
+          recipient_count?: number
+          scheduled_at?: string | null
+          sent_at?: string | null
+          severity?: string
+          title?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -208,6 +283,39 @@ export type Database = {
           },
         ]
       }
+      event_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          moderated_at: string | null
+          moderated_by: string | null
+          player_id: string
+          status: string
+          storage_path: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          moderated_at?: string | null
+          moderated_by?: string | null
+          player_id: string
+          status?: string
+          storage_path: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          moderated_at?: string | null
+          moderated_by?: string | null
+          player_id?: string
+          status?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
       game_days: {
         Row: {
           campaign_id: string
@@ -361,6 +469,125 @@ export type Database = {
             columns: ["game_day_id"]
             isOneToOne: false
             referencedRelation: "game_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          cta_href: string | null
+          cta_label: string | null
+          id: string
+          message: string
+          player_id: string
+          read_at: string | null
+          severity: string
+          source_id: string | null
+          source_type: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          cta_href?: string | null
+          cta_label?: string | null
+          id?: string
+          message: string
+          player_id: string
+          read_at?: string | null
+          severity?: string
+          source_id?: string | null
+          source_type: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          cta_href?: string | null
+          cta_label?: string | null
+          id?: string
+          message?: string
+          player_id?: string
+          read_at?: string | null
+          severity?: string
+          source_id?: string | null
+          source_type?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      passport_cards: {
+        Row: {
+          avatar_path: string | null
+          company_text: string | null
+          country_flag_emoji: string | null
+          country_name: string | null
+          first_name: string | null
+          full_name: string | null
+          location_text: string | null
+          passport_slug: string
+          phone: string | null
+          player_id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_path?: string | null
+          company_text?: string | null
+          country_flag_emoji?: string | null
+          country_name?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          location_text?: string | null
+          passport_slug?: string
+          phone?: string | null
+          player_id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_path?: string | null
+          company_text?: string | null
+          country_flag_emoji?: string | null
+          country_name?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          location_text?: string | null
+          passport_slug?: string
+          phone?: string | null
+          player_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      player_achievements: {
+        Row: {
+          achievement_id: string
+          awarded_at: string
+          id: string
+          player_id: string
+          source_id: string | null
+          source_type: string | null
+        }
+        Insert: {
+          achievement_id: string
+          awarded_at?: string
+          id?: string
+          player_id: string
+          source_id?: string | null
+          source_type?: string | null
+        }
+        Update: {
+          achievement_id?: string
+          awarded_at?: string
+          id?: string
+          player_id?: string
+          source_id?: string | null
+          source_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
             referencedColumns: ["id"]
           },
         ]
@@ -1132,9 +1359,3 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const

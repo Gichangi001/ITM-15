@@ -31,6 +31,7 @@ const QUICK_ACTIONS = [
   { label: "🎯 Launch mission", href: "/admin/missions/new", capability: "canManageContent" },
   { label: "📅 Unlock a day", href: "/admin/missions", capability: "canManageContent" },
   { label: "📸 Review submissions", href: "/admin/submissions", capability: "canModerateSubmissions" },
+  { label: "🖼 Review gallery photos", href: "/admin/gallery-moderation", capability: "canModerateSubmissions" },
   { label: "💰 Award bonus points", href: "/admin/scoring", capability: "canAwardBonusPoints" },
   { label: "🗳 Open a vote", href: "/admin/voting/new", capability: "canManageVoting" },
   { label: "🧍 Trigger Wally", href: "/admin/live/wally", capability: "canTriggerWally" },
@@ -62,6 +63,8 @@ const ACTIVITY_ICONS: Record<string, string> = {
   media_asset_uploaded: "🖼",
   media_asset_featured_toggled: "🖼",
   wally_event_published: "🧍",
+  event_photo_approved: "📸",
+  event_photo_rejected: "📸",
 };
 
 /**

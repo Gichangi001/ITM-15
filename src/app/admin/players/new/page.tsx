@@ -36,9 +36,10 @@ export default async function NewPlayerPage() {
         </p>
         <h1 className="text-3xl">Add player</h1>
         <p className="text-sm text-muted">
-          Creates the account with the temporary password{" "}
-          <span className="text-ink">Walumo</span>. They&apos;ll be required to set
-          their own private password on first sign-in.
+          Most accounts (Player) sign in with a one-time emailed link — no password
+          needed. Admin-surface roles (Moderator and above) still get a temporary
+          password (<span className="text-ink">Walumo</span>) and set a private one on
+          first sign-in.
         </p>
       </div>
 

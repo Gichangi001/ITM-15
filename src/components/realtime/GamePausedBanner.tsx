@@ -1,9 +1,9 @@
 /**
  * Product Guide §17.3 "Pause Game." Server-rendered from the real
- * `campaigns.status` value (no client-side guess) — `LiveRefresh` in the
- * parent layout re-runs this on `game.paused`/`game.resumed`, so the
- * banner appears/disappears live for every connected player, not just on
- * their next full navigation.
+ * `campaigns.status` value (no client-side guess) — `PresenceHeartbeat` in
+ * the parent layout calls `router.refresh()` on `game.paused`/
+ * `game.resumed`, so the banner appears/disappears live for every
+ * connected player, not just on their next full navigation.
  */
 export function GamePausedBanner({ paused }: { paused: boolean }) {
   if (!paused) return null;

@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { broadcast } from "@/lib/realtime/broadcast";
 import { isGamePaused } from "@/lib/game/campaignStatus";
+import { checkMissionAchievements } from "@/lib/achievements/award";
 
 export type SubmitAnswerState = {
   error?: string;
@@ -134,6 +135,9 @@ export async function submitAnswer(
 
     if (pointsAwarded > 0) {
       await broadcast("leaderboard", "points.awarded");
+      // Product Guide §17 — checked from the real score_events this call
+      // just wrote, never a client-claimed "I completed N missions".
+      await checkMissionAchievements(admin, user.id);
     }
 
     revalidatePath(`/play/mission/${challenge.mission_id}`);

@@ -7,6 +7,7 @@ import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminActivity } from "@/lib/admin/audit";
 import { broadcast } from "@/lib/realtime/broadcast";
+import { notifyAllActivePlayers } from "@/lib/notifications/create";
 
 const MISSION_STATUSES = ["DRAFT", "SCHEDULED", "LIVE", "PAUSED", "COMPLETED", "ARCHIVED"] as const;
 
@@ -64,6 +65,17 @@ export async function updateMissionStatus(formData: FormData) {
   const dayNumber = before?.game_days?.day_number;
   if (dayNumber) {
     await broadcast(`game:day:${dayNumber}`, "mission.updated");
+  }
+
+  if (status === "LIVE" && before?.status !== "LIVE") {
+    // Product Guide §15.1 "New mission available" — same real-status-
+    // change hook as the day-start/end notifications above.
+    await notifyAllActivePlayers(admin, {
+      title: "New mission available",
+      message: before?.title ? `"${before.title}" just went live.` : "A new mission just went live.",
+      sourceType: "MISSION_PUBLISHED",
+      sourceId: missionId,
+    });
   }
 
   revalidatePath("/admin/missions");
@@ -129,6 +141,26 @@ export async function updateGameDayStatus(formData: FormData) {
 
   if (before?.day_number) {
     await broadcast(`game:day:${before.day_number}`, "day.updated");
+
+    // Product Guide §15.1, per the Phase 17 migration's own
+    // notifications.source_type extension — real day-start/end
+    // notifications fired from this real, server-authoritative status
+    // change, never a blind time-based cron.
+    if (status === "LIVE") {
+      await notifyAllActivePlayers(admin, {
+        title: `Day ${before.day_number} is live`,
+        message: `Day ${before.day_number} has started — your next mission is waiting.`,
+        sourceType: "DAY_STARTED",
+        sourceId: gameDayId,
+      });
+    } else if (status === "COMPLETED") {
+      await notifyAllActivePlayers(admin, {
+        title: `Day ${before.day_number} has ended`,
+        message: `Day ${before.day_number} is complete. See you for the next chapter.`,
+        sourceType: "DAY_ENDED",
+        sourceId: gameDayId,
+      });
+    }
   }
 
   revalidatePath("/admin/missions");

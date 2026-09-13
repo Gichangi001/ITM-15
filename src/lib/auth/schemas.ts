@@ -45,7 +45,7 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
  * building input objects straight from `formData.get(...)` don't each need
  * to remember which of the three shapes their particular field can take.
  */
-function optionalFormField<T extends z.ZodTypeAny>(schema: T) {
+export function optionalFormField<T extends z.ZodTypeAny>(schema: T) {
   return z.preprocess(
     (value) => (value === null || value === "" ? undefined : value),
     schema.optional(),

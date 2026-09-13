@@ -44,7 +44,6 @@ const PROTECTED_PREFIXES = [
   "/first-login",
   "/onboarding",
   "/play",
-  "/passport",
   "/leaderboards",
   "/gallery",
   "/achievements",
@@ -55,9 +54,18 @@ const PROTECTED_PREFIXES = [
   "/admin",
 ];
 
+// `/passport` (the edit page) needs a session; `/passport/[slug]` (a
+// player's public shareable card, Product Guide §17 / the Phase 17
+// migration's own design) deliberately does not — it's a link meant to be
+// opened by anyone it's shared with, not just other signed-in players.
+// Kept out of PROTECTED_PREFIXES's prefix match (which would protect
+// every sub-path) and gated here at the exact path only.
+const PROTECTED_EXACT = ["/passport"];
+
 function isProtected(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  return (
+    PROTECTED_EXACT.includes(pathname) ||
+    PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
   );
 }
 
