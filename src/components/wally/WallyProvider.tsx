@@ -12,6 +12,10 @@ import { shouldInterrupt, type WallyPriority } from "@/wally/behavior/priority";
 import { WallySpeechBubble } from "./WallySpeechBubble";
 import type { WallyPoseKey } from "@/wally/rendering/assets";
 
+// See the comment inside fetchAndShowLatestTargetedEvent below for why
+// this exists.
+const RECENCY_WINDOW_MS = 15 * 60 * 1000;
+
 type ActiveWally = {
   id: string;
   text: string;
@@ -124,15 +128,26 @@ export function WallyProvider({
   const fetchAndShowLatestTargetedEvent = useCallback(async () => {
     const supabase = createClient();
     // RLS ("players can read published global or own-targeted wally
-    // events") is the real filter here — this query returns nothing this
-    // player isn't actually eligible to see, regardless of which topic
-    // triggered the refetch.
+    // events") is the real filter for *who* can see a row — but neither
+    // that policy nor `publishWallyEvent` sets `expires_at`, so without a
+    // recency bound here, a PUBLISHED event stays "the latest one" and
+    // resurfaces to every freshly-loaded tab forever, not just the
+    // visitors connected at the moment it was actually sent (found live
+    // in production: a stray admin test message from hours earlier kept
+    // greeting every new player). RECENCY_WINDOW_MS is deliberately
+    // generous (long enough to still catch a genuinely-just-published
+    // event even with some reconnect/network delay) rather than a real
+    // fix — the real fix is `wally_events.expires_at` actually being set
+    // at publish time and enforced in the RLS policy itself, which is a
+    // schema change beyond this slice's scope; this is the narrowest safe
+    // fix for the live symptom.
     const { data: events } = await supabase
       .from("wally_events")
       .select(
         "id, event_type, animation_key, dialogue_key, dialogue_override, priority, variables, created_at",
       )
       .eq("status", "PUBLISHED")
+      .gte("created_at", new Date(Date.now() - RECENCY_WINDOW_MS).toISOString())
       .order("created_at", { ascending: false })
       .limit(5);
 
