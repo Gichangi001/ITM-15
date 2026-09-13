@@ -6,6 +6,7 @@ import {
   canManageUserRoles,
   canManageVoting,
   canModerateSubmissions,
+  canTriggerWally,
   canViewAuditLog,
   hasAdminSurfaceAccess,
 } from "./roles";
@@ -119,5 +120,13 @@ describe("canManageVoting", () => {
     expect(canManageVoting(["GAME_MASTER"])).toBe(true);
     expect(canManageVoting(["SUPER_ADMIN"])).toBe(true);
     expect(canManageVoting(["MODERATOR"])).toBe(false);
+  });
+});
+
+describe("canTriggerWally", () => {
+  it("allows GAME_MASTER and SUPER_ADMIN, denies MODERATOR", () => {
+    expect(canTriggerWally(["GAME_MASTER"])).toBe(true);
+    expect(canTriggerWally(["SUPER_ADMIN"])).toBe(true);
+    expect(canTriggerWally(["MODERATOR"])).toBe(false);
   });
 });

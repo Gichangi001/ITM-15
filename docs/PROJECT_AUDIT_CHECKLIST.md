@@ -366,16 +366,16 @@ This remaining blocker is not something this session can resolve unilaterally (p
   **Verified:** 2026-09-13
 
 - [x] Live player count works — **partial, honestly labeled**: "Active accounts" and "Countries active" are real live-queried counts; true realtime online-presence needs Phase 11 and is explicitly listed as not-yet-available on the dashboard itself, not silently omitted
-- [ ] Country activity, Squad activity — squads don't exist yet; country activity beyond the raw active-country count needs Phase 6+ content
-- [ ] Mission creation/editing/scheduling, Challenge launch, Surprise challenge, Question editing — Phase 6-7, not started (shown as inert "Quick action" placeholders naming the phase, per the runbook's own "Quick-action placeholders" Phase 5 build item)
-- [ ] Voting controls — Phase 9, not started (same placeholder treatment)
-- [ ] Photo moderation, Featured media — Phase 10, not started (same placeholder treatment)
-- [ ] Bonus points, Point deductions — Phase 8, not started (same placeholder treatment)
-- [ ] Theme change — Phase 15, not started (same placeholder treatment)
-- [ ] Chapter lock/unlock — Phase 6, not started (same placeholder treatment)
-- [ ] Wally Control Room (`/admin/live/wally`) — Phase 13, not started
-- [ ] Audience targeting, Live notifications — Phase 12, not started (same placeholder treatment)
-- [ ] Spectator screen controls — Phase 18, not started
+- [ ] Country activity, Squad activity — squads don't exist yet; country activity beyond the raw active-country count needs squads/Phase 6+ aggregation this project hasn't built
+- [x] Mission creation/editing/scheduling, Challenge launch — **STALE ENTRY CORRECTED 2026-09-13**: this was accurate when written during the original Phase 5 audit pass, but Phases 6-10 have since shipped real mission/challenge/day management (`/admin/missions`, `/admin/missions/new`) — see the "Content Engine" and "Submission Engine" sections below for the real evidence. "Surprise challenge, Question editing" beyond the single-challenge-per-mission model remain real, disclosed gaps — see the Content Engine section, not "not started."
+- [x] Voting controls — **STALE, CORRECTED**: Phase 9 shipped (`/admin/voting`, `/admin/voting/new`) — see the Voting section below.
+- [x] Photo moderation, Featured media — **STALE, CORRECTED**: Phase 10 shipped (`/admin/submissions`, `/admin/media`) — see the Media Uploads section below.
+- [x] Bonus points, Point deductions — **STALE, CORRECTED**: Phase 8 shipped bonus-point awarding (`/admin/scoring`) — see the Scoring section below. Point *deductions* specifically (a negative award) aren't a distinct UI affordance, though the same form accepts a negative amount — a real, minor disclosed gap (no dedicated "deduct" framing/confirmation copy).
+- [ ] Theme change — Phase 15, still not started
+- [x] Chapter lock/unlock — **STALE, CORRECTED**: day status (DRAFT/LIVE/COMPLETED) is a real, working admin control on `/admin/missions` (the "Days" section) — see the Content Engine section below.
+- [x] Wally Control Room (`/admin/live/wally`) — **PARTIAL, CORRECTED 2026-09-13**: real GLOBAL/PLAYER message triggering shipped this session (Phase 13 W1/W2) — see the Wally section below. Full audience/skin/scheduling panel (§16.1) still not built.
+- [x] Audience targeting, Live notifications — **PARTIAL, CORRECTED**: Wally's own GLOBAL/PLAYER targeting shipped (above); the general admin-notification composer (Phase 12, distinct from Wally) remains blocked on Supabase migration-apply tool access — see the Admin Notifications section below.
+- [ ] Spectator screen controls — Phase 18, still not started
 - [x] Audit log works
 
   **Requirement:** Product Guide §4.5, §27
@@ -384,7 +384,7 @@ This remaining blocker is not something this session can resolve unilaterally (p
   **Result:** PASS
   **Verified:** 2026-09-13
 
-- [ ] Emergency pause — Phase 12, not started (same placeholder treatment)
+- [x] Emergency pause — **STALE ENTRY CORRECTED 2026-09-13**: real, server-enforced pause/resume shipped (Product Guide §17.3, Phase 12 half) — see "Phase 12 — Pause/resume" in `docs/PROJECT_STATE.md` for the full verification write-up.
 
 ## Content Engine (Phase 6 — Product Guide §9, §18)
 
@@ -642,30 +642,39 @@ This remaining blocker is not something this session can resolve unilaterally (p
   **Commit:** `1fabece`
   **Known limitations:** spec-vs-art conflict flagged, unresolved (see below); assets served from `public/`, not Supabase Storage yet.
 
-- [ ] Wally architecture matches `docs/WALLY.md` — PARTIAL: asset registry only, no controller/state machine/priority queue (W1, Phase 13)
-- [ ] Wally does not own authoritative score logic — trivially true (no score logic exists at all yet)
-- [ ] Personalized name greeting — not built
-- [ ] Mission introduction — not built
-- [ ] Correct-answer reaction — not built
+- [x] Wally architecture matches `docs/WALLY.md` — PARTIAL but real: event/dialogue core (W1) + 2D prototype (W2) per §37's build order, verified live 2026-09-13
+
+  **Requirement:** `docs/WALLY.md` §37 W1 ("event schema; controller; priority queue; dialogue resolver; safe variables; local debug trigger... test event can resolve deterministic dialogue and state") + W2 ("WallyProvider; WallyViewport; 2D renderer; speech bubble; entry/exit movement; admin trigger panel basic version; realtime event handling... Wally reacts to mission completion, bonus points and admin message; targeted realtime Wally event appears without refresh; no fabricated numbers")
+  **Implementation:** `src/wally/behavior/priority.ts` (`shouldInterrupt` — a real, if single-slot, priority resolver per §6.1), `src/wally/dialogue/resolver.ts` (`selectDialogue`'s full §29.4 fallback chain, `substituteVariables`), `src/components/wally/{WallyProvider,WallySpeechBubble}.tsx`, `src/app/admin/live/wally/{page,actions,WallyTriggerForm}.tsx` (`publishWallyEvent`, role-gated via new `canTriggerWally`), wired into `src/app/(player)/layout.tsx` and the mission page's "already completed" branch (`src/app/(player)/play/mission/[missionId]/page.tsx`)
+  **Tests:** `priority.test.ts` (6), `resolver.test.ts` (10), `roles.test.ts` (+1) — 96 unit tests total, `pnpm verify` clean. Live Playwright E2E (two players + admin, synthetic accounts fully deleted after): LOGIN_GREETING shows the real first name via the deterministic highest-weight dialogue variant; admin targets Player B by email — Player B's already-open tab shows it live with no reload, Player A never sees it; admin sends a GLOBAL message (behind a `window.confirm` gate) — both players' already-open tabs show it live; a real correct mission answer produces a Wally reaction showing the exact, non-fabricated points from `score_events`.
+  **Security:** `publishWallyEvent` is role-gated (`canTriggerWally` = GAME_MASTER/SUPER_ADMIN) and audit-logged; broadcast payload is a bare ping only (runbook §21) — the actual dialogue/target is never in it, so even a client subscribed to another player's `player:{id}` topic name learns nothing (its own refetch is still RLS-scoped to its own `auth.uid()`, per `wally_events`'s existing "own-targeted or GLOBAL" policy). Admin message text is rendered as plain React text (auto-escaped), never `dangerouslySetInnerHTML`.
+  **Real bug found and fixed during this verification**: `WallyProvider`'s LOGIN_GREETING effect wrote its "already greeted" session flag *before* awaiting its dialogue fetch, to "claim" the greeting ahead of a possible double-run — this exact ordering breaks under React Strict Mode's dev-mode mount→unmount→remount cycle: the first invocation writes the flag synchronously before yielding, so the second (final, stable) invocation's own synchronous check reads it as already-set and bails, while the first invocation's own later continuation finds itself `cancelled` and also bails — neither ever calls `tryShow`, so the greeting silently never appears in dev at all (not merely delayed, unlike the different, already-documented Presence latency pattern). Fixed by writing the flag only after the async work resolves and the greeting is about to be shown.
+  **Result:** PASS for the W1/W2 scope actually claimed
+  **Verified:** 2026-09-13
+  **Real, disclosed scope boundaries — not the full architecture, and not claimed as such**: one active "slot," not a real queue (`priority.ts`'s header); GLOBAL/PLAYER audience only, no COUNTRY/ENTITY/SQUAD (matches `wally_events`'s own RLS policy, which defers the same thing pending a `profiles`/`squad_members` join); no `wally_event_receipts` persistence — dedupe is in-memory for the life of the mounted component, a page reload can re-show an event once more; no scheduling (`starts_at` unused, matching the Phase 12 notification-composer disclosure); still only 8 static poses, no rigged animation/state machine, no 3D (W4, Phase 14); no quality-tier resolver (Lite is the *only* tier that currently exists, not formally selected); Wrong-answer/achievement/photo-approval/bonus-point/country-overtake/Wally-Drop reactions not wired (those events don't have a UI trigger yet — Wally reacts to what already exists: mission completion and admin messages); no I-BELONG sequence (deliberately, to not spoil it); no analytics/receipts (W7).
+- [ ] Wally does not own authoritative score logic — holds: `publishWallyEvent` never touches `score_events`; the mission-completion reaction only *displays* `earnedPoints`, computed the same way the player-facing page already computes it from the real ledger
+- [x] Personalized name greeting — **built**, see above (real `first_name`, never fabricated)
+- [ ] Mission introduction — not built (Wally doesn't yet introduce a mission before the player starts it, only reacts after completion)
+- [ ] Correct-answer reaction — built for whole-mission completion (see above); not built at the individual-question level for multi-question missions (this project only supports one challenge per mission today, so the distinction doesn't yet arise)
 - [ ] Wrong-answer reaction — not built
-- [ ] Achievement reaction — not built
-- [ ] Photo approval reaction — not built
-- [ ] Bonus-point reaction — not built
-- [ ] Country-overtake reaction — not built
+- [ ] Achievement reaction — not built (no achievement engine exists yet, Phase 17)
+- [ ] Photo approval reaction — not built (would need the same "durable, server-rendered surface" pattern used for mission completion, applied to the submissions/gallery pages — not attempted this slice)
+- [ ] Bonus-point reaction — not built (Phase 8's `/admin/scoring` bonus-award flow doesn't yet publish a Wally event)
+- [ ] Country-overtake reaction — not built (no country leaderboard-change detection exists)
 - [ ] Wally Drop realtime — not built
-- [ ] Targeted player message — not built
-- [ ] Country-targeted message — not built
-- [ ] Squad-targeted message — not built
-- [ ] Global message — not built
-- [ ] Wally admin preview — not built
+- [x] Targeted player message — **built and verified live**, see above
+- [ ] Country-targeted message — not built (deferred with COUNTRY/ENTITY/SQUAD audience generally, see scope boundaries above)
+- [ ] Squad-targeted message — not built (squads don't exist)
+- [x] Global message — **built and verified live**, see above
+- [x] Wally admin preview — **built**: `WallyTriggerForm`'s live client-side preview bubble, plus a mandatory `window.confirm()` for GLOBAL sends per §16.3 — not the full audience/skin/scheduling preview stage §16.1 eventually describes
 - [ ] Wally animation states — only 8 static poses exist, no state machine/transitions
-- [ ] Wally does not interrupt critical form actions — N/A yet, nothing interrupts anything
-- [ ] Reduced-motion mode — implemented for the landing page's scroll-reveal (`motion-reduce:` variant), not yet for a Wally controller (doesn't exist)
+- [x] Wally does not interrupt critical form actions — the speech bubble is a small, dismissible, fixed-corner overlay (`WallySpeechBubble.tsx`) that never covers primary controls, per §12.4's collision rule
+- [ ] Reduced-motion mode — the bubble's entrance animation is `motion-safe:`-gated (appears instantly under `prefers-reduced-motion`), but there's no dedicated Wally-specific reduced-motion test yet
 - [ ] Lite/2D fallback — the entire current asset set *is* 2D/Lite-tier by nature, but no quality-tier resolver exists to formally select it
-- [ ] Mobile performance acceptable — checked visually for the one page Wally appears on; no dedicated perf budget test yet
+- [ ] Mobile performance acceptable — checked visually for the pages Wally appears on; no dedicated perf budget test yet
 - [ ] Seven-day Wally progression — **flagged conflict, see below**, not built
 - [ ] I-B-E-L-O-N-G sequence — deliberately not implemented/displayed yet (would spoil the mechanic if built carelessly)
-- [ ] Wally analytics events — not built
+- [ ] Wally analytics events — not built (W7)
 
 **Flagged, unresolved — needs the product owner, now reinforced by a second document:** `docs/WALLY.md` §3.1/§20 describes an explorer/traveller Wally with day-by-day costume changes; `docs/ITM15_STORYLINE_EXPERIENCE_BUILD_BIBLE.md` §13-19 independently specifies the same system in more scene-level detail (archivist/Day 1, traveller/Day 2, historian/Day 3, People Champion/Day 4, futuristic Builder/Day 5, Connector/Day 6, Future Wally/Day 7). The actual `MASCOTTE.zip` art is one consistent Walumo-branded professional character, punctuality/clock-themed, no costume variants. Do not build the Day 1-7 skin system against this art as if it supports it — two independent specs now agree it's a real requirement, which makes resolving it (new art, or an explicit scope decision) more urgent, not less.
 

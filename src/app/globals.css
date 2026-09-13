@@ -93,6 +93,22 @@ h3 {
 }
 
 /*
+ * Wally speech bubble (src/components/wally/WallySpeechBubble.tsx) —
+ * enters from below, `motion-safe:` only so prefers-reduced-motion users
+ * get it appearing instantly instead (WALLY.md §31/§13.3).
+ */
+@keyframes wally-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
  * Narrative walkthrough preview (src/app/preview/page.tsx) — a simple fade+
  * rise on each slide change, keyed by React so it replays per slide.
  */

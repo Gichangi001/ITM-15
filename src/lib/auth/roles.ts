@@ -120,3 +120,12 @@ export function canControlGameState(roles: readonly Role[]): boolean {
 export function canSendNotifications(roles: readonly Role[]): boolean {
   return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
 }
+
+/**
+ * Product Guide §4.4: Game Master "Trigger Wally events" — docs/WALLY.md
+ * §34's "Publishing to GLOBAL requires Game Master or Super Admin" confirms
+ * the same role set, not a new tier.
+ */
+export function canTriggerWally(roles: readonly Role[]): boolean {
+  return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
+}

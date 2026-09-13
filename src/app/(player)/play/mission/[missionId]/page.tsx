@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { MissionChallengeForm } from "./MissionChallengeForm";
+import { selectDialogue, substituteVariables, type DialogueRow } from "@/wally/dialogue/resolver";
+import { WALLY_POSES } from "@/wally/rendering/assets";
+import Image from "next/image";
 
 export const metadata: Metadata = { title: "Mission — ITM@15" };
 
@@ -110,6 +113,28 @@ export default async function MissionPage({
     earnedPoints = (scoreEvents ?? []).reduce((sum, e) => sum + e.points, 0);
   }
 
+  // Wally's reaction to a real, server-approved mission completion
+  // (docs/WALLY.md §39 MVP acceptance #3/#4: "react to a server-approved
+  // mission completion," "display exact bonus points from an authoritative
+  // score event") — wired into this same server-rendered branch, not the
+  // client action state, for exactly the reason explained above: the
+  // transient client state never survives the revalidate. `earnedPoints`
+  // is already real (computed from score_events just above), never
+  // fabricated.
+  let wallyReactionText: string | null = null;
+  if (alreadyApproved) {
+    const { data: dialogueRows } = await supabase
+      .from("wally_dialogues")
+      .select("key, locale, event_type, variant, text, weight, is_active")
+      .eq("event_type", "MISSION_COMPLETED");
+    const dialogue = selectDialogue((dialogueRows ?? []) as DialogueRow[], {
+      key: "mission.completed",
+    });
+    wallyReactionText = dialogue
+      ? substituteVariables(dialogue.text, { points: earnedPoints })
+      : null;
+  }
+
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-16 sm:px-6">
       <div className="flex flex-col gap-2">
@@ -129,10 +154,24 @@ export default async function MissionPage({
       ) : !challenge ? (
         <p className="text-sm text-muted">This mission has no challenge configured yet.</p>
       ) : alreadyApproved ? (
-        <p className="text-sm text-walumo">
-          You&apos;ve already completed this mission. That counts.
-          {earnedPoints > 0 ? ` +${earnedPoints} points earned.` : ""}
-        </p>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-walumo">
+            You&apos;ve already completed this mission. That counts.
+            {earnedPoints > 0 ? ` +${earnedPoints} points earned.` : ""}
+          </p>
+          {wallyReactionText ? (
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-surface p-4">
+              <Image
+                src={WALLY_POSES["dance-pose"].src}
+                alt=""
+                width={48}
+                height={48}
+                className="shrink-0 rounded-full"
+              />
+              <p className="text-sm text-ink">{wallyReactionText}</p>
+            </div>
+          ) : null}
+        </div>
       ) : hasPendingSubmission ? (
         <p className="text-sm text-muted">
           Your submission is with the moderators. Check back soon.

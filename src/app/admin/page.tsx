@@ -8,6 +8,7 @@ import {
   canManageContent,
   canManageVoting,
   canModerateSubmissions,
+  canTriggerWally,
   canViewAuditLog,
 } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -32,12 +33,10 @@ const QUICK_ACTIONS = [
   { label: "📸 Review submissions", href: "/admin/submissions", capability: "canModerateSubmissions" },
   { label: "💰 Award bonus points", href: "/admin/scoring", capability: "canAwardBonusPoints" },
   { label: "🗳 Open a vote", href: "/admin/voting/new", capability: "canManageVoting" },
+  { label: "🧍 Trigger Wally", href: "/admin/live/wally", capability: "canTriggerWally" },
 ] as const;
 
-const NOT_YET_BUILT = [
-  { label: "🧍 Trigger Wally", phase: "Phase 13 — Wally 2D Behaviour" },
-  { label: "🎨 Change theme", phase: "Phase 15 — Themes" },
-] as const;
+const NOT_YET_BUILT = [{ label: "🎨 Change theme", phase: "Phase 15 — Themes" }] as const;
 
 const NOT_YET_AVAILABLE = [
   "Main mission completion rate (Phase 6-8 — needs per-mission attempt/completion aggregation, not built)",
@@ -62,6 +61,7 @@ const ACTIVITY_ICONS: Record<string, string> = {
   user_role_status_updated: "👤",
   media_asset_uploaded: "🖼",
   media_asset_featured_toggled: "🖼",
+  wally_event_published: "🧍",
 };
 
 /**
@@ -109,6 +109,7 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
     canModerateSubmissions: canModerateSubmissions(roles),
     canAwardBonusPoints: canAwardBonusPoints(roles),
     canManageVoting: canManageVoting(roles),
+    canTriggerWally: canTriggerWally(roles),
   } as const;
 
   const [
