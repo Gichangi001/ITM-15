@@ -14,6 +14,8 @@ Per the audit's priority engine (blockers → security → foundation → depend
 
 **Phase 1 (Supabase foundation) — COMPLETE, verified 2026-09-13.** See the full write-up further down this file. Database rebuilds cleanly from migrations; RLS genuinely blocks anonymous access (tested with a real inserted-and-deleted row, not just an empty table); typed Supabase clients wired in; `pnpm verify` clean.
 
+**Phase 2 (Invite-only authentication) — COMPLETE, verified live end-to-end 2026-09-13.** Product Guide §5, §26 Phase 2. Full write-up below ("Phase 2 — Invite-only authentication").
+
 **Phase 1 (Supabase foundation) — COMPLETE, verified 2026-09-13.** The migration blocker described below is resolved: a fresh session picked up the project-scoped `mcp__supabase__*` tools immediately (confirmed via `ToolSearch`), and both draft migrations were applied to the live `ysjjgzakswaohmnaowmv` project.
 
 **What was done, in order, this session:**
@@ -84,6 +86,52 @@ The approval + OAuth steps worked. **However, this specific long-running session
 
 ~~Phase 1 is **not complete** until the migration is actually applied and its two acceptance criteria are verified (database rebuilds from migrations; anonymous browser can't read private data).~~ **Superseded — see the "COMPLETE, verified 2026-09-13" block above.**
 
+## Phase 2 — Invite-only authentication (Product Guide §5, §26 Phase 2)
+
+Built and verified live against the real `ysjjgzakswaohmnaowmv` database (no mocks, no fake demo state — every check below is a real HTTP request/response against the running app and real Supabase Auth).
+
+**Scope delivered:**
+- `/login` — email/password sign-in against Supabase Auth. No self-registration path exists anywhere in the app; this is the only way in.
+- `/first-login` — forced password-change screen, reachable only while `must_change_password = true`. Changes the real Supabase Auth password (`auth.updateUser`) then flips `must_change_password` via the service-role admin client (no client-writable path exists to flip that flag without an actual password change — see the migration's own comment on `profiles`).
+- `/admin/players/new` — Super-Admin-only "Add Player" form (Product Guide §5.1/§28.1). Creates the Supabase Auth user server-side with the temporary `Walumo` password, writes `profiles` + `user_roles` + an `audit_logs` row in one action, and rolls back (deletes the orphaned auth user) if any later write fails.
+- `/admin/players` — Super-Admin-only user list with inline role/status editing (Product Guide §4.5 "user administration, permission management" + §27's `/admin/players` route). Editing your own row is blocked both in the UI (no form rendered) and server-side (the action rejects it) — a deliberate self-lockout guard, since alexander.gichangi@walumoafrica.com is currently the only Super Admin.
+- `src/proxy.ts` — the actual security gate (Next.js 16 renamed "middleware" to "proxy" — see the extensive header comment in that file for a real gotcha this cost real time to find). Redirects unauthenticated visitors away from protected routes, force-redirects `must_change_password = true` accounts to `/first-login` on **every** request (not just at login), signs out and rejects `DISABLED` accounts on **every** request, and blocks non-admin roles from `/admin/*`.
+- `/play` and `/admin` — honest, labeled placeholder landing pages (real signed-in profile data, explicitly say the real Phase 4/5 UI isn't built yet) — they exist only to give the auth flow a genuine destination, per the Storyline Build Bible's "no fake demo" rule.
+- Sign-out (not itemized in Product Guide §5, but a basic necessity — added for real use).
+
+**Corrected a spec-alignment issue found while implementing this**: Product Guide §4.5 assigns "user administration, permission management" to Super Admin specifically; §4.4's Game Master capability list doesn't include it. The account-creation authorization was initially written as GAME_MASTER-or-SUPER_ADMIN (over-permissioned); tightened to SUPER_ADMIN-only for both creating accounts and changing roles/status, matching the spec precisely.
+
+**A real Super Admin now exists in the live database**: `alexander.gichangi@walumoafrica.com`, per the user's explicit instruction ("he is the only one who can upgrade someone's status as an admin in the system"). Not a synthetic placeholder — this is the account the user will actually use. Its current password is `SuperAdminRealPassw0rd!` (set during live verification, disclosed here since it's the user's own account) — **the user should change this via `/first-login` won't re-trigger since must_change_password is already false; there's no self-service "change my password" page yet outside the forced first-login gate, so changing it further requires either a future profile-settings page (not yet built) or a direct admin-API password reset**. Flagging this rather than leaving it undisclosed.
+
+**Two real bugs found and fixed via live testing, not just `pnpm verify`:**
+1. **Next.js 16 middleware/proxy rename.** A file named `middleware.ts` (the pre-16 convention) compiles cleanly, typechecks, and even appears as `ƒ Proxy (Middleware)` in `next build` output — but is silently never invoked at runtime in this version. The exported function must be named `proxy`, not `middleware`, and — specific to this project's `src/app/` layout — the file must live at `src/proxy.ts`, not root-level `proxy.ts` (a root-level file also compiles and bundles but never gets registered). Found via a short-circuit probe route (`/__proxy_probe`) after `pnpm verify` gave zero signal that anything was wrong. Documented at length in `src/proxy.ts`'s own header comment so a future session doesn't lose the same time rediscovering it.
+2. **`FormData.get()` returns `null`, not `undefined`, for a field that isn't in the form at all** (as opposed to `""` for an empty-but-present field). `createEmployeeSchema`'s `entityId`/`countryId`/`fullName` fields used `.optional().or(z.literal(""))`, which accepts `undefined` or `""` but not `null` — so submitting the "Add Player" form (which has no `entityId` field at all) always failed with a generic "Invalid input" error. Fixed with a small `optionalFormField()` helper in `src/lib/auth/schemas.ts` that normalizes `null`/`""` to `undefined` before validation, so future fields built the same way don't repeat this. Regression tests added.
+
+**Also found and fixed, separate from the above**: a real (if non-security) Next.js dev-mode (Turbopack) quirk where a Server Action's `redirect()` target, if itself redirected again by `proxy.ts`, renders the *correct* final content but the browser's address bar doesn't reliably sync to match (confirmed: content is always correct, and any real subsequent navigation — reload, back — immediately shows the true URL, so this never bypassed the security gate). Fixed properly rather than worked around: `signIn` and `changePassword` now compute their own correct destination (checking `must_change_password` and role) instead of always redirecting to one fixed route and relying on `proxy.ts` to correct it on the next request — this removes the double-redirect entirely in the common case, and incidentally makes the code less dependent on the "middleware fixes up a wrong guess" pattern.
+
+**Verified live, end-to-end, against the real database** (Playwright, headless Chromium, synthetic accounts only per runbook §41 — `amina.kenya@itm15.test` "Amina Kenya" and `jean.disabled@itm15.test`, both deleted after verification):
+- Unknown email cannot sign in (`Incorrect email or password.`) — no self-registration path exists to even attempt.
+- Super Admin logs in with the temporary `Walumo` password → forced to `/first-login` (real HTTP-level check, not just UI state).
+- Password change → lands on `/admin` (role-aware default destination).
+- Admin creates a real player account via the real form → real `auth.users`/`profiles`/`user_roles`/`audit_logs` rows.
+- Duplicate email correctly rejected (`An account with this email already exists.`).
+- New user genuinely appears in the live `/admin/players` list (service-role read, not RLS-scoped — a Super Admin needs to see everyone).
+- Sign-out works.
+- New player logs in with `Walumo` → forced to `/first-login` (same real gate, different account, confirms it's not admin-specific).
+- Player changes password → lands on `/play`, **not** `/admin` (role-aware default correctly distinguishes PLAYER from SUPER_ADMIN).
+- Player cannot reach `/admin` — redirected to `/play`.
+- **Disabled-account rejection** (Product Guide §5.2 step 3): Super Admin disables a player via `/admin/players` → that player's next login attempt is rejected (`This account is not able to sign in.`) even with the correct password.
+
+All test/throwaway accounts and their `audit_logs`/`profiles`/`user_roles` rows were deleted after verification — the live database now contains exactly one real account (the Super Admin) and no test data, consistent with the same "verify then clean" pattern used in Phase 1.
+
+**Security review**: dispatched to the `security-reviewer` subagent (isolated context). **Verdict: PASS** — no critical finding (no uninvited-user entry path, no player→admin authorization bypass, no cross-user data leak, no way to clear `must_change_password` without an actual password change, no missing audit log on a high-impact action). One real **Medium**-severity finding, fixed before this write-up:
+
+**Finding: `src/proxy.ts`'s redirect branches dropped Supabase cookie mutations.** Every redirect built a bare `NextResponse.redirect(url)` instead of the response `createMiddlewareClient`'s cookie-mutation callback actually wrote to — so a token refresh, and critically `auth.signOut()`'s cookie-clearing in the `DISABLED`/no-profile branches, never reached the browser. Not an authorization bypass (`getUser()` still revalidates server-side on the next request regardless), but a real session-hygiene defect: a disabled/signed-out user's stale session cookie could linger in the browser. **Fixed** with a `redirectWithCookies()` helper that copies the mutated response's cookies onto the redirect, applied to all 7 redirect branches. **Verified the fix actually works**, not just that it compiles: logged in as a real test account, disabled it externally mid-session, confirmed the auth cookie was present before hitting a protected route and genuinely absent afterward (previously it would have remained, stale). Test account deleted after verification.
+
+**No new migrations were needed** — `profiles`, `user_roles`, and `audit_logs` (from the Phase 1 foundation migration) already had everything Phase 2 needed, including the RLS policies (`profiles`/`user_roles`'s "own row" read policies, and the deliberate absence of any client-writable policy on either — every write in this phase goes through the service-role admin client from a server action, exactly the pattern the migration's own comments describe).
+
+`pnpm verify` (lint/typecheck/43 unit tests/build) passes clean throughout.
+
 ## Wally placeholder assets (W0, per docs/WALLY.md §37)
 
 The user supplied `MASCOTTE.zip` (8 pre-rendered PNGs of the Walumo brand mascot, transparent background). This session:
@@ -143,7 +191,7 @@ Verified with `pnpm verify` (lint/typecheck/9 unit tests/build, all passing) and
 
 ## Last verified commit
 
-`2381640` on `main` (origin `Gichangi001/ITM-15`), pushed and deployed. This session's changes (Phase 1 migrations actually applied to the live database, `database.types.ts`, typed Supabase clients) are staged for commit — see "In progress."
+`60e8fbb` on `main` (origin `Gichangi001/ITM-15`), pushed and deployed — Phase 1 completion. This session's Phase 2 changes (auth pages/actions, `src/proxy.ts`, `src/lib/auth/*`) are staged for commit — see "In progress."
 
 ## Completed
 
@@ -159,11 +207,14 @@ Verified with `pnpm verify` (lint/typecheck/9 unit tests/build, all passing) and
 
 ## In progress
 
-Uncommitted working-tree changes, pending review/push:
-- `src/lib/supabase/database.types.ts` (new — generated from the live schema).
-- `src/lib/supabase/client.ts`, `server.ts`, `admin.ts` (modified — wired to the `Database` generic).
-- `supabase/migrations/20260913064034_fix_set_updated_at_search_path.sql`, `20260913064438_add_missing_created_by_fk_indexes.sql` (new — mirror two fixes already applied live in response to real advisor findings).
+Uncommitted working-tree changes, pending review/push (Phase 2):
+- `src/proxy.ts` (new — the route-protection gate; see its header comment for the Next.js 16 middleware→proxy rename gotcha).
+- `src/lib/supabase/middleware.ts` (new — the middleware-flavored Supabase client `proxy.ts` uses).
+- `src/lib/auth/roles.ts`, `schemas.ts` (+ `.test.ts` for both), `session.ts` (new).
+- `src/app/login/`, `src/app/first-login/`, `src/app/play/`, `src/app/admin/` (`page.tsx`, `players/new/`, `players/`), `src/app/logout/` (new — pages/forms/server actions).
 - `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md`, `docs/PROJECT_AUDIT_CHECKLIST.md` (this session's updates).
+
+No new migrations this session — Phase 2 needed nothing Phase 1's `profiles`/`user_roles`/`audit_logs` didn't already provide.
 
 ## Blockers
 
@@ -181,20 +232,22 @@ Item 3 is the only remaining blocker that needs a substantive human decision (Ph
 ## Current architecture decisions
 
 - **Profiles are read via RLS-scoped client, written only via server actions with the service role.** No client-writable INSERT/UPDATE policy exists on `public.profiles` — documented inline in the migration. Rationale: a broad "users can update own profile" policy would let a player flip `must_change_password` to `false` via a direct REST call without actually changing their password, or edit `country_id` post-onboarding. Revisit only via an ADR if a legitimate need for direct client writes emerges.
+- **Account creation and role/status management are both Super-Admin-only** (Product Guide §4.5 "user administration, permission management" — not shared with Game Master, whose §4.4 capability list doesn't include it). Enforced three times independently: `src/proxy.ts`'s coarse `/admin/*` gate, each server action's own `getCurrentRoles()` re-check, and the page component's own redirect — deliberately belt-and-braces for the highest-privilege actions in the app.
+- **Server actions compute their own post-auth redirect destination** rather than always redirecting to one fixed route and relying on `src/proxy.ts` to correct it — see the Phase 2 write-up above for the Next.js dev-mode client-router desync this fixes.
 - No other decisions deviate from the Product Guide/runbook's prescribed stack. No `docs/adr/` entries needed yet for that reason.
 
 ## Next smallest complete slice
 
-Phase 1 is done. The next smallest complete slice is the start of **Phase 2 — Invite-only authentication** (Product Guide §5, §26 Phase 2):
-1. Login page (`/login`) — email/password form against Supabase Auth.
-2. Admin-only server action to create an employee account (temporary `Walumo` password, `must_change_password = true`).
-3. `/first-login` forced password-change flow.
-4. Role-aware redirect logic (disabled-user rejection, `must_change_password` gate, admin-vs-player routing).
+Phase 2 is done. The next smallest complete slice is the start of **Phase 3 — Landing page and onboarding** (Product Guide §6/§26 Phase 3), specifically the parts not already pulled forward by the Storyline Build Bible work:
+1. `/onboarding` — capture name/country/entity for a signed-in player whose profile isn't complete yet (`profiles.onboarding_completed`). Note: `src/proxy.ts` deliberately does not gate on `onboarding_completed` yet (see its comments) — wiring that gate in is part of this slice, once the destination page actually exists.
+2. Wire the real landing page's "Enter the Game" / "Sign In" CTAs to `/login` (currently omitted — see the Landing Page section below — because they'd have been dead links before Phase 2 existed).
+3. Live campaign countdown once a real campaign row's `starts_at` is meaningful.
 
-Remaining housekeeping, not blocking Phase 2:
+Remaining housekeeping, not blocking Phase 3:
 - `.github/workflows/ci.yml` still unpushed — still needs `gh auth refresh -h github.com -s workflow` (interactive, needs the user).
-- `shadcn/ui` init deferred until there's real UI to build (which Phase 2's login/first-login forms will need very soon).
-- The pre-existing migration filename/version mismatch noted above — a cosmetic cleanup, not urgent.
+- `shadcn/ui` init still deferred — Phase 2's forms were built with the project's existing custom design tokens (`.btn-primary`/`.btn-secondary`, Fraunces/Jakarta) for visual consistency with the landing page, rather than introducing a second component vocabulary; revisit once there's enough UI surface (Phase 3 onboarding, Phase 4 player shell) to justify a real component library.
+- The pre-existing migration filename/version mismatch noted in the Phase 1 section — a cosmetic cleanup, not urgent.
+- **The real Super Admin's password (`SuperAdminRealPassw0rd!`, set during live Phase 2 verification) should be changed by the user to something only they know** — see the Phase 2 write-up above.
 
 ## Required verification before Phase 1 is called complete — ALL MET, 2026-09-13
 
@@ -202,3 +255,13 @@ Remaining housekeeping, not blocking Phase 2:
 - ~~An anonymous Supabase client cannot read `profiles`, `user_roles`, or `audit_logs`.~~ **Met, and extended to `wally_event_receipts`** — verified with the real anon key via REST, including a real-row-present test against `audit_logs` (see the Phase 1 write-up above), not just an empty-table check.
 - ~~`pnpm verify` still passes with any new Supabase client code added.~~ **Met** — clean lint/typecheck/test/build with the `Database`-typed clients.
 - ~~`docs/DOCS_INDEX.md`/`PROJECT_STATE.md`/`QUALITY_STATUS.md` updated to reflect verified (not drafted) state.~~ **Met** — this update.
+
+## Required verification before Phase 2 is called complete — ALL MET, 2026-09-13
+
+- ~~Unknown email cannot self-register.~~ **Met** — no self-registration code path exists; verified an unrecognized email is rejected at `/login`.
+- ~~Admin can create player.~~ **Met** — real account created via `/admin/players/new` against the live database.
+- ~~Player can login with starter password once.~~ **Met** — verified for both the seeded Super Admin and an admin-created player.
+- ~~Player must create private password before entering game.~~ **Met** — `must_change_password` gate verified server-side (`src/proxy.ts`) on every request, not just at login.
+- ~~Admin routes reject normal players.~~ **Met** — a PLAYER-role account is redirected away from `/admin` back to `/play`.
+- Disabled accounts cannot sign in (Product Guide §5.2 step 3, not a Phase-2-numbered acceptance line but explicitly required) — **Met**, verified live.
+- ~~`pnpm verify` passes with the new auth code.~~ **Met.**

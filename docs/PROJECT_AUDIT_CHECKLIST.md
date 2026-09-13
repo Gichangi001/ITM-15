@@ -4,7 +4,7 @@ Last audit: 2026-09-13
 Branch: main
 Commit: `2381640` (Phase 1 completion work lands in the commit(s) immediately after)
 Environment: local dev machine, Vercel production (`https://itm-15.vercel.app`, HTTP 200 confirmed this audit), Supabase project `ysjjgzakswaohmnaowmv` (**schema applied and verified this session**)
-Current build phase: Phase 0 done except one user-blocked item; **Phase 1 (Supabase) COMPLETE and verified** — migrations applied, RLS verified with real anon-key REST calls against real inserted data, advisors clean, typed clients wired in; Wally W0 (placeholder assets/tables) now on the same real, applied database; Phase 3's landing-page teaser section built early and out of strict phase order (a deliberate, disclosed choice — see "Seven-Day Story" below), everything else (Phase 2, 4-21) not started.
+Current build phase: Phase 0 done except one user-blocked item; **Phase 1 (Supabase) COMPLETE and verified**; **Phase 2 (invite-only authentication) COMPLETE, verified live end-to-end** against the real database (login, forced first-login, admin account creation, Super-Admin-only role/status management, disabled-account rejection, admin-route protection); Wally W0 (placeholder assets/tables) on the same real database; Phase 3's landing-page teaser section built early and out of strict phase order (a deliberate, disclosed choice — see "Seven-Day Story" below), everything else (Phase 3's onboarding form, Phase 4-21) not started.
 
 ## How to read this file
 
@@ -13,14 +13,14 @@ Current build phase: Phase 0 done except one user-blocked item; **Phase 1 (Supab
 ## Executive Status
 
 - Total requirements tracked here: 151
-- Verified complete: 20 (+5 this session — see Database & RLS)
+- Verified complete: 33 (+13 this session — see Authentication & User Management)
 - In progress: 5
-- Pending: 126
+- Pending: 113
 - Blocked: 1 (needs a user action, not more engineering — see Critical Blockers)
 - Failed verification: 0
 - Deferred: 0
 
-Overall completion: **Phase 0 done bar one item; Phase 1 of 21 COMPLETE** (Product Guide §26 numbering). One piece of Phase 3 (the landing-page story teaser) was built ahead of order — disclosed, not hidden — everything else is untouched.
+Overall completion: **Phase 0 done bar one item; Phases 1-2 of 21 COMPLETE** (Product Guide §26 numbering). One piece of Phase 3 (the landing-page story teaser) was built ahead of order — disclosed, not hidden — everything else is untouched.
 Release readiness: **NOT READY.** Expected at this stage — recorded as the honest baseline, not a finding demanding immediate action beyond what's below.
 
 ## Critical Blockers
@@ -113,22 +113,121 @@ This remaining blocker is not something this session can resolve unilaterally (p
 
 ## Authentication & User Management (Phase 2 — Product Guide §5, audit-control doc §14)
 
-Foundation exists (`src/lib/supabase/{client,server,admin}.ts`); zero auth UI/server actions built. All pending:
+**COMPLETE, verified live end-to-end 2026-09-13** against the real `ysjjgzakswaohmnaowmv` database — see `docs/PROJECT_STATE.md`'s full Phase 2 write-up for the complete narrative (including two real bugs found and fixed via live testing that `pnpm verify` alone would not have caught: a Next.js 16 `middleware.ts`→`proxy.ts` rename that silently no-ops, and a `FormData.get()` null-handling gap).
 
-- [ ] Admin can create employee account (`/admin/players/new` server action)
-- [ ] Email stored correctly (unique, required)
-- [ ] Name/country/entity stored correctly (optional at creation, required before gameplay)
-- [ ] Temporary `Walumo` password flow works
-- [ ] `Walumo` cannot remain a permanent password (`must_change_password` gate)
-- [ ] Forced password reset works (`/first-login`, min 10 chars, disallow exact `Walumo` reuse)
-- [ ] Private password stored through Supabase Auth (not a custom table)
-- [ ] Session persists correctly
-- [ ] Logout works
-- [ ] Unauthorized/unknown email cannot self-register
-- [ ] Admin route protection works (player cannot reach `/admin/*`)
-- [ ] User role is server-verified (never trust a client-supplied role)
-- [ ] Login page (`/login`) — cinematic background, Wally teaser, show/hide password, "Need help?" action
-- [ ] Disabled-user handling (profile `status = DISABLED` rejected even with a valid Auth session)
+- [x] Admin can create employee account (`/admin/players/new` server action)
+
+  **Requirement:** Product Guide §5.1
+  **Implementation:** `src/app/admin/players/new/actions.ts` (`createEmployeeAccount`) — Super-Admin-only (see role-verification item below), creates the Supabase Auth user server-side, writes `profiles`+`user_roles`+`audit_logs` in one action, rolls back (deletes the orphaned auth user) on any later write failure
+  **Tests:** live Playwright run against the real database — admin created a real synthetic player account through the real form
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Email stored correctly (unique, required)
+
+  **Requirement:** Product Guide §5.1
+  **Implementation:** `profiles.email` has a `unique` constraint (`supabase/migrations/... profiles_email_unique`, applied during Phase 1 completion); Supabase Auth's own `auth.users.email` uniqueness is the primary guarantee
+  **Tests:** live duplicate-email submission via `/admin/players/new` correctly rejected (`An account with this email already exists.`)
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Name/country/entity stored correctly (optional at creation, required before gameplay)
+
+  **Requirement:** Product Guide §5.1
+  **Implementation:** `createEmployeeSchema` (`src/lib/auth/schemas.ts`) — `fullName`/`countryId`/`entityId` all optional; `entityId` has no form field yet (no entity-management UI exists), `countryId` has a live country picker sourced from `public.countries`
+  **Tests:** live creation with a country selected, confirmed stored correctly
+  **Result:** PASS (entity assignment UI itself is a future addition, not required for this criterion — the schema/storage already supports it)
+  **Verified:** 2026-09-13
+
+- [x] Temporary `Walumo` password flow works
+
+  **Requirement:** Product Guide §5.1
+  **Implementation:** `createEmployeeAccount` calls `admin.auth.admin.createUser({ password: "Walumo", email_confirm: true })`
+  **Tests:** live login with `Walumo` succeeded for both an admin-created player and the seeded Super Admin
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] `Walumo` cannot remain a permanent password (`must_change_password` gate)
+
+  **Requirement:** Product Guide §5.1, §5.3
+  **Implementation:** `profiles.must_change_password` defaults `true` on creation; `src/proxy.ts` force-redirects to `/first-login` on **every** request (not just at login) while it's true
+  **Tests:** live — attempted to reach `/play`/`/admin` directly after `Walumo` login, always redirected to `/first-login` first
+  **Security:** the gate is re-checked server-side per-request, not a one-time client redirect
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Forced password reset works (`/first-login`, min 10 chars, disallow exact `Walumo` reuse)
+
+  **Requirement:** Product Guide §5.3
+  **Implementation:** `changePasswordSchema` (`src/lib/auth/schemas.ts`) — `.min(10)`, `.refine(password !== "Walumo")`; `src/app/first-login/actions.ts` calls real `auth.updateUser({password})`
+  **Tests:** unit tests (`schemas.test.ts`) for both rules; live — real password change succeeded and gate lifted
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Private password stored through Supabase Auth (not a custom table)
+
+  **Requirement:** Product Guide §5.3 ("private password")
+  **Implementation:** all password reads/writes go through `supabase.auth.*` — no password field exists anywhere in `public.profiles` or any other application table
+  **Result:** PASS (true by construction — verified by inspecting the schema, no password column exists)
+  **Verified:** 2026-09-13
+
+- [x] Session persists correctly
+
+  **Requirement:** implicit (Supabase Auth session cookie)
+  **Implementation:** `@supabase/ssr`'s cookie-based session, refreshed by `src/proxy.ts` on every request via `supabase.auth.getUser()`
+  **Tests:** live — multi-step flows (create account → sign out → sign back in as a different account) worked correctly across real page navigations
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Logout works
+
+  **Requirement:** basic necessity, not itemized in Product Guide §5 but required for a functioning auth system
+  **Implementation:** `src/app/logout/actions.ts` (`signOut`) — calls `supabase.auth.signOut()`, redirects to `/login`
+  **Tests:** live — confirmed session actually ends (subsequent protected-route access redirects to `/login`)
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Unauthorized/unknown email cannot self-register
+
+  **Requirement:** Product Guide §26 Phase 2 acceptance
+  **Implementation:** no self-registration route/server action exists anywhere in the app — `/login` is the only entry point, and it only calls `signInWithPassword`, never `signUp`
+  **Tests:** live — login attempt with an unrecognized email rejected with a generic `Incorrect email or password.` (no account-enumeration signal)
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Admin route protection works (player cannot reach `/admin/*`)
+
+  **Requirement:** Product Guide §26 Phase 2 acceptance
+  **Implementation:** `src/proxy.ts`'s coarse admin-surface gate, re-checked independently by every admin server action and page component (`getCurrentRoles()`, RLS-scoped "own row" read — a client cannot spoof another role)
+  **Tests:** live — a real PLAYER-role account was redirected from `/admin` back to `/play`
+  **Security:** reviewed by the `security-reviewer` subagent (isolated context) — verdict PASS, one Medium finding (redirect responses dropping Supabase cookie mutations — session hygiene, not an authz bypass) fixed and empirically re-verified (disabled a real account mid-session, confirmed its cookie is now genuinely cleared). See `docs/PROJECT_STATE.md` for the full account
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] User role is server-verified (never trust a client-supplied role)
+
+  **Requirement:** CLAUDE.md non-negotiable ("Security, authorization... are server-authoritative")
+  **Implementation:** `getCurrentRoles()` (`src/lib/auth/session.ts`) reads `user_roles` through the RLS-scoped client with no id parameter — it is structurally impossible for a caller to request another user's roles through this function
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [ ] Login page cinematic background / Wally teaser / "Need help?" action — **not built**. `/login` is a plain, functional form using the project's existing design tokens (`.btn-primary`, Fraunces/Jakarta), consistent visually with the landing page but without the cinematic/Wally treatment Product Guide §5.2 describes. Deliberate scope boundary for this slice — Wally integration is Phase 13, and a cinematic pass is a visual-QA follow-up, not a functional gap.
+
+- [x] Disabled-user handling (profile `status = DISABLED` rejected even with a valid Auth session)
+
+  **Requirement:** Product Guide §5.2 step 3
+  **Implementation:** checked both at sign-in (`src/app/login/actions.ts`) and on every subsequent request (`src/proxy.ts`) — a mid-session disable takes effect immediately, not just at next login
+  **Tests:** live — Super Admin disabled a real player account via `/admin/players`; that account's next login attempt was rejected (`This account is not able to sign in.`) despite the correct password
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+**Also delivered, beyond the checklist's original scope** — Product Guide §4.5's "user administration, permission management" (Super-Admin-only role/status management, `/admin/players`), added per explicit user instruction this session. Not previously itemized here because the original checklist seed predated that requirement being surfaced.
+
+**Real gaps, disclosed rather than hidden:**
+- No committed, CI-runnable E2E suite (`tests/e2e/`) — this session's verification scripts live only in the scratchpad, not the repo.
+- No dedicated visual/mobile/accessibility QA pass on the new pages.
+- Not yet verified against the Vercel preview/production deployment, only local `pnpm dev`.
+- No `/onboarding` yet — `src/proxy.ts` deliberately doesn't gate on `profiles.onboarding_completed` until that page exists (see its code comments).
 
 ## Employee Onboarding (Phase 3 — Product Guide §5.4)
 
@@ -137,7 +236,7 @@ Foundation exists (`src/lib/supabase/{client,server,admin}.ts`); zero auth UI/se
 - [ ] Automatic squad assignment on completion (if enabled)
 - [ ] Incomplete profile cannot bypass onboarding into `/play`
 
-Note: the landing page itself (hero + story teaser) was built this session ahead of this phase's usual order — see "Seven-Day Story" below. Onboarding/login were **not** pulled forward with it; they still need Phase 2's auth foundation first.
+Note: the landing page itself (hero + story teaser) was built ahead of this phase's usual order — see "Seven-Day Story" below. Login is now built (Phase 2, complete); onboarding itself still isn't — it's the next smallest slice per `docs/PROJECT_STATE.md`.
 
 ## Database & RLS (Phase 1 — Product Guide §26)
 
@@ -506,6 +605,12 @@ Curated to the requirements with real evidence one way or another (verified or m
 | DB-003 | Database rebuilds from migrations | Product Guide §26 Phase 1 acceptance | 4 migrations applied in sequence, zero errors | `apply_migration`/`list_migrations` | N/A | VERIFIED |
 | DB-004 | Anonymous cannot read private data | Product Guide §26 Phase 1 acceptance | RLS policies (deny-all on `audit_logs`; own-row on `profiles`/`user_roles`/`wally_event_receipts`) | Real anon-key `curl` against a genuinely-inserted-then-deleted `audit_logs` row — confirmed invisible, not just "table empty" | Verified against live REST API, not just RLS flags | VERIFIED |
 | DB-005 | Typed Supabase clients | Internal (typed DB access) | `database.types.ts` generated from live schema; wired into `client.ts`/`server.ts`/`admin.ts` | `pnpm verify` clean | Service-role client stays `server-only` | VERIFIED |
+| AUTH-001 | Invite-only login, no self-registration | Product Guide §5.2, §26 Phase 2 | `src/app/login/` | Live E2E against real DB | Generic error, no enumeration | VERIFIED |
+| AUTH-002 | Temporary `Walumo` password + forced first-login change | Product Guide §5.1, §5.3 | `src/app/first-login/`, `createEmployeeAccount` | Live E2E | `must_change_password` re-checked every request | VERIFIED |
+| AUTH-003 | Admin employee-account creation | Product Guide §5.1, §28.1 | `src/app/admin/players/new/actions.ts` | Live E2E, duplicate-email rejection | Super-Admin-only, audited | VERIFIED |
+| AUTH-004 | Admin route protection | Product Guide §26 Phase 2 acceptance | `src/proxy.ts` | Live E2E (PLAYER blocked from `/admin`) | Re-verified independently by every admin action | VERIFIED |
+| AUTH-005 | Disabled-account rejection (mid-session, not just at login) | Product Guide §5.2 step 3 | `src/proxy.ts`, `src/app/login/actions.ts` | Live E2E | Checked on every request | VERIFIED |
+| AUTH-006 | Super-Admin-only role/status management | Product Guide §4.5 | `src/app/admin/players/` | Live E2E | Self-lockout guard; audited | VERIFIED |
 | SEC-001 | Secrets excluded from Git/bundle | CLAUDE.md, audit doc §11 | `.env.local` gitignored, `grep`-verified | Manual | Is the control | VERIFIED |
 | SUP-001 | Supabase client helpers (browser/server/admin) | Product Guide §3 | `src/lib/supabase/{client,server,admin}.ts` | None (no live DB to test against) | `server-only` gated | IN PROGRESS |
 | ADR-001 | Prisma coexistence decision | Runbook §40 | `docs/adr/0001-...md` | N/A | Documents the RLS risk | VERIFIED |

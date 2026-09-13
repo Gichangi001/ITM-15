@@ -1,0 +1,57 @@
+/**
+ * Role vocabulary (Product Guide §4). Kept as a single source of truth so
+ * the check constraint in the migration, the Zod schema, and every
+ * authorization check in the app agree on the exact same set of strings.
+ */
+export const ROLES = [
+  "PLAYER",
+  "MODERATOR",
+  "COUNTRY_ADMIN",
+  "GAME_MASTER",
+  "SUPER_ADMIN",
+  "ANALYTICS_VIEWER",
+] as const;
+
+export type Role = (typeof ROLES)[number];
+
+/**
+ * Roles that may access anything under `/admin` at all (Product Guide §4 —
+ * every role except plain PLAYER has some admin-surface access). This is a
+ * coarse, route-group-level gate applied in middleware; each individual
+ * admin action/page independently re-checks the *specific* role it actually
+ * requires (e.g. only GAME_MASTER/SUPER_ADMIN may create accounts) — a
+ * readable/matched role here is not itself a fine-grained authorization
+ * decision, matching the pattern already documented in the profiles RLS
+ * policy comment.
+ */
+const ADMIN_SURFACE_ROLES: readonly Role[] = [
+  "MODERATOR",
+  "COUNTRY_ADMIN",
+  "GAME_MASTER",
+  "SUPER_ADMIN",
+  "ANALYTICS_VIEWER",
+];
+
+export function hasAdminSurfaceAccess(roles: readonly Role[]): boolean {
+  return roles.some((role) => ADMIN_SURFACE_ROLES.includes(role));
+}
+
+/**
+ * Product Guide §4.5 assigns "user administration, permission management"
+ * to Super Admin specifically — it is not in Game Master's §4.4 capability
+ * list (missions, points, themes, notifications, chapter locks; nothing
+ * about accounts or roles). So both creating new accounts and changing an
+ * existing account's role/status are Super-Admin-only, not shared with
+ * Game Master. Two distinct functions (not one shared check) so call sites
+ * name the capability they actually need, even though today both resolve
+ * to the same role set.
+ */
+const USER_ADMINISTRATION_ROLES: readonly Role[] = ["SUPER_ADMIN"];
+
+export function canCreateEmployeeAccounts(roles: readonly Role[]): boolean {
+  return roles.some((role) => USER_ADMINISTRATION_ROLES.includes(role));
+}
+
+export function canManageUserRoles(roles: readonly Role[]): boolean {
+  return roles.some((role) => USER_ADMINISTRATION_ROLES.includes(role));
+}
