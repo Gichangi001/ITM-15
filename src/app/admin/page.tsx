@@ -137,7 +137,14 @@ export default async function AdminHomePage() {
 
       recentActivity = auditRows.map((row) => ({
         action: row.action,
-        actorEmail: (row.actor_id && emailById.get(row.actor_id)) || "system",
+        // audit_logs.actor_id is `ON DELETE SET NULL` against auth.users —
+        // a real admin performed every one of these actions; this branch
+        // only fires once that admin's account has since been deleted
+        // (e.g. a synthetic test account cleaned up after verification).
+        // "system" would misleadingly imply an automated/non-human action,
+        // which never happens anywhere in this codebase today — say what
+        // actually happened instead.
+        actorEmail: (row.actor_id && emailById.get(row.actor_id)) || "an admin (account since removed)",
         createdAt: row.created_at,
       }));
     }

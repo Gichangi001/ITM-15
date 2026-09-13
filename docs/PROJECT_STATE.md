@@ -24,6 +24,8 @@ Per the audit's priority engine (blockers → security → foundation → depend
 
 **Phases 6-10 (Content Engine, Submission Engine, Authoritative Scoring, Voting & Nominations, Media Uploads & Moderation) — COMPLETE, verified live end-to-end 2026-09-13 by two independent sessions, plus a real bug found and fixed during that verification.** Product Guide §9-§12, §26 Phases 6-10. Built and verified by two Claude Code sessions working concurrently against the same live database (this repo's working tree and Supabase project are shared, not isolated) — each independently created its own synthetic test accounts/content, ran the full mission→submission→moderation→scoring→leaderboard→gallery loop plus the voting loop, and reached the same conclusions, including catching the identical `game_days` DRAFT-blocking-everything-inside-it bug. Convergent, independently-reproduced results from two separate runs is stronger evidence than either alone. Full write-up below ("Phases 6-9 — Content, Submissions, Scoring, Voting"); Phase 10 specifically also verified independently — photo upload to the private `challenge-submissions` bucket, the moderation queue's signed-URL preview, approval correctly awarding both base and unity points, and the public `/gallery` showing only approved content and nothing pending/rejected. **Phase 10's remaining gap (the admin Media Library, §12.4) closed the same day — see "Phase 10 (finish)" below.**
 
+**Phase 11 (Realtime engine) — COMPLETE, independently verified live end-to-end 2026-09-13.** Product Guide §14, §26 Phase 11. Full write-up below ("Phase 11 — Realtime engine").
+
 **Phase 1 (Supabase foundation) — COMPLETE, verified 2026-09-13.** The migration blocker described below is resolved: a fresh session picked up the project-scoped `mcp__supabase__*` tools immediately (confirmed via `ToolSearch`), and both draft migrations were applied to the live `ysjjgzakswaohmnaowmv` project.
 
 **What was done, in order, this session:**
@@ -242,6 +244,25 @@ The product owner pasted a large (~56-section) "ITM@15 ADMIN MISSION CONTROL" vi
 
 **Deliberately not done in this slice, and not silently implied by "improve":** none of the vision document's ~50 new mechanics were built. Whether/which of them become real future phases is the product owner's call, not something to decide unilaterally — see the vision doc's own closing note on what would need a real spec (schema, RLS, server authority, a phase number) before being buildable.
 
+## Phase 11 — Realtime engine (Product Guide §14, §26 Phase 11)
+
+**COMPLETE, independently verified live end-to-end 2026-09-13.** The code (`src/lib/realtime/broadcast.ts`, `useLiveRefresh.ts`, `src/components/realtime/{LiveRefresh,OnlineCount,PresenceHeartbeat}.tsx`, `src/lib/admin/audit.ts`'s `logAdminActivity`, and the wiring into every mission/submission/voting/scoring/media/player action) was found already built, uncommitted, from a concurrent session working the same slice — reviewed against the runbook's §21 realtime design rule ("presentation, not authority": every broadcast payload is a bare ping, real data always comes from a subsequent RLS/service-role-gated refetch) and found sound, then independently verified with a from-scratch live test rather than trusting the prior session's own `pnpm verify` pass alone.
+
+**Verified live** (Playwright, headless Chromium, two synthetic accounts uniquely named to avoid colliding with the concurrent session's own `rt.*` test fixtures — `claude.session.super@itm15.test`, `claude.session.player@itm15.test`, service-role created and fully deleted after): with every page opened once and never reloaded or re-navigated for the rest of its scenario —
+
+- **Presence**: `/admin`'s "Players online now" genuinely reads "—" until the first real sync, then updates from 0 to 1 the moment a player's browser tab opens `/play`, with no admin-side reload.
+- **Mission/day publish**: a player sitting on `/play/day/1` (showing "Not published yet") sees a brand-new mission appear on its own the instant an admin publishes both the mission and its day through the real UI in a separate tab.
+- **Scoring**: a `/leaderboards` tab opened before any points existed updates to show the real new total the instant the player (in a third tab) answers a quiz correctly — the actual `score_events` row, not a client guess.
+- **Moderation queue**: `/admin/submissions`, opened while genuinely empty, picks up a brand-new pending photo the instant a player uploads one, with no reload.
+- **Gallery**: `/gallery`, opened before any approved photos existed, shows the photo the instant a moderator approves it in a separate tab.
+- **Voting**: `/vote/{pollId}`, opened while the poll was still closed to players, reveals the voting form the instant an admin opens the poll live.
+
+**Two real bugs found during this verification — both in the test script, not the app**, disclosed rather than glossed over: (1) a `.first()` CSS selector meant to target a mission's own status form also matched the Days section's identically-shaped rows, so an early test run silently published the wrong thing; fixed by scoping the selector to the mission's own title text. (2) several "already open" tabs (`/leaderboards`, `/gallery`, `/vote/{id}`, `/admin/submissions`) were never actually authenticated before this test navigated them, so they silently sat on `/login` for the whole scenario — Playwright's `browser.newPage()` starts with no session, and these routes only became `PROTECTED_PREFIXES` entries recently enough that it was easy to forget. Both are recorded here because they're exactly the kind of mistake that produces a false "it works" if not caught, and catching them is what a real live-verification pass is for.
+
+`pnpm verify` clean throughout (unchanged from the concurrent session's own pass — no code changes were needed here, only verification).
+
+**Real, disclosed scope boundaries**: `/admin/voting`'s live vote count only refreshes on another admin's own actions (`admin:mission-control`), not on a player casting a vote — that would need the list page to also subscribe to every individual poll's own `poll:{id}` topic, a real, bounded follow-up, not attempted here to keep this slice's scope matched to Phase 11's actual acceptance criteria ("two browsers see a published event without refresh," "admin online count changes").
+
 ## Wally placeholder assets (W0, per docs/WALLY.md §37)
 
 The user supplied `MASCOTTE.zip` (8 pre-rendered PNGs of the Walumo brand mascot, transparent background). This session:
@@ -350,9 +371,9 @@ Item 3 is the only remaining blocker that needs a substantive human decision (Ph
 
 ## Next smallest complete slice
 
-Phases 1-10 are now done. The next smallest complete slice is **Phase 11 — Realtime engine** (Product Guide §14, §26 Phase 11): Broadcast/Presence helpers, the channel topics (`game:global`, `game:day:{id}`, `country:{id}`, etc.), and a live activity feed — everything built so far is server-rendered per page load, so a player currently has to refresh to see a new mission, an approved photo, or a leaderboard change. This is also the real dependency Phase 12 (admin live notifications) and Phase 13 (Wally's live reactions) are blocked on.
+Phases 1-11 are now done. The next smallest complete slice is **Phase 12 — Admin notifications and live controls** (Product Guide §15, §26 Phase 12): a notification composer with audience targeting (everyone/country/entity/squad/player), live toast/banner/modal delivery riding on Phase 11's now-real broadcast layer, schedule support, and pause/resume game. This is also the real dependency Phase 13 (Wally's live reactions to admin-triggered events) is blocked on. Per `docs/ITM15_ADMIN_MISSION_CONTROL_VISION.md`'s standing rule, build this against Product Guide §15's actual spec — not any of the vision document's new, unspecced mechanics (Wally Agents, Bounties, the Twist Engine, etc.), which still need their own dedicated design pass before being buildable.
 
-Remaining housekeeping, not blocking Phase 11:
+Remaining housekeeping, not blocking Phase 12:
 - `.github/workflows/ci.yml` still unpushed — still needs `gh auth refresh -h github.com -s workflow` (interactive, needs the user).
 - Vercel Preview environment variables — CLI upgraded to v59.16.0 (fixes the earlier v54.2.0 bug), but the actual `vercel env add ... preview` write is a secret-store write this session's own permission classifier correctly declined to make unilaterally; the user has the exact script to run themselves.
 - `shadcn/ui` init still deferred — every page so far uses the project's existing custom design tokens for visual consistency, rather than introducing a second component vocabulary.

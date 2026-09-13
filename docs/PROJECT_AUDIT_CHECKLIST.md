@@ -536,12 +536,36 @@ This remaining blocker is not something this session can resolve unilaterally (p
 
 ## Realtime Engine (Phase 11 — Product Guide §14)
 
-- [ ] Broadcast/Presence helpers
-- [ ] Channel topics (`game:global`, `game:day:{id}`, `country:{id}`, `entity:{id}`, `squad:{id}`, `player:{id}`, `admin:mission-control`)
-- [ ] Live activity feed
-- [ ] Realtime mission publish/notification delivery/leaderboard refresh signal
-- [ ] Two-browser test: published event arrives without refresh
-- [ ] Private channels don't leak audiences
+**COMPLETE, independently verified live end-to-end 2026-09-13** — see `docs/PROJECT_STATE.md`'s Phase 11 write-up for the full six-scenario proof.
+
+- [x] Broadcast/Presence helpers
+
+  **Requirement:** Product Guide §14, runbook §21
+  **Implementation:** `src/lib/realtime/broadcast.ts` (server-side, ping-only payloads), `src/components/realtime/{PresenceHeartbeat,OnlineCount}.tsx`
+  **Tests:** live — presence count updated 0→1 across two independent browser tabs with no reload
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Channel topics — implemented: `game:global` (presence), `game:day:{dayNumber}`, `leaderboard`, `poll:{pollId}`, `admin:mission-control`. Not implemented: `country:{id}`, `entity:{id}`, `squad:{id}`, `player:{id}` — no current feature needs per-country/entity/squad/player targeting yet (that's Phase 12's admin-notification audience targeting); added when that's built, not before.
+- [x] Live activity feed
+
+  **Implementation:** `src/lib/admin/audit.ts`'s `logAdminActivity` — every existing audit-logged admin action now also pings `admin:mission-control`; `/admin` overview live-refreshes on it
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Realtime mission publish/leaderboard refresh signal
+
+  **Tests:** live — a mission+day publish appeared on an already-open player page with zero reloads; a leaderboard tab opened before any points existed updated to the real total the instant a quiz was answered correctly
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Two-browser test: published event arrives without refresh
+
+  **Tests:** live, six independent scenarios (presence, mission/day publish, scoring, moderation queue, gallery, voting), every page opened exactly once and never reloaded for the rest of its scenario
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [ ] Private channels don't leak audiences — not yet applicable: no channel currently carries player-specific or otherwise sensitive payload data (every broadcast is a bare ping per the runbook §21 pattern), so there's nothing to leak yet. Real Realtime Authorization (topic-level RLS) becomes necessary once Phase 12 adds player-targeted notifications with actual content in the payload — tracked there, not here.
 
 ## Admin Notifications & Live Controls (Phase 12 — Product Guide §15)
 
