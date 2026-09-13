@@ -40,7 +40,19 @@ import type { Role } from "@/lib/auth/roles";
  * hook, not a change to the authorization logic itself.
  */
 
-const PROTECTED_PREFIXES = ["/first-login", "/onboarding", "/play", "/admin"];
+const PROTECTED_PREFIXES = [
+  "/first-login",
+  "/onboarding",
+  "/play",
+  "/passport",
+  "/leaderboards",
+  "/gallery",
+  "/achievements",
+  "/notifications",
+  "/profile",
+  "/help",
+  "/admin",
+];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(

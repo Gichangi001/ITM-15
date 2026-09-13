@@ -18,6 +18,8 @@ Per the audit's priority engine (blockers → security → foundation → depend
 
 **Phase 3 (Landing page and onboarding) — COMPLETE, verified live end-to-end 2026-09-13.** Product Guide §5.4, §26 Phase 3. Full write-up below ("Phase 3 — Onboarding").
 
+**Phase 4 (Player shell) — COMPLETE, verified live end-to-end 2026-09-13.** Product Guide §7, §26 Phase 4. Full write-up below ("Phase 4 — Player shell").
+
 **Phase 1 (Supabase foundation) — COMPLETE, verified 2026-09-13.** The migration blocker described below is resolved: a fresh session picked up the project-scoped `mcp__supabase__*` tools immediately (confirmed via `ToolSearch`), and both draft migrations were applied to the live `ysjjgzakswaohmnaowmv` project.
 
 **What was done, in order, this session:**
@@ -159,6 +161,23 @@ Built and verified live against the real `ysjjgzakswaohmnaowmv` database.
 **A real, disclosed consequence for the live Super Admin account**: `alexander.gichangi@walumoafrica.com`'s profile was created the same way any employee's is (Product Guide §5.1) and has never been through onboarding — its `onboarding_completed` is `false`. **The next time that account signs in, it will be redirected to `/onboarding` before reaching Mission Control**, same as any other account, per the spec's own unconditional ordering. This is correct behavior, not a bug, but the user should know before it happens rather than being surprised by it mid-session.
 
 `pnpm verify` (lint/typecheck/51 unit tests/build) passes clean throughout.
+
+## Phase 4 — Player shell (Product Guide §7, §26 Phase 4)
+
+Built and verified live against the real database.
+
+**Scope delivered:** all 10 routes from Product Guide §7's player information architecture — `/play`, `/play/day/[dayNumber]`, `/play/mission/[missionId]`, `/passport`, `/leaderboards`, `/gallery`, `/achievements`, `/notifications`, `/profile`, `/help` — under a new `src/app/(player)/` route group sharing one layout (`src/components/player/PlayerNav.tsx` + `layout.tsx`).
+
+- **`/play`** rebuilt from Phase 2's minimal placeholder into the real Phase 4 shell: a genuine greeting using the player's own `first_name` (now populated — Phase 3 onboarding wrote it), and real navigation cards to every player route. Product Guide §7.1's full dashboard (Wally greeting with live game state, active mission card, points, squad rank, countdown, live event banner) needs the content/scoring engines (Phases 6-8), which don't exist — building that now would be exactly the "fake demo" the Storyline Build Bible §39 forbids.
+- **`/passport`, `/leaderboards`, `/gallery`, `/achievements`, `/notifications`** — honest, labeled placeholders (new shared `src/components/player/ComingSoon.tsx`) naming the specific Product Guide phase each depends on, matching the existing tone of Phase 2's `/play`/`/admin` placeholders rather than inventing five different styles.
+- **`/profile`** — real, not a placeholder: displays the actual signed-in profile's name/email/country/entity (a live query, not fixture data). Read-only — there's no server action to edit `profiles` post-onboarding (by design; see the foundation migration's comment on why there's no client-writable UPDATE policy at all).
+- **`/help`** — generic guidance (sign-in troubleshooting, an explanation that "not live yet" pages are deliberate, not bugs). No specific support contact/process exists in any controlling doc, so nothing was invented.
+- **`/play/day/[dayNumber]`** validates the param is 1-7 (a real campaign's actual day range) and 404s otherwise; **`/play/mission/[missionId]`** validates UUID shape. Both show an honest "not published/available yet" state rather than fabricated story/mission content — proving the routes are real and navigable without pretending Phase 6-7 content exists.
+- `src/proxy.ts`'s `PROTECTED_PREFIXES` extended to cover all six new top-level routes (`/passport`, `/leaderboards`, `/gallery`, `/achievements`, `/notifications`, `/profile`, `/help`) — without this they'd have been publicly readable, since the route-group folder itself carries no auth semantics in Next.js.
+
+**Verified live** (Playwright, headless Chromium, a synthetic fully-onboarded `shell.test@itm15.test` PLAYER account — created via service role, deleted after): sign-in lands directly on `/play` (already onboarded); all 10 routes reachable with correct titles and no unexpected redirects; `/play/day/99` 404s cleanly; the nav bar works and stays usable at 390px mobile width (horizontal scroll, no layout break); a PLAYER account is still correctly blocked from `/admin` (Phase 2's gate unaffected); an unauthenticated visitor hitting a brand-new protected route (`/passport`) is bounced to `/login`. Screenshots sent to the user.
+
+`pnpm verify` (lint/typecheck/51 unit tests/build — no new unit tests needed, these are routing/rendering changes verified live rather than logic with something to unit-test) passes clean throughout.
 
 ## Wally placeholder assets (W0, per docs/WALLY.md §37)
 
