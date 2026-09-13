@@ -5,6 +5,7 @@ import { castVoteSchema } from "@/lib/voting/schemas";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { broadcast } from "@/lib/realtime/broadcast";
+import { isGamePaused } from "@/lib/game/campaignStatus";
 
 export type CastVoteState = { error?: string; success?: boolean } | null;
 
@@ -37,6 +38,10 @@ export async function castVote(
 
   const { pollId, optionId, reason } = parsed.data;
   const admin = createAdminClient();
+
+  if (await isGamePaused(admin)) {
+    return { error: "The game is currently paused. Try again shortly." };
+  }
 
   const { data: poll } = await admin
     .from("polls")

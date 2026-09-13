@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCurrentProfile, getCurrentRoles } from "@/lib/auth/session";
 import {
   canAwardBonusPoints,
+  canControlGameState,
   canManageContent,
   canManageVoting,
   canModerateSubmissions,
@@ -12,6 +13,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { OnlineCount } from "@/components/realtime/OnlineCount";
 import { LiveRefresh } from "@/components/realtime/LiveRefresh";
+import { setCampaignStatus } from "./actions";
 
 export const metadata: Metadata = {
   title: "Mission Control — ITM@15",
@@ -33,10 +35,8 @@ const QUICK_ACTIONS = [
 ] as const;
 
 const NOT_YET_BUILT = [
-  { label: "📣 Send notification", phase: "Phase 12 — Admin Notifications" },
   { label: "🧍 Trigger Wally", phase: "Phase 13 — Wally 2D Behaviour" },
   { label: "🎨 Change theme", phase: "Phase 15 — Themes" },
-  { label: "⏸ Pause game", phase: "Phase 12 — Admin Notifications (Emergency Pause)" },
 ] as const;
 
 const NOT_YET_AVAILABLE = [
@@ -88,9 +88,21 @@ const ACTIVITY_ICONS: Record<string, string> = {
  * what's shown as clickable versus honestly locked with the phase it
  * needs. No decorative buttons: every visible action goes somewhere real.
  */
-export default async function AdminHomePage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  not_authorized: "You are not authorized to control the game state.",
+  invalid_input: "That action didn't look right — nothing was changed.",
+  no_campaign: "No campaign exists yet to pause or resume.",
+  update_failed: "Something went wrong saving that change. Try again.",
+};
+
+export default async function AdminHomePage({ searchParams }: PageProps<"/admin">) {
   const [profile, roles] = await Promise.all([getCurrentProfile(), getCurrentRoles()]);
   const admin = createAdminClient();
+
+  const params = await searchParams;
+  const errorParam = typeof params.error === "string" ? params.error : undefined;
+  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] : undefined;
+  const succeeded = params.success === "1";
 
   const capabilities = {
     canManageContent: canManageContent(roles),
@@ -109,7 +121,7 @@ export default async function AdminHomePage() {
     admin.from("profiles").select("country_id").eq("status", "ACTIVE").not("country_id", "is", null),
     admin
       .from("campaigns")
-      .select("name, status")
+      .select("id, name, status")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -168,6 +180,17 @@ export default async function AdminHomePage() {
         </p>
       </div>
 
+      {succeeded ? (
+        <p role="status" className="text-sm text-walumo">
+          Updated.
+        </p>
+      ) : null}
+      {errorMessage ? (
+        <p role="alert" className="text-sm text-red-400">
+          {errorMessage}
+        </p>
+      ) : null}
+
       <section className="flex flex-col gap-4">
         <h2 className="text-xs font-semibold tracking-[0.15em] text-muted uppercase">
           Account overview
@@ -186,6 +209,39 @@ export default async function AdminHomePage() {
           Not yet available (need later phases): {NOT_YET_AVAILABLE.join(" · ")}.
         </p>
       </section>
+
+      {canControlGameState(roles) && campaign ? (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-xs font-semibold tracking-[0.15em] text-muted uppercase">
+            Game controls
+          </h2>
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-surface p-5">
+            <div>
+              <p className="text-sm text-ink">
+                {campaign.name} is currently <span className="font-semibold">{campaign.status}</span>.
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                Pausing genuinely blocks new mission answers and votes — every player sees a
+                banner immediately.
+              </p>
+            </div>
+            <form action={setCampaignStatus}>
+              <input
+                type="hidden"
+                name="status"
+                value={campaign.status === "ACTIVE" ? "PAUSED" : "ACTIVE"}
+              />
+              <button type="submit" className="btn-secondary shrink-0">
+                {campaign.status === "ACTIVE"
+                  ? "Pause game"
+                  : campaign.status === "PAUSED"
+                    ? "Resume game"
+                    : "Activate campaign"}
+              </button>
+            </form>
+          </div>
+        </section>
+      ) : null}
 
       {canSeeAudit ? (
         <section className="flex flex-col gap-4">

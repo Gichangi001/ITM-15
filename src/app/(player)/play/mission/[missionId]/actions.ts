@@ -5,6 +5,7 @@ import { submitAnswerSchema } from "@/lib/content/schemas";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { broadcast } from "@/lib/realtime/broadcast";
+import { isGamePaused } from "@/lib/game/campaignStatus";
 
 export type SubmitAnswerState = {
   error?: string;
@@ -44,6 +45,10 @@ export async function submitAnswer(
 
   const { challengeId, answerText, selectedOptionIds: chosenIds } = parsed.data;
   const admin = createAdminClient();
+
+  if (await isGamePaused(admin)) {
+    return { error: "The game is currently paused. Try again shortly." };
+  }
 
   const { data: challenge } = await admin
     .from("challenges")

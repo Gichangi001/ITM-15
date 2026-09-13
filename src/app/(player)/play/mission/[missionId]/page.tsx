@@ -75,7 +75,7 @@ export default async function MissionPage({
   const { data: pastSubmissions } = challenge
     ? await supabase
         .from("submissions")
-        .select("status, submitted_at")
+        .select("id, status, submitted_at")
         .eq("challenge_id", challenge.id)
         .eq("player_id", user.id)
         .order("submitted_at", { ascending: false })
@@ -83,6 +83,32 @@ export default async function MissionPage({
 
   const alreadyApproved = (pastSubmissions ?? []).some((s) => s.status === "APPROVED");
   const hasPendingSubmission = (pastSubmissions ?? []).some((s) => s.status === "PENDING");
+
+  // The success confirmation a player sees right after answering correctly
+  // (rendered client-side by MissionChallengeForm via useActionState) never
+  // survives the Next.js refresh that `revalidatePath` triggers inside
+  // `submitAnswer` — this Server Component immediately re-renders with
+  // `alreadyApproved` now true, swapping the form (and its local success
+  // state) out for the plain "already completed" branch before the player
+  // can read it. Rather than fight that refresh, make the "already
+  // completed" branch itself show the real points earned, computed
+  // server-side from the authoritative `score_events` ledger (never from
+  // what the client action believed it awarded) — this is also strictly
+  // more correct than a one-shot confirmation, since it holds up on every
+  // later visit/reload/back-navigation too, not just the instant after
+  // submitting.
+  let earnedPoints = 0;
+  if (alreadyApproved) {
+    const submissionIds = (pastSubmissions ?? []).map((s) => s.id);
+    const { data: scoreEvents } = await supabase
+      .from("score_events")
+      .select("points, source_type, source_id")
+      .eq("player_id", user.id)
+      .or(
+        `and(source_type.eq.MISSION,source_id.eq.${mission.id}),and(source_type.eq.SUBMISSION,source_id.in.(${submissionIds.length > 0 ? submissionIds.join(",") : "00000000-0000-0000-0000-000000000000"}))`,
+      );
+    earnedPoints = (scoreEvents ?? []).reduce((sum, e) => sum + e.points, 0);
+  }
 
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-16 sm:px-6">
@@ -103,7 +129,10 @@ export default async function MissionPage({
       ) : !challenge ? (
         <p className="text-sm text-muted">This mission has no challenge configured yet.</p>
       ) : alreadyApproved ? (
-        <p className="text-sm text-walumo">You&apos;ve already completed this mission. That counts.</p>
+        <p className="text-sm text-walumo">
+          You&apos;ve already completed this mission. That counts.
+          {earnedPoints > 0 ? ` +${earnedPoints} points earned.` : ""}
+        </p>
       ) : hasPendingSubmission ? (
         <p className="text-sm text-muted">
           Your submission is with the moderators. Check back soon.

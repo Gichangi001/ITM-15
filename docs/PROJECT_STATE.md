@@ -26,6 +26,8 @@ Per the audit's priority engine (blockers → security → foundation → depend
 
 **Phase 11 (Realtime engine) — COMPLETE, independently verified live end-to-end 2026-09-13.** Product Guide §14, §26 Phase 11. Full write-up below ("Phase 11 — Realtime engine").
 
+**Phase 12 (Admin notifications and live controls) — PARTIAL, 2026-09-13.** Product Guide §15, §26 Phase 12. Pause/resume is COMPLETE and verified live end-to-end. The notification composer/inbox is drafted (migration only) but blocked on the same recurring Supabase migration-apply tool-access limitation as before — see "Phase 12 — Pause/resume" below for the full write-up and "Phase 12 — Admin notifications (blocked)" for the disclosed blocker.
+
 **Phase 1 (Supabase foundation) — COMPLETE, verified 2026-09-13.** The migration blocker described below is resolved: a fresh session picked up the project-scoped `mcp__supabase__*` tools immediately (confirmed via `ToolSearch`), and both draft migrations were applied to the live `ysjjgzakswaohmnaowmv` project.
 
 **What was done, in order, this session:**
@@ -263,6 +265,44 @@ The product owner pasted a large (~56-section) "ITM@15 ADMIN MISSION CONTROL" vi
 
 **Real, disclosed scope boundaries**: `/admin/voting`'s live vote count only refreshes on another admin's own actions (`admin:mission-control`), not on a player casting a vote — that would need the list page to also subscribe to every individual poll's own `poll:{id}` topic, a real, bounded follow-up, not attempted here to keep this slice's scope matched to Phase 11's actual acceptance criteria ("two browsers see a published event without refresh," "admin online count changes").
 
+## Phase 12 — Pause/resume (Product Guide §17.3, §26 Phase 12)
+
+**COMPLETE, verified live end-to-end 2026-09-13.** Product Guide §26 Phase 12 groups "Pause/resume game" with the notification composer under one phase; this slice is the pause/resume half — genuinely server-enforced, not cosmetic.
+
+**Scope delivered:**
+- `src/lib/auth/roles.ts` — `canControlGameState` (reuses the existing `CONTENT_MANAGEMENT_ROLES` = GAME_MASTER/SUPER_ADMIN).
+- `src/lib/game/campaignStatus.ts` — `isGamePaused(admin)`, reads the most recent `campaigns.status` row.
+- `src/app/admin/actions.ts` — `setCampaignStatus`: validates `canControlGameState`, updates the campaign to ACTIVE or PAUSED only, writes an audit log entry, broadcasts `game.paused`/`game.resumed` on `game:global`.
+- **Real server-side enforcement, not just a UI banner**: `isGamePaused` is checked first — before eligibility, deadline, or attempt-count checks — in both `submitAnswer` (`src/app/(player)/play/mission/[missionId]/actions.ts`) and `castVote` (`src/app/(player)/vote/[pollId]/actions.ts`). A paused attempt returns an error before touching `submissions`/`votes` at all.
+- `src/components/realtime/GamePausedBanner.tsx` + `src/app/(player)/layout.tsx` — the banner is server-rendered from the real `campaigns.status` and kept live via the existing `LiveRefresh` component subscribed to `game:global`'s `game.paused`/`game.resumed` events, so it appears/disappears on an already-open tab with no reload.
+- `src/app/admin/page.tsx` — a real "Game controls" section, gated by `canControlGameState`, with a three-state button (Activate campaign / Pause game / Resume game) driven by the campaign's actual status.
+
+**Verified live** (Playwright, headless Chromium, synthetic `p12.super@itm15.test`/`p12.player@itm15.test` accounts, service-role created and fully deleted after, plus their test missions/challenges/submissions/score_events): the test is self-healing regardless of the campaign's starting status (drives to ACTIVE via whichever real button — "Activate campaign" or "Resume game" — is currently showing, rather than assuming a fresh DRAFT campaign) and uses a unique mission title/slug per run to avoid colliding with leftover data from earlier runs —
+- No paused banner while ACTIVE.
+- Admin pauses → a player's tab **already open on the mission's day page, never reloaded**, shows the paused banner within 15s of the broadcast.
+- The same player's attempt to answer the mission is genuinely rejected server-side: the mission page renders "The game is currently paused. Try again shortly." — the exact string returned by `submitAnswer`'s check, not a client-side guess.
+- **Confirmed directly against the database** that the paused attempt created zero `submissions` rows (each test mission ended with exactly one submission total — the real one made after resuming, not two) — proving the rejection happens before any write, not just before a score is awarded.
+- Admin resumes → the banner disappears live, no reload.
+- The identical answer, resubmitted after resume, succeeds for real with a genuine server-computed points value shown.
+
+**A real bug found during this verification — in the app, not the test — and fixed:** `src/app/(player)/play/mission/[missionId]/page.tsx`'s "already completed" branch was silently swapping in over the correct-answer success confirmation on **every** successful SINGLE_CHOICE/MULTIPLE_CHOICE submission, not just during pause testing — this was a pre-existing defect since Phase 6-9, only surfaced now because this was the first time a live-verification pass actually read the transient success text rather than checking the database directly for score correctness. Root cause: `revalidatePath` inside `submitAnswer` triggers this Server Component to re-render immediately after a correct answer, and since `alreadyApproved` is now true, the parent unmounts `MissionChallengeForm` (and its local `useActionState` success message: "Correct! That counts. +N points") in favor of the static "already completed" branch — before a player could ever read the confirmation. **Fixed** by making the "already completed" branch itself compute and display the real points earned, queried live from the authoritative `score_events` ledger (summing both `MISSION_COMPLETED` and any `UNITY_PARTNER_VERIFIED` rows tied to the player's submissions for that challenge) rather than relying on the transient client action state at all. This is strictly more correct than the one-shot toast it replaces conceptually — it now holds up on every later visit, reload, or back-navigation too, not just the instant after submitting, and the number shown is always server-authoritative.
+
+**Real, disclosed scope note**: Product Guide §26 Phase 12 files "pause/resume" together with the notification composer under one phase heading. This write-up covers only pause/resume — see "Phase 12 — Admin notifications (blocked)" immediately below for the rest of the phase.
+
+`pnpm verify` (lint/typecheck/79 unit tests/build) clean throughout — no new unit tests were added for this slice (the logic here is server-action control flow and live UI state, verified live rather than via new unit-testable pure functions).
+
+## Phase 12 — Admin notifications (blocked, 2026-09-13)
+
+The other half of Phase 12 (Product Guide §15, §26 Phase 12): notification composer with audience targeting (everyone/country/entity/squad/player, CTA links), live toast/banner/modal delivery, schedule support, and a real player-facing `/notifications` inbox.
+
+**Drafted, not applied**: `supabase/migrations/20260913100000_admin_notifications.sql` — `admin_notifications` (the admin-composed broadcast intent, deny-all RLS — every read/write goes through a server action) and `notifications` (the per-player fan-out inbox, RLS restricting each player to their own row, matching the audience vocabulary already established by `missions.audience_type`: GLOBAL/COUNTRY/ENTITY/PLAYER — no SQUAD, since squads don't exist yet). `scheduled_at` exists as a column but is deliberately not wired to any cron — no scheduling infrastructure exists yet in this project, and pretending it works would violate the "no fake demo" rule the Storyline Build Bible and this project's own precedent both enforce.
+
+**Why this is blocked, not just slow**: this session has no working `mcp__supabase__*` migration-apply tool access — the same recurring, well-documented limitation that affected Phase 1 originally (see that section above) and was worked around for Phase 10's storage bucket via a direct `admin.storage.createBucket()` API call. **That workaround does not exist for table DDL** — there is no raw-SQL-execution path exposed through the `supabase-js` client, so a brand-new Postgres table genuinely cannot be created from this session no matter what client-side trick is tried.
+
+**Deliberately not written**: the application code this feature needs (`src/lib/notifications/schemas.ts`, `src/app/admin/notifications/actions.ts`, the composer UI, the history list, a real `/notifications` inbox replacing the current `ComingSoon` placeholder, a `NotificationListener` client component for live toast delivery). Writing this against tables that don't exist live would be unverifiable and risks drifting from whatever a future session with real migration access actually ends up applying — the same reasoning Phase 1's original blocker used, and the established precedent for this exact situation in this project.
+
+**Path to unblock, in order of preference**: (1) a fresh session (not a continuation of this one) may pick up working `mcp__supabase__*` tools immediately, per the exact pattern that resolved the identical Phase 1 blocker earlier in this project's history — that session's first action should be applying `20260913100000_admin_notifications.sql`, then writing and live-verifying the application code in the same slice; (2) the user applies the migration directly and a future session picks up from there.
+
 ## Wally placeholder assets (W0, per docs/WALLY.md §37)
 
 The user supplied `MASCOTTE.zip` (8 pre-rendered PNGs of the Walumo brand mascot, transparent background). This session:
@@ -338,16 +378,17 @@ Verified with `pnpm verify` (lint/typecheck/9 unit tests/build, all passing) and
 
 ## In progress
 
-Uncommitted working-tree changes, pending review/push (Phases 6-9 audit + fix):
-- `supabase/migrations/20260913080000_content_submission_scoring_voting.sql`, `20260913082500_add_missing_votes_voter_id_index.sql`, `20260913083000_challenge_submissions_storage.sql` (found already applied live).
-- `src/lib/content/`, `src/lib/scoring/`, `src/lib/voting/` (new — schemas + leaderboard aggregation).
-- `src/app/admin/missions/`, `src/app/admin/scoring/`, `src/app/admin/submissions/`, `src/app/admin/voting/` (new admin routes).
-- `src/app/(player)/play/mission/[missionId]/{actions.ts,MissionChallengeForm.tsx}`, `src/app/(player)/vote/` (new player routes).
-- `src/app/(player)/leaderboards/page.tsx`, `src/app/(player)/gallery/page.tsx`, `src/app/(player)/play/day/[dayNumber]/page.tsx` (rebuilt from placeholders into real, live-data pages).
-- `src/lib/auth/roles.ts`/`roles.test.ts` (new `canManageContent`/`canModerateSubmissions`/`canAwardBonusPoints`/`canManageVoting`), `src/app/admin/layout.tsx`/`AdminNav.tsx` (nav items for the new capabilities).
-- `src/lib/supabase/database.types.ts` (regenerated against the live schema).
-- **This session's real fix**: `src/app/admin/missions/actions.ts`'s new `updateGameDayStatus`, and the "Days" status-control section added to `src/app/admin/missions/page.tsx`.
+Uncommitted working-tree changes, pending review/push (Phase 12 pause/resume + one Phase 6-9 UX fix):
+- `src/lib/auth/roles.ts` (new `canControlGameState`/`canSendNotifications`).
+- `src/lib/game/campaignStatus.ts` (new — `isGamePaused`).
+- `src/app/admin/actions.ts` (new — `setCampaignStatus`).
+- `src/app/(player)/play/mission/[missionId]/actions.ts` (pause check added to `submitAnswer`), `src/app/(player)/vote/[pollId]/actions.ts` (pause check added to `castVote`).
+- `src/components/realtime/GamePausedBanner.tsx` (new), `src/app/(player)/layout.tsx` (renders it, live via `LiveRefresh`).
+- `src/app/admin/page.tsx` (new "Game controls" section).
+- **Real bug fix, unrelated to pause/resume itself**: `src/app/(player)/play/mission/[missionId]/page.tsx`'s "already completed" branch now shows the real points earned (queried from `score_events`) instead of silently swallowing the correct-answer success confirmation on every submission — see "Phase 12 — Pause/resume" above for the full root-cause writeup.
+- `supabase/migrations/20260913100000_admin_notifications.sql` (drafted, **not applied** — see "Phase 12 — Admin notifications (blocked)" above).
 - `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md`, `docs/PROJECT_AUDIT_CHECKLIST.md` (this session's updates).
+- `.github/workflows/ci.yml` remains untracked/unstaged — still blocked on the `gh` OAuth `workflow` scope (blocker 8), deliberately excluded from this commit so it doesn't block the rest of the push.
 
 ## Blockers
 
@@ -371,7 +412,7 @@ Item 3 is the only remaining blocker that needs a substantive human decision (Ph
 
 ## Next smallest complete slice
 
-Phases 1-11 are now done. The next smallest complete slice is **Phase 12 — Admin notifications and live controls** (Product Guide §15, §26 Phase 12): a notification composer with audience targeting (everyone/country/entity/squad/player), live toast/banner/modal delivery riding on Phase 11's now-real broadcast layer, schedule support, and pause/resume game. This is also the real dependency Phase 13 (Wally's live reactions to admin-triggered events) is blocked on. Per `docs/ITM15_ADMIN_MISSION_CONTROL_VISION.md`'s standing rule, build this against Product Guide §15's actual spec — not any of the vision document's new, unspecced mechanics (Wally Agents, Bounties, the Twist Engine, etc.), which still need their own dedicated design pass before being buildable.
+Phases 1-11 are done; Phase 12's pause/resume half is done too (see "Phase 12 — Pause/resume" above). The next smallest complete slice is the remaining half of **Phase 12 — Admin notifications** (Product Guide §15, §26 Phase 12): a notification composer with audience targeting (everyone/country/entity/squad/player), live toast/banner/modal delivery riding on Phase 11's now-real broadcast layer, and schedule support. **This is blocked on Supabase migration-apply tool access** — see "Phase 12 — Admin notifications (blocked)" above for the full disclosure and the exact unblock path. This is also the real dependency Phase 13 (Wally's live reactions to admin-triggered events) needs. Per `docs/ITM15_ADMIN_MISSION_CONTROL_VISION.md`'s standing rule, build this against Product Guide §15's actual spec — not any of the vision document's new, unspecced mechanics (Wally Agents, Bounties, the Twist Engine, etc.), which still need their own dedicated design pass before being buildable.
 
 Remaining housekeeping, not blocking Phase 12:
 - `.github/workflows/ci.yml` still unpushed — still needs `gh auth refresh -h github.com -s workflow` (interactive, needs the user).

@@ -1,6 +1,8 @@
 # ITM@15 Quality Status
 
-_Last updated: 2026-09-13, Phase 11 (Realtime engine) independently verified live end-to-end — see `docs/PROJECT_STATE.md`._
+_Last updated: 2026-09-13, Phase 12 pause/resume verified live end-to-end — see `docs/PROJECT_STATE.md`._
+
+**Phase 12 pause/resume verification**: live Playwright E2E across the full loop (see `docs/PROJECT_STATE.md`'s "Phase 12 — Pause/resume" write-up) — server-side enforcement confirmed by direct database inspection (zero `submissions` rows from the paused attempt), not just the rendered rejection text. One real, pre-existing app bug found and fixed during this pass: the mission page's "already completed" branch was silently swallowing the correct-answer success confirmation on every submission (since Phase 6-9), not just during pause testing — fixed by having that branch compute and show the real points earned from `score_events` directly. `pnpm verify` (lint/typecheck/79 tests/build) clean. The notification-composer half of Phase 12 remains blocked on Supabase migration-apply tool access — see `docs/PROJECT_STATE.md`'s "Phase 12 — Admin notifications (blocked)".
 
 **Phase 11 verification**: the realtime code itself was found already built/committed by a concurrent session (`07b4304`); this session independently re-verified it from scratch with a fresh live test rather than trusting the prior `pnpm verify` pass alone — see `docs/PROJECT_STATE.md`'s Phase 11 write-up for the full six-scenario, zero-reload proof (presence, mission/day publish, scoring, moderation queue, gallery, voting). Two real bugs were found and fixed **in the test script**, not the app (an ambiguous CSS selector, and several test tabs that were never actually authenticated) — disclosed rather than glossed over, since either would have produced a false "it works" if not caught.
 

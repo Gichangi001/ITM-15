@@ -570,10 +570,22 @@ This remaining blocker is not something this session can resolve unilaterally (p
 ## Admin Notifications & Live Controls (Phase 12 — Product Guide §15)
 
 - [ ] Notification composer, audience targeting, CTA links
-- [ ] Live toast/banner/modal delivery
-- [ ] Schedule support
-- [ ] Pause/resume game
-- [ ] Targeted message reaches only the target; global reaches all eligible connected players
+
+  **Status:** migration drafted (`supabase/migrations/20260913100000_admin_notifications.sql` — `admin_notifications` deny-all-RLS composed-intent table + a per-player `notifications` fan-out inbox), not yet applied. This session had no working `mcp__supabase__*` migration-apply tool access (recurring, documented limitation — see `docs/PROJECT_STATE.md`); unlike Phase 10's storage bucket, there's no `supabase-js` client workaround for creating new Postgres tables. Application code (schemas, server actions, composer UI, real `/notifications` inbox) intentionally not written yet — building it against a table that doesn't exist live would be untestable and risks silent drift from whatever the next session with real migration access actually applies.
+
+- [ ] Live toast/banner/modal delivery — blocked on the above (needs `notifications`/`admin_notifications` to exist)
+- [ ] Schedule support — blocked on the above
+- [x] Pause/resume game
+
+  **Requirement:** Product Guide §17.3 "Pause Game" quick action; §26 Phase 12 acceptance overlaps here structurally (a real, server-enforced live control) even though the line item itself is filed under Phase 17 in the guide's admin-dashboard section
+  **Implementation:** `src/lib/game/campaignStatus.ts` (`isGamePaused`, reads the latest `campaigns.status`), `src/app/admin/actions.ts` (`setCampaignStatus` — role-gated via new `canControlGameState`, audit-logged, broadcasts `game.paused`/`game.resumed` on `game:global`), enforcement added to both `submitAnswer` (`src/app/(player)/play/mission/[missionId]/actions.ts`) and `castVote` (`src/app/(player)/vote/[pollId]/actions.ts`) — the check runs before any other read/write, so a paused attempt never creates a `submissions`/`votes` row at all (confirmed empirically, see Tests). `src/components/realtime/GamePausedBanner.tsx` + `src/app/(player)/layout.tsx` render the real `campaigns.status` server-side and re-fetch live via `LiveRefresh` on `game.paused`/`game.resumed` — no reload needed. `src/app/admin/page.tsx` gained a real three-state (Activate/Pause/Resume) game-controls section, gated by `canControlGameState`.
+  **Tests:** live Playwright E2E (self-healing regardless of starting campaign state, unique mission per run to avoid cross-run collisions): admin sees "Activate campaign" or "Resume game" depending on current state and drives to ACTIVE → "no paused banner while ACTIVE" → admin pauses → a player's **already-open** tab (no reload) shows the paused banner within 15s of the broadcast → the same player's attempt to answer a mission is genuinely rejected server-side ("The game is currently paused. Try again shortly.") → **verified directly against the database that the paused attempt created zero `submissions` rows** (each test mission had exactly one submission total — the real one after resume, not two) → admin resumes → banner disappears live → the identical answer now succeeds for real, server-computed points shown.
+  **Security:** enforcement is genuinely server-side, not cosmetic — the pause check runs first in both `submitAnswer` and `castVote`, before eligibility/deadline/attempt-count checks, so a player who already has the mission page open and bypasses the UI banner (e.g. by resubmitting a stale form) is still rejected. `setCampaignStatus` is gated to `GAME_MASTER`/`SUPER_ADMIN` via `canControlGameState` and writes an audit log entry.
+  **Real bug found and fixed during this verification, unrelated to pause/resume itself:** `src/app/(player)/play/mission/[missionId]/page.tsx`'s "already completed" branch would silently swap in over the correct-answer success confirmation on *every* successful SINGLE_CHOICE/MULTIPLE_CHOICE submission (not just during pause testing) — `revalidatePath` inside `submitAnswer` triggers this Server Component to re-render with `alreadyApproved` now true, unmounting `MissionChallengeForm` (and its local `useActionState` success message) before a player could ever read "Correct! That counts. +N points." Fixed by making the "already completed" branch itself compute and show the real points earned, queried live from the authoritative `score_events` ledger — more correct than a one-shot toast, since it now holds up on every later visit/reload too, not just the instant after submitting. This is a genuine, previously-unnoticed UX defect present since Phase 6-9; prior verification passes checked the database directly for score correctness but never actually read the transient success text a player would see.
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [ ] Targeted message reaches only the target; global reaches all eligible connected players — blocked on the notification composer above (not applicable to pause/resume, which is inherently global-only by design)
 
 ## Seven-Day Story
 

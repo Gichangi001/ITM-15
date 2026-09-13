@@ -103,3 +103,20 @@ export function canAwardBonusPoints(roles: readonly Role[]): boolean {
 export function canManageVoting(roles: readonly Role[]): boolean {
   return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
 }
+
+/**
+ * Product Guide §17.3 lists "Pause Game" as a quick action without naming a
+ * specific role — treated as campaign-wide content control, the same
+ * capability that already governs missions/days, rather than inventing a
+ * new role tier for one button.
+ */
+export function canControlGameState(roles: readonly Role[]): boolean {
+  return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
+}
+
+/**
+ * Product Guide §4.4: Game Master "Send notifications."
+ */
+export function canSendNotifications(roles: readonly Role[]): boolean {
+  return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
+}
