@@ -498,7 +498,7 @@ This remaining blocker is not something this session can resolve unilaterally (p
 
 ## Media Uploads & Moderation (Phase 10 — Product Guide §12)
 
-**Core loop COMPLETE, verified live 2026-09-13 — further along than its own phase number suggests, since it was built as part of the same Phase 6-9 slice.**
+**COMPLETE, verified live 2026-09-13 — the admin Media Library closes the phase's one remaining gap.**
 
 - [x] Storage bucket + access policies (for challenge evidence)
 
@@ -521,7 +521,13 @@ This remaining blocker is not something this session can resolve unilaterally (p
   **Result:** PASS (no filters by day/country/challenge/squad/featured yet — just a flat approved-photo grid)
   **Verified:** 2026-09-13
 
-- [ ] Admin Media Library (§12.4, general reference assets like historical photos) — not built; `media_assets` table exists in the schema but nothing writes to it yet
+- [x] Admin Media Library (§12.4, general reference assets like historical photos)
+
+  **Requirement:** Product Guide §12.4
+  **Implementation:** `/admin/media` (`canManageContent`-gated), new public `admin-media` storage bucket (`supabase/migrations/20260913090000_admin_media_library.sql`, created live via the Storage Management API — see PROJECT_STATE.md for why not via a migration runner), free-form tagging
+  **Tests:** live — uploaded a real photo through the form, confirmed its public URL is fetchable unauthenticated (200, correct content-type), toggled "Feature" and confirmed the database flag actually flips (both via direct query and the audit log)
+  **Result:** PASS
+  **Verified:** 2026-09-13
 - [x] Unapproved media never appears on a public surface
 
   **Tests:** live — gallery showed nothing until the photo was actually approved; the bucket itself is private (not merely policy-gated), so even a guessed path returns nothing without a valid signed URL

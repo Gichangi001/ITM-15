@@ -38,6 +38,7 @@ export function AdminNav({ capabilities }: { capabilities: AdminNavCapabilities 
   }
   if (capabilities.canManageContent) {
     items.push({ href: "/admin/missions", label: "Missions" });
+    items.push({ href: "/admin/media", label: "Media" });
   }
   if (capabilities.canModerateSubmissions) {
     items.push({ href: "/admin/submissions", label: "Submissions" });
