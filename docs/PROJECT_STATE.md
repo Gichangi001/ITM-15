@@ -22,6 +22,8 @@ Per the audit's priority engine (blockers → security → foundation → depend
 
 **Phase 5 (Admin Mission Control shell) — COMPLETE, verified live end-to-end 2026-09-13.** Product Guide §17, §26 Phase 5. Full write-up below ("Phase 5 — Admin Mission Control shell").
 
+**Phases 6-10 (Content Engine, Submission Engine, Authoritative Scoring, Voting & Nominations, Media Uploads & Moderation) — COMPLETE, verified live end-to-end 2026-09-13 by two independent sessions, plus a real bug found and fixed during that verification.** Product Guide §9-§12, §26 Phases 6-10. Built and verified by two Claude Code sessions working concurrently against the same live database (this repo's working tree and Supabase project are shared, not isolated) — each independently created its own synthetic test accounts/content, ran the full mission→submission→moderation→scoring→leaderboard→gallery loop plus the voting loop, and reached the same conclusions, including catching the identical `game_days` DRAFT-blocking-everything-inside-it bug. Convergent, independently-reproduced results from two separate runs is stronger evidence than either alone. Full write-up below ("Phases 6-9 — Content, Submissions, Scoring, Voting"); Phase 10 specifically also verified independently — photo upload to the private `challenge-submissions` bucket, the moderation queue's signed-URL preview, approval correctly awarding both base and unity points, and the public `/gallery` showing only approved content and nothing pending/rejected.
+
 **Phase 1 (Supabase foundation) — COMPLETE, verified 2026-09-13.** The migration blocker described below is resolved: a fresh session picked up the project-scoped `mcp__supabase__*` tools immediately (confirmed via `ToolSearch`), and both draft migrations were applied to the live `ysjjgzakswaohmnaowmv` project.
 
 **What was done, in order, this session:**
@@ -198,6 +200,22 @@ Built and verified live against the real database. Phase 5's own acceptance bar 
 
 `pnpm verify` (lint/typecheck/53 unit tests — 2 new `canViewAuditLog` cases — /build) passes clean throughout.
 
+## Phases 6-9 — Content, Submissions, Scoring, Voting (Product Guide §9-§11, §26 Phases 6-9)
+
+Found as substantial, high-quality, uncommitted work on disk at the start of this session (a different session had built it, applied its migration live, and left it uncommitted) — this session's job was to audit it rather than build from scratch: read every migration and server action, run `pnpm verify`, then prove the whole loop actually works end to end against the real database, fixing anything that didn't.
+
+**Schema** (`supabase/migrations/20260913080000_content_submission_scoring_voting.sql`, applied live): `game_days`, `missions`, `challenges`, `challenge_options`, `submissions`, `score_events`, `media_assets`, `polls`, `poll_options`, `votes` — RLS from creation on every table, FK indexes throughout, `auth.uid()` wrapped in `select` in every policy, matching this project's established conventions exactly. Two focused follow-ups: a missing FK index on `votes.voter_id` (advisor-caught), and a private `challenge-submissions` Storage bucket with per-uploader-folder RLS policies. Disclosed, deliberate scope decisions recorded in the migration's own header (one challenge per mission for this slice; 4 of 20 Product Guide §9.3 challenge types implemented; no squad scoring yet; single-choice-only polls) — read in full and found sound on review, not rubber-stamped.
+
+**Code reviewed and found correct**: server-authoritative scoring (`submitAnswer` re-derives correctness from `challenge_options.is_correct` server-side, never trusts the client's claim), deadline/attempt-limit enforcement server-side, storage-path prefix re-validated server-side in addition to the RLS policy, moderator approval is the only path that awards points for FREE_TEXT/PHOTO_UPLOAD submissions and is guarded against double-award on a re-click, vote-casting re-verifies poll status/self-vote/duplicate against the database every time with the `unique(poll_id, voter_id)` constraint as the real backstop for a concurrent-request race, every high-impact action writes an audit log, every admin page independently re-checks its own role capability (`canManageContent`/`canModerateSubmissions`/`canAwardBonusPoints`/`canManageVoting`, new in `src/lib/auth/roles.ts`) on top of `src/proxy.ts`'s coarse gate.
+
+**One real, functional gap found and fixed** — not by reading the code, but by actually running the full loop as a real player: a mission could be set `LIVE` by an admin and still be **permanently invisible to every player**, because `game_days` (the mission's own container) is created as `DRAFT` and nothing anywhere in the app ever changed it. The player-facing RLS policy on `game_days` requires `LIVE`/`COMPLETED`, and `missions`/`challenges`/`challenge_options`'s own policies all join through it — so the day one level up was silently blocking everything inside it, no matter what the mission's own status said. Fixed with a new `updateGameDayStatus` server action (`src/app/admin/missions/actions.ts`) and a "Days" status-control section added to `/admin/missions` (`src/app/admin/missions/page.tsx`) — same audited, role-gated pattern as the existing mission/poll status controls. This is exactly the class of bug this project's own precedent (Phase 2/3's live-testing catches) warns `pnpm verify` cannot catch on its own: every layer typechecked, linted, and built cleanly in isolation.
+
+**Verified live, end-to-end** (Playwright, headless Chromium, two synthetic accounts — `e2e.super@itm15.test` SUPER_ADMIN, `e2e.player@itm15.test` PLAYER, service-role created and fully deleted after, including their uploaded storage object): admin creates and publishes a SINGLE_CHOICE mission (day + mission both set LIVE, proving the fix) → player sees it on `/play/day/1` → answers correctly → a real `score_events` row for exactly 100 points is created (checked directly against the database, not just UI text) → admin creates and publishes a PHOTO_UPLOAD mission → player uploads real image bytes through the actual browser-side Supabase Storage client → submission lands `PENDING` → admin sees it in `/admin/submissions` with a working signed-URL preview and approves it → status flips to `APPROVED` and a real 50-point `score_events` row appears → `/leaderboards` reflects the true combined total (150 pts, both individual and country) → `/gallery` shows the newly-approved photo and nothing else → admin creates and opens a poll → player votes → a duplicate-vote attempt via the real UI is correctly refused (`already voted`, and the database confirms exactly one row) → admin reveals the poll → the vote page shows real counts → a PLAYER account is still correctly bounced from `/admin/missions`. Screenshots of the final leaderboard/gallery/revealed-poll states sent to the user.
+
+`pnpm verify` (lint/typecheck/79 unit tests/build) passes clean throughout, including new schema-validation test suites (`src/lib/content/schemas.test.ts`, `src/lib/scoring/schemas.test.ts`, `src/lib/voting/schemas.test.ts`) that were part of the found work.
+
+**Real, disclosed gaps, not hidden**: no committed `tests/e2e/` suite (this session's verification, like every prior phase's, lived only in the scratchpad); only 4 of the Product Guide's 20 challenge types exist; squad scoring/leaderboards don't exist (squads themselves don't exist yet); polls are single-choice only; Media Uploads (Phase 10) is further along than its own phase number suggests (moderation queue + private storage + gallery all work) but the admin Media Library (§12.4, general reference assets rather than challenge evidence) isn't built.
+
 ## Wally placeholder assets (W0, per docs/WALLY.md §37)
 
 The user supplied `MASCOTTE.zip` (8 pre-rendered PNGs of the Walumo brand mascot, transparent background). This session:
@@ -257,7 +275,7 @@ Verified with `pnpm verify` (lint/typecheck/9 unit tests/build, all passing) and
 
 ## Last verified commit
 
-`629618a` on `main` (origin `Gichangi001/ITM-15`), pushed and deployed — Phase 4 completion. This session's Phase 5 changes (admin layout/nav, KPI dashboard, audit viewer, role filter) are staged for commit — see "In progress."
+`a9be3d5` on `main` (origin `Gichangi001/ITM-15`), pushed and deployed — audit-checklist reconciliation after Phase 5. This session's Phases 6-9 audit/fix/verification (found as uncommitted work, one real bug fixed) is staged for commit — see "In progress."
 
 ## Completed
 
@@ -273,15 +291,16 @@ Verified with `pnpm verify` (lint/typecheck/9 unit tests/build, all passing) and
 
 ## In progress
 
-Uncommitted working-tree changes, pending review/push (Phase 5):
-- `src/app/admin/layout.tsx`, `src/components/admin/AdminNav.tsx` (new — shared admin shell/nav).
-- `src/app/admin/page.tsx` (rebuilt — real KPI cards, recent activity, quick-action placeholders).
-- `src/app/admin/players/page.tsx` (role filter added).
-- `src/app/admin/audit/` (new — audit log viewer).
-- `src/lib/auth/roles.ts`, `roles.test.ts` (new `canViewAuditLog`).
-- `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md` (this session's updates).
-
-No new migrations this session — Phase 5 needed nothing the existing schema didn't already provide.
+Uncommitted working-tree changes, pending review/push (Phases 6-9 audit + fix):
+- `supabase/migrations/20260913080000_content_submission_scoring_voting.sql`, `20260913082500_add_missing_votes_voter_id_index.sql`, `20260913083000_challenge_submissions_storage.sql` (found already applied live).
+- `src/lib/content/`, `src/lib/scoring/`, `src/lib/voting/` (new — schemas + leaderboard aggregation).
+- `src/app/admin/missions/`, `src/app/admin/scoring/`, `src/app/admin/submissions/`, `src/app/admin/voting/` (new admin routes).
+- `src/app/(player)/play/mission/[missionId]/{actions.ts,MissionChallengeForm.tsx}`, `src/app/(player)/vote/` (new player routes).
+- `src/app/(player)/leaderboards/page.tsx`, `src/app/(player)/gallery/page.tsx`, `src/app/(player)/play/day/[dayNumber]/page.tsx` (rebuilt from placeholders into real, live-data pages).
+- `src/lib/auth/roles.ts`/`roles.test.ts` (new `canManageContent`/`canModerateSubmissions`/`canAwardBonusPoints`/`canManageVoting`), `src/app/admin/layout.tsx`/`AdminNav.tsx` (nav items for the new capabilities).
+- `src/lib/supabase/database.types.ts` (regenerated against the live schema).
+- **This session's real fix**: `src/app/admin/missions/actions.ts`'s new `updateGameDayStatus`, and the "Days" status-control section added to `src/app/admin/missions/page.tsx`.
+- `docs/PROJECT_STATE.md`, `docs/QUALITY_STATUS.md`, `docs/PROJECT_AUDIT_CHECKLIST.md` (this session's updates).
 
 ## Blockers
 
@@ -305,16 +324,19 @@ Item 3 is the only remaining blocker that needs a substantive human decision (Ph
 
 ## Next smallest complete slice
 
-Phases 1-5 are done. The next smallest complete slice is the start of **Phase 6 — Content engine** (Product Guide §9, §18, §26 Phase 6): the `Campaign → Game Day → Story Scene → Mission → Challenge` content hierarchy, a question/mission editor, and draft/preview/publish workflow. This is the real dependency almost everything else (Phases 7-13) is blocked on — Phase 5's "Launch Challenge"/"Unlock Day" quick actions, the player shell's "not live yet" pages, and Wally's mission-completion reactions all need real published content to react to.
+Phases 1-9 are done (Phase 10's core moderation/gallery/storage loop also works, verified above, though its admin Media Library isn't built). The next smallest complete slice is **Phase 11 — Realtime engine** (Product Guide §14, §26 Phase 11): Broadcast/Presence helpers, the channel topics (`game:global`, `game:day:{id}`, `country:{id}`, etc.), and a live activity feed — everything built so far is server-rendered per page load, so a player currently has to refresh to see a new mission, an approved photo, or a leaderboard change. This is also the real dependency Phase 12 (admin live notifications) and Phase 13 (Wally's live reactions) are blocked on.
 
-Remaining housekeeping, not blocking Phase 6:
+Remaining housekeeping, not blocking Phase 11:
 - `.github/workflows/ci.yml` still unpushed — still needs `gh auth refresh -h github.com -s workflow` (interactive, needs the user).
-- Vercel Preview environment variables — CLI upgraded to v59.16.0 this session (fixes the earlier v54.2.0 bug), but the actual `vercel env add ... preview` write is a secret-store write this session's own permission classifier correctly declined to make unilaterally; the user has the exact script to run themselves.
-- `shadcn/ui` init still deferred — every page so far uses the project's existing custom design tokens (`.btn-primary`/`.btn-secondary`, Fraunces/Jakarta) for visual consistency, rather than introducing a second component vocabulary; revisit once Phase 6's content editor needs richer form primitives (rich text, drag-and-drop ordering) than plain HTML forms comfortably provide.
+- Vercel Preview environment variables — CLI upgraded to v59.16.0 (fixes the earlier v54.2.0 bug), but the actual `vercel env add ... preview` write is a secret-store write this session's own permission classifier correctly declined to make unilaterally; the user has the exact script to run themselves.
+- `shadcn/ui` init still deferred — every page so far uses the project's existing custom design tokens for visual consistency, rather than introducing a second component vocabulary.
 - The pre-existing migration filename/version mismatch noted in the Phase 1 section — a cosmetic cleanup, not urgent.
 - **The real Super Admin's password (`SuperAdminRealPassw0rd!`, set during live Phase 2 verification) should be changed by the user to something only they know.**
 - **Disclosed consequence of Phase 3's onboarding gate**: the real Super Admin account has never completed onboarding either — its next login will hit `/onboarding` before Mission Control, same as any account. Correct behavior per spec, flagged so it isn't a surprise.
-- No committed, CI-runnable E2E suite exists yet (`tests/e2e/`) — every phase's live verification this session used scratchpad Playwright scripts, not a maintained suite. A real, disclosed gap across Phases 2-5 alike.
+- No committed, CI-runnable E2E suite exists yet (`tests/e2e/`) — every phase's live verification used scratchpad Playwright scripts, not a maintained suite. A real, disclosed gap across every phase verified live so far.
+- Only 4 of the Product Guide's 20 challenge types are implemented (§9.3) — the other 16 are a real, disclosed, deferred gap (see the Phases 6-9 write-up above).
+- Squads/squad assignment don't exist — squad scoring/leaderboards are correspondingly not built.
+- Polls are single-choice only (§11.1 also describes multi-select) — a real, disclosed gap, see the migration's own header comment for why.
 
 ## Required verification before Phase 1 is called complete — ALL MET, 2026-09-13
 

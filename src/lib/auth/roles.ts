@@ -66,3 +66,40 @@ export function canManageUserRoles(roles: readonly Role[]): boolean {
 export function canViewAuditLog(roles: readonly Role[]): boolean {
   return roles.some((role) => USER_ADMINISTRATION_ROLES.includes(role));
 }
+
+/**
+ * Product Guide §4.4: Game Master "Create and edit missions. Create and
+ * schedule or launch missions... Lock/unlock chapters" — content
+ * management (game days, missions, challenges — Phase 6) is Game
+ * Master/Super Admin, not Moderator/Country Admin/Analytics Viewer.
+ */
+const CONTENT_MANAGEMENT_ROLES: readonly Role[] = ["GAME_MASTER", "SUPER_ADMIN"];
+
+export function canManageContent(roles: readonly Role[]): boolean {
+  return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
+}
+
+/**
+ * Product Guide §4.2: Moderator "Review photo/video/text evidence. Approve,
+ * reject or request resubmission." Game Master/Super Admin can do
+ * everything Moderator can, per §4.4/§4.5's broader scope.
+ */
+const SUBMISSION_MODERATION_ROLES: readonly Role[] = ["MODERATOR", "GAME_MASTER", "SUPER_ADMIN"];
+
+export function canModerateSubmissions(roles: readonly Role[]): boolean {
+  return roles.some((role) => SUBMISSION_MODERATION_ROLES.includes(role));
+}
+
+/**
+ * Product Guide §4.4: Game Master "Award approved bonus points."
+ */
+export function canAwardBonusPoints(roles: readonly Role[]): boolean {
+  return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
+}
+
+/**
+ * Product Guide §4.4: Game Master "Open/close voting."
+ */
+export function canManageVoting(roles: readonly Role[]): boolean {
+  return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
+}

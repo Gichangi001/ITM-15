@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  canAwardBonusPoints,
   canCreateEmployeeAccounts,
+  canManageContent,
   canManageUserRoles,
+  canManageVoting,
+  canModerateSubmissions,
   canViewAuditLog,
   hasAdminSurfaceAccess,
 } from "./roles";
@@ -71,5 +75,49 @@ describe("canViewAuditLog", () => {
 
   it("allows SUPER_ADMIN", () => {
     expect(canViewAuditLog(["SUPER_ADMIN"])).toBe(true);
+  });
+});
+
+describe("canManageContent", () => {
+  it("allows GAME_MASTER and SUPER_ADMIN (Product Guide §4.4)", () => {
+    expect(canManageContent(["GAME_MASTER"])).toBe(true);
+    expect(canManageContent(["SUPER_ADMIN"])).toBe(true);
+  });
+
+  it("denies PLAYER, MODERATOR, COUNTRY_ADMIN, ANALYTICS_VIEWER", () => {
+    expect(canManageContent(["PLAYER"])).toBe(false);
+    expect(canManageContent(["MODERATOR"])).toBe(false);
+    expect(canManageContent(["COUNTRY_ADMIN"])).toBe(false);
+    expect(canManageContent(["ANALYTICS_VIEWER"])).toBe(false);
+  });
+});
+
+describe("canModerateSubmissions", () => {
+  it("allows MODERATOR, GAME_MASTER and SUPER_ADMIN (Product Guide §4.2/§4.4)", () => {
+    expect(canModerateSubmissions(["MODERATOR"])).toBe(true);
+    expect(canModerateSubmissions(["GAME_MASTER"])).toBe(true);
+    expect(canModerateSubmissions(["SUPER_ADMIN"])).toBe(true);
+  });
+
+  it("denies PLAYER, COUNTRY_ADMIN, ANALYTICS_VIEWER", () => {
+    expect(canModerateSubmissions(["PLAYER"])).toBe(false);
+    expect(canModerateSubmissions(["COUNTRY_ADMIN"])).toBe(false);
+    expect(canModerateSubmissions(["ANALYTICS_VIEWER"])).toBe(false);
+  });
+});
+
+describe("canAwardBonusPoints", () => {
+  it("allows GAME_MASTER and SUPER_ADMIN, denies MODERATOR", () => {
+    expect(canAwardBonusPoints(["GAME_MASTER"])).toBe(true);
+    expect(canAwardBonusPoints(["SUPER_ADMIN"])).toBe(true);
+    expect(canAwardBonusPoints(["MODERATOR"])).toBe(false);
+  });
+});
+
+describe("canManageVoting", () => {
+  it("allows GAME_MASTER and SUPER_ADMIN, denies MODERATOR", () => {
+    expect(canManageVoting(["GAME_MASTER"])).toBe(true);
+    expect(canManageVoting(["SUPER_ADMIN"])).toBe(true);
+    expect(canManageVoting(["MODERATOR"])).toBe(false);
   });
 });

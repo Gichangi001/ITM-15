@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
 import { getCurrentRoles } from "@/lib/auth/session";
 import {
+  canAwardBonusPoints,
   canCreateEmployeeAccounts,
+  canManageContent,
   canManageUserRoles,
+  canManageVoting,
+  canModerateSubmissions,
   canViewAuditLog,
 } from "@/lib/auth/roles";
 import { AdminNav } from "@/components/admin/AdminNav";
@@ -24,6 +28,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           canManageUsers: canManageUserRoles(roles),
           canCreateAccounts: canCreateEmployeeAccounts(roles),
           canViewAudit: canViewAuditLog(roles),
+          canManageContent: canManageContent(roles),
+          canModerateSubmissions: canModerateSubmissions(roles),
+          canAwardBonusPoints: canAwardBonusPoints(roles),
+          canManageVoting: canManageVoting(roles),
         }}
       />
       <div className="flex-1">{children}</div>

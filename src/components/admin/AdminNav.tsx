@@ -8,6 +8,10 @@ export type AdminNavCapabilities = {
   canManageUsers: boolean;
   canCreateAccounts: boolean;
   canViewAudit: boolean;
+  canManageContent: boolean;
+  canModerateSubmissions: boolean;
+  canAwardBonusPoints: boolean;
+  canManageVoting: boolean;
 };
 
 /**
@@ -31,6 +35,18 @@ export function AdminNav({ capabilities }: { capabilities: AdminNavCapabilities 
   }
   if (capabilities.canCreateAccounts) {
     items.push({ href: "/admin/players/new", label: "Add Player" });
+  }
+  if (capabilities.canManageContent) {
+    items.push({ href: "/admin/missions", label: "Missions" });
+  }
+  if (capabilities.canModerateSubmissions) {
+    items.push({ href: "/admin/submissions", label: "Submissions" });
+  }
+  if (capabilities.canAwardBonusPoints) {
+    items.push({ href: "/admin/scoring", label: "Scoring" });
+  }
+  if (capabilities.canManageVoting) {
+    items.push({ href: "/admin/voting", label: "Voting" });
   }
   if (capabilities.canViewAudit) {
     items.push({ href: "/admin/audit", label: "Audit Log" });

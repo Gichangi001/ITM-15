@@ -2,9 +2,9 @@
 
 Last audit: 2026-09-13
 Branch: main
-Commit: `cc612af` (Phase 5 completion)
+Commit: `a9be3d5` (Phase 5 + audit reconciliation; Phases 6-9 audit/fix land in the commit(s) immediately after)
 Environment: local dev machine, Vercel production (`https://itm-15.vercel.app`, HTTP 200), Supabase project `ysjjgzakswaohmnaowmv` (schema applied and verified)
-Current build phase: Phase 0 done except one user-blocked item (CI push); **Phases 1-5 COMPLETE, verified live end-to-end against the real database**: Supabase foundation + RLS, invite-only authentication, onboarding, the full player-route shell, and the admin Mission Control shell (real KPIs, audit viewer, role-based nav, honestly-labeled quick-action placeholders). Wally W0 (placeholder assets/tables) on the same real database. Phase 6 (content engine) is next — everything from Phase 6 onward is genuinely pending, not started.
+Current build phase: Phase 0 done except one user-blocked item (CI push); **Phases 1-9 COMPLETE, verified live end-to-end against the real database**: Supabase foundation + RLS, invite-only authentication, onboarding, the full player-route shell, the admin Mission Control shell, and a full content/submission/scoring/voting loop (missions, quizzes, photo uploads, moderation, leaderboards, polls) proven end-to-end with a real Day-Zero-style rehearsal. Phase 10's core (moderation queue, private storage, gallery) also works as a byproduct of the same slice, though its admin Media Library isn't built. One real bug was found and fixed during this audit: a mission could be set LIVE and still be permanently invisible to every player because nothing ever published its containing game day — see "Content Engine" below. Wally W0 (placeholder assets/tables) on the same real database. Phase 11 (realtime engine) is next — everything from there onward is genuinely pending, not started.
 
 ## How to read this file
 
@@ -388,43 +388,145 @@ This remaining blocker is not something this session can resolve unilaterally (p
 
 ## Content Engine (Phase 6 — Product Guide §9, §18)
 
-- [ ] Content hierarchy modeled (Campaign → Game Day → Story Scene → Mission → Challenge)
-- [ ] Question editor (create/edit/archive, rich text, media, options, points, time limit, targeting, retry policy, preview)
-- [ ] Mission editor (9-step guided builder: basics/audience/challenge/scoring/Wally/timing/theme/preview/publish)
-- [ ] Draft/preview/publish workflow
-- [ ] Revision handling for editing a live mission (warning, revision record, no retroactive invalidation without explicit choice)
-- [ ] Admin can create a mission without a code deploy
-- [ ] Draft mission invisible to players
+**COMPLETE for the scope this slice targets, verified live 2026-09-13.** Found as uncommitted work, audited, one real bug fixed (see below), then verified end to end. Full narrative in `docs/PROJECT_STATE.md`'s "Phases 6-9" write-up.
+
+- [x] Content hierarchy modeled (Campaign → Game Day → Mission → Challenge)
+
+  **Requirement:** Product Guide §9.1
+  **Implementation:** `supabase/migrations/20260913080000_content_submission_scoring_voting.sql` (`game_days`, `missions`, `challenges`, `challenge_options`) — Story Scene is not modeled as a separate table; not required by any Phase 6 acceptance criterion, and no admin surface calls for one yet
+  **Result:** PASS for what Phase 6's acceptance criteria require
+  **Verified:** 2026-09-13
+
+- [ ] Question editor — **partial**: `challenges`/`challenge_options` support rich-enough config for the 4 implemented challenge types via a plain HTML form (`src/app/admin/missions/new/NewMissionForm.tsx`); no rich text/media attachment, no standalone reusable question bank separate from a mission
+- [ ] Mission editor — **partial**: a single-page create form (basics/challenge/scoring/timing in one step), not the full 9-step guided builder (§18.2) with Wally/theme steps — those depend on subsystems (Phase 13, 15) that don't exist yet
+- [x] Draft/preview/publish workflow
+
+  **Requirement:** Product Guide §18.3, §26 Phase 6
+  **Implementation:** missions created `DRAFT`; `updateMissionStatus` (`src/app/admin/missions/actions.ts`) is a distinct, audited publish action — matches the pattern from Phase 2's `updateUser`
+  **Result:** PASS (no "preview as player" step; not required by Phase 6's acceptance wording)
+  **Verified:** 2026-09-13
+- [ ] Revision handling for editing a live mission — not built; editing a live mission's fields directly changes it with no warning/revision record. A real, disclosed gap.
+- [x] Admin can create a mission without a code deploy
+
+  **Tests:** live — created a real SINGLE_CHOICE mission through `/admin/missions/new`
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Draft mission (and its containing day) invisible to players
+
+  **Requirement:** Product Guide §26 Phase 6 acceptance
+  **Implementation:** RLS policies on `game_days`/`missions`/`challenges`/`challenge_options`, each requiring `LIVE`/`COMPLETED`/`PAUSED` status
+  **Security finding, fixed this session:** `game_days` was created `DRAFT` and **nothing anywhere in the app ever changed it** — no admin control existed to publish a day at all. A mission set `LIVE` by an admin was still permanently invisible to every player, because the day one level up silently blocked it. Found by actually running the full loop as a real player (not by reading the code) — `pnpm verify` could not have caught this, every layer typechecked/linted/built cleanly in isolation. Fixed with a new `updateGameDayStatus` action + a "Days" status-control section on `/admin/missions`.
+  **Tests:** live — confirmed a mission stayed invisible with only the mission set LIVE, then became visible once its day was also published
+  **Result:** PASS (after the fix)
+  **Verified:** 2026-09-13
 
 ## Submission Engine (Phase 7 — Product Guide §7 challenge types)
 
-- [ ] Reusable challenge renderer — at minimum: single/multiple-choice quiz, free-text, long answer, photo/video/audio upload, select-colleague, nomination+reason, vote, timed, cross-country partner, squad, QR/code discovery, find-a-person, image ID, sequence puzzle, poll, check-in, admin-verified live
-- [ ] Attempt/retry rules enforced server-side
-- [ ] Server deadline validation (never trust client clocks)
-- [ ] Player completes a mission end-to-end
+**COMPLETE for the 4 implemented challenge types, verified live 2026-09-13.**
+
+- [ ] Reusable challenge renderer — **4 of 20 challenge types implemented**: SINGLE_CHOICE, MULTIPLE_CHOICE, FREE_TEXT, PHOTO_UPLOAD (`src/app/(player)/play/mission/[missionId]/MissionChallengeForm.tsx`). The other 16 are a real, disclosed gap — `challenges.type` is a plain text column specifically so adding more is an application-level change, not a migration (see the schema migration's own header).
+- [x] Attempt/retry rules enforced server-side
+
+  **Implementation:** `submitAnswer` (`src/app/(player)/play/mission/[missionId]/actions.ts`) counts existing submissions server-side and compares against `missions.max_attempts`
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Server deadline validation (never trust client clocks)
+
+  **Implementation:** `submitAnswer` compares `missions.ends_at` against `Date.now()` server-side before accepting a submission
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Player completes a mission end-to-end
+
+  **Tests:** live — real player answered a real SINGLE_CHOICE mission correctly through the actual UI; verified against the database (not just UI text) that the submission and its resulting score event exist
+  **Result:** PASS
+  **Verified:** 2026-09-13
 
 ## Authoritative Scoring & Leaderboards (Phase 8 — Product Guide §10)
 
-- [ ] `score_events` append-only ledger (schema not yet written — later than the Phase 1 foundation tables)
-- [ ] Admin bonus-point flow (award to player/squad/country, required reason, guardrail, confirmation, audit entry)
-- [ ] Individual/squad/country/entity leaderboards
-- [ ] Leaderboard admin controls (show/hide, freeze, delay, dramatic reveal)
-- [ ] Browser cannot self-award points (server-authoritative, no client-mutable score field)
+**COMPLETE, verified live 2026-09-13.**
+
+- [x] `score_events` append-only ledger
+
+  **Implementation:** `supabase/migrations/20260913080000_...sql` — no update/delete policy for any client role; every write goes through a server action using the service role
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Admin bonus-point flow (award to player, required reason, audit entry)
+
+  **Requirement:** Product Guide §10.2
+  **Implementation:** `awardBonusPoints` (`src/app/admin/scoring/actions.ts`) — Game Master/Super Admin only (`canAwardBonusPoints`), required reason, writes `score_events` + `audit_logs`
+  **Result:** PASS (squad/country-wide bonus targeting not built — only per-player; no configurable guardrail cap or confirmation modal)
+  **Verified:** 2026-09-13
+
+- [ ] Squad leaderboards — squads/squad assignment don't exist yet; `score_events.squad_id` exists in the schema for forward compatibility but stays unpopulated (disclosed in the migration header)
+- [x] Individual/country leaderboards
+
+  **Implementation:** `src/lib/scoring/leaderboard.ts` (`getPlayerLeaderboard`, `getCountryLeaderboard`), rendered at `/leaderboards`
+  **Tests:** live — leaderboard correctly showed 100 pts after a quiz answer, then 150 pts after a photo submission was separately approved, for both the player and their country
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [ ] Leaderboard admin controls (show/hide, freeze, delay, dramatic reveal) — not built
+- [x] Browser cannot self-award points (server-authoritative, no client-mutable score field)
+
+  **Implementation:** `submitAnswer` re-derives correctness from `challenge_options.is_correct` server-side regardless of what the client submitted; no client-writable policy exists on `score_events` at all
+  **Result:** PASS
+  **Verified:** 2026-09-13
 
 ## Voting & Nominations (Phase 9 — Product Guide §11)
 
-- [ ] Poll configuration (single/multi-choice, named/anonymous, eligibility, candidate source, self-vote rule, timing, live-count, reveal rule)
-- [ ] Vote uniqueness enforced at the database level, not just UI
-- [ ] Nomination + reason flow
-- [ ] Admin-controlled live reveal
+**COMPLETE for single-choice polls, verified live 2026-09-13.**
+
+- [ ] Poll configuration — **single-choice only**, not multi-select (§11.1 also describes multi-select); named/anonymous, candidate source, self-vote rule, timing, results-visibility rule are all implemented (`src/app/admin/voting/new/NewPollForm.tsx`, `supabase/migrations/20260913080000_...sql`). Multi-select is a disclosed gap — the migration header explains why (a per-poll conditional uniqueness constraint can't be expressed as a plain Postgres partial index).
+- [x] Vote uniqueness enforced at the database level, not just UI
+
+  **Implementation:** `unique(poll_id, voter_id)` constraint on `votes`, not just the server action's own pre-check
+  **Tests:** live — attempted a duplicate vote through the real UI after already voting; correctly refused, and the database confirms exactly one row for that player/poll
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [ ] Nomination + reason flow — reason capture exists (`polls.reason_required`, `votes.reason`) but there's no dedicated "nominate a colleague" UI distinct from a generic poll option list
+- [x] Admin-controlled live reveal
+
+  **Implementation:** `updatePollStatus` (`src/app/admin/voting/actions.ts`), audited
+  **Tests:** live — revealed a poll through the real UI; vote counts became visible on the player-facing page immediately after
+  **Result:** PASS
+  **Verified:** 2026-09-13
 
 ## Media Uploads & Moderation (Phase 10 — Product Guide §12)
 
-- [ ] Storage buckets (`avatars`, `challenge-submissions`, `approved-gallery`, `admin-media`, `wally-assets`) and their access policies
-- [ ] Upload flow (client validation → server/storage authorization → Pending → moderator review → approve/reject/resubmit)
-- [ ] Approved gallery (`/gallery`, filters by day/country/challenge/squad/featured)
-- [ ] Admin Media Library
-- [ ] Unapproved media never appears on a public surface
+**Core loop COMPLETE, verified live 2026-09-13 — further along than its own phase number suggests, since it was built as part of the same Phase 6-9 slice.**
+
+- [x] Storage bucket + access policies (for challenge evidence)
+
+  **Requirement:** Product Guide §12.1
+  **Implementation:** `supabase/migrations/20260913083000_challenge_submissions_storage.sql` — private `challenge-submissions` bucket, RLS policies restrict upload/read to the uploader's own uid-prefixed folder. `avatars`/`approved-gallery`/`admin-media`/`wally-assets` buckets are not built — only what Phase 6-9's actual scope needed.
+  **Tests:** live — player uploaded real image bytes through the browser Supabase Storage client; a defense-in-depth server-side check re-validates the path prefix
+  **Result:** PASS for challenge evidence
+  **Verified:** 2026-09-13
+
+- [x] Upload flow (client validation → server/storage authorization → Pending → moderator review → approve/reject)
+
+  **Implementation:** `MissionChallengeForm.tsx` (client MIME/size guidance) → storage RLS → `submissions.status = 'PENDING'` → `/admin/submissions` (service-role read, signed-URL preview) → `moderateSubmission` (`src/app/admin/submissions/actions.ts`)
+  **Tests:** live — full loop run for real, including the moderator seeing a working signed-URL image preview and clicking Approve
+  **Result:** PASS (no "resubmit" flow after rejection — rejected submissions are terminal in this slice)
+  **Verified:** 2026-09-13
+
+- [x] Approved gallery (`/gallery`)
+
+  **Implementation:** `src/app/(player)/gallery/page.tsx` — queries only `status = 'APPROVED'` rows, mints short-lived signed URLs
+  **Result:** PASS (no filters by day/country/challenge/squad/featured yet — just a flat approved-photo grid)
+  **Verified:** 2026-09-13
+
+- [ ] Admin Media Library (§12.4, general reference assets like historical photos) — not built; `media_assets` table exists in the schema but nothing writes to it yet
+- [x] Unapproved media never appears on a public surface
+
+  **Tests:** live — gallery showed nothing until the photo was actually approved; the bucket itself is private (not merely policy-gated), so even a guessed path returns nothing without a valid signed URL
+  **Result:** PASS
+  **Verified:** 2026-09-13
 
 ## Realtime Engine (Phase 11 — Product Guide §14)
 

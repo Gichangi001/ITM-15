@@ -51,6 +51,7 @@ const PROTECTED_PREFIXES = [
   "/notifications",
   "/profile",
   "/help",
+  "/vote",
   "/admin",
 ];
 
