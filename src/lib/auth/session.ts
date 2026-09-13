@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { Role } from "@/lib/auth/roles";
+import { hasAdminSurfaceAccess, type Role } from "@/lib/auth/roles";
 
 /**
  * Server-side session/profile/role readers for Server Components, Server
@@ -54,4 +54,26 @@ export async function getCurrentRoles(): Promise<Role[]> {
     .eq("user_id", user.id);
 
   return (roleRows ?? []).map((row) => row.role as Role);
+}
+
+/**
+ * The "where does this signed-in user actually belong" tail shared by
+ * every post-auth entry point (password sign-in, forced first-login
+ * password change, and the magic-link callback route) — previously
+ * duplicated identically in two files. Deliberately narrow: callers that
+ * already have the profile loaded (avoiding a redundant query) keep doing
+ * their own must_change_password/onboarding_completed checks inline; this
+ * only extracts the role lookup + branch, which was byte-identical in both
+ * places and has nothing else to vary.
+ */
+export async function resolveRoleBasedDestination(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<"/admin" | "/play"> {
+  const { data: roleRows } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  const roles = (roleRows ?? []).map((row) => row.role as Role);
+  return hasAdminSurfaceAccess(roles) ? "/admin" : "/play";
 }

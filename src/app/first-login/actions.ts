@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { changePasswordSchema } from "@/lib/auth/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { hasAdminSurfaceAccess, type Role } from "@/lib/auth/roles";
+import { resolveRoleBasedDestination } from "@/lib/auth/session";
 
 export type ChangePasswordState = {
   error?: string;
@@ -84,11 +84,5 @@ export async function changePassword(
     redirect("/onboarding");
   }
 
-  const { data: roleRows } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id);
-  const roles = (roleRows ?? []).map((row) => row.role as Role);
-
-  redirect(hasAdminSurfaceAccess(roles) ? "/admin" : "/play");
+  redirect(await resolveRoleBasedDestination(supabase, user.id));
 }
