@@ -40,7 +40,7 @@ import type { Role } from "@/lib/auth/roles";
  * hook, not a change to the authorization logic itself.
  */
 
-const PROTECTED_PREFIXES = ["/first-login", "/play", "/admin"];
+const PROTECTED_PREFIXES = ["/first-login", "/onboarding", "/play", "/admin"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
@@ -92,7 +92,7 @@ export async function proxy(request: NextRequest) {
   // check depends on it.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("status, must_change_password")
+    .select("status, must_change_password, onboarding_completed")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -126,11 +126,33 @@ export async function proxy(request: NextRequest) {
     return redirectWithCookies(url, getResponse());
   }
 
-  // Roles are needed for two decisions below (where an admin-capable user
-  // lands by default, and whether /admin is reachable at all) — fetched
-  // once and reused rather than twice.
+  // Product Guide §5.2 step 5: "If required profile fields are incomplete,
+  // go to /onboarding" — checked right after the password gate and before
+  // anything role-based, matching the login-behaviour order in the spec
+  // (password gate, then onboarding gate, then role-based destination).
+  // Applies uniformly regardless of role: an admin account created the same
+  // way a player's is (Product Guide §5.1) still needs a real name/country
+  // on file. This check needs no role data, so it runs before the roles
+  // fetch below.
+  const onboardingIncomplete = profile.onboarding_completed !== true;
+
+  if (!mustChangePassword && onboardingIncomplete && pathname !== "/onboarding") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/onboarding";
+    url.search = "";
+    return redirectWithCookies(url, getResponse());
+  }
+
+  // Roles are needed for three decisions below (where an admin-capable user
+  // lands by default, whether /admin is reachable at all, and bouncing an
+  // already-onboarded visitor away from /onboarding) — fetched once and
+  // reused rather than repeatedly.
   const needsRoles =
-    !mustChangePassword && (pathname === "/first-login" || pathname === "/login" || pathname.startsWith("/admin"));
+    !mustChangePassword &&
+    (pathname === "/first-login" ||
+      pathname === "/login" ||
+      pathname === "/onboarding" ||
+      pathname.startsWith("/admin"));
   let roles: Role[] = [];
   if (needsRoles) {
     const { data: roleRows } = await supabase
@@ -148,11 +170,25 @@ export async function proxy(request: NextRequest) {
     return redirectWithCookies(url, getResponse());
   }
 
+  // Already onboarded but landing back on /onboarding (e.g. a stale
+  // bookmark, or browser back after completing it) — send them onward
+  // instead of showing the form again.
+  if (!mustChangePassword && !onboardingIncomplete && pathname === "/onboarding") {
+    const url = request.nextUrl.clone();
+    url.pathname = defaultDestination;
+    url.search = "";
+    return redirectWithCookies(url, getResponse());
+  }
+
   // Already-authenticated visitor landing on /login — send them onward
   // instead of showing the form again.
   if (pathname === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = mustChangePassword ? "/first-login" : defaultDestination;
+    url.pathname = mustChangePassword
+      ? "/first-login"
+      : onboardingIncomplete
+        ? "/onboarding"
+        : defaultDestination;
     url.search = "";
     return redirectWithCookies(url, getResponse());
   }

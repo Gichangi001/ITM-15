@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   changePasswordSchema,
   createEmployeeSchema,
+  onboardingSchema,
   signInSchema,
   updateUserSchema,
 } from "./schemas";
@@ -154,6 +155,52 @@ describe("updateUserSchema", () => {
       userId,
       role: "PLAYER",
       status: "SUSPENDED",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("onboardingSchema", () => {
+  const countryId = "11111111-1111-4111-8111-111111111111";
+
+  it("accepts a full name and country with no entity", () => {
+    const result = onboardingSchema.safeParse({
+      fullName: "Amina Kenya",
+      countryId,
+      entityId: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an entity when provided", () => {
+    const result = onboardingSchema.safeParse({
+      fullName: "Amina Kenya",
+      countryId,
+      entityId: countryId,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a missing full name", () => {
+    const result = onboardingSchema.safeParse({
+      fullName: "",
+      countryId,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a missing country — it's required at onboarding, unlike admin-time account creation", () => {
+    const result = onboardingSchema.safeParse({
+      fullName: "Amina Kenya",
+      countryId: "",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a non-UUID countryId", () => {
+    const result = onboardingSchema.safeParse({
+      fullName: "Amina Kenya",
+      countryId: "not-a-uuid",
     });
     expect(result.success).toBe(false);
   });

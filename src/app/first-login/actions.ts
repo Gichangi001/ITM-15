@@ -70,7 +70,20 @@ export async function changePassword(
   }
 
   // Computed directly rather than always redirecting to one fixed route —
-  // see the comment on src/app/login/actions.ts's signIn for why.
+  // see the comment on src/app/login/actions.ts's signIn for why. Same
+  // reasoning extends to the onboarding gate (Product Guide §5.2 step 5):
+  // without checking it here too, this would redirect straight to
+  // /admin or /play and rely on src/proxy.ts to redirect a second time.
+  const { data: profileAfter } = await supabase
+    .from("profiles")
+    .select("onboarding_completed")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profileAfter?.onboarding_completed) {
+    redirect("/onboarding");
+  }
+
   const { data: roleRows } = await supabase
     .from("user_roles")
     .select("role")

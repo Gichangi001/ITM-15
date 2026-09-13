@@ -59,7 +59,7 @@ export async function signIn(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("status, must_change_password")
+    .select("status, must_change_password, onboarding_completed")
     .eq("id", data.user.id)
     .maybeSingle();
 
@@ -70,6 +70,17 @@ export async function signIn(
 
   if (profile.must_change_password) {
     redirect("/first-login");
+  }
+
+  // Product Guide §5.2 step 5, checked before the role-based destination —
+  // same order src/proxy.ts enforces. Without this check here too, a
+  // player would briefly land on /play (or an admin on /admin) before
+  // proxy.ts's own onboarding gate caught the next request and redirected
+  // again — the exact double-redirect artifact this action's destination
+  // computation exists to avoid in the first place (see this function's
+  // header comment).
+  if (!profile.onboarding_completed) {
+    redirect("/onboarding");
   }
 
   const { data: roleRows } = await supabase

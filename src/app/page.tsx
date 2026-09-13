@@ -94,9 +94,20 @@ export default function Home() {
           Seven days. One story. Your next mission is waiting.
         </p>
 
+        {/* Product Guide §6.1: "Primary CTA: Enter the Game. Secondary CTA
+            for approved users: Sign In." This product is invite-only with a
+            single entry point (Phase 2 — no self-registration exists), so
+            both CTAs the spec describes resolve to the same /login
+            destination; there's nothing to functionally distinguish them.
+            The scroll-to-story link stays as a lower-emphasis third option
+            for a visitor who isn't ready to sign in yet. */}
+        <a href="/login" className="btn-primary mt-8">
+          Enter the Game
+        </a>
+
         <a
           href="#story"
-          className="mt-8 text-sm font-medium text-ink underline decoration-walumo decoration-2 underline-offset-4 transition hover:text-walumo"
+          className="mt-6 text-sm font-medium text-ink underline decoration-walumo decoration-2 underline-offset-4 transition hover:text-walumo"
         >
           Read the story ↓
         </a>

@@ -16,6 +16,8 @@ Per the audit's priority engine (blockers → security → foundation → depend
 
 **Phase 2 (Invite-only authentication) — COMPLETE, verified live end-to-end 2026-09-13.** Product Guide §5, §26 Phase 2. Full write-up below ("Phase 2 — Invite-only authentication").
 
+**Phase 3 (Landing page and onboarding) — COMPLETE, verified live end-to-end 2026-09-13.** Product Guide §5.4, §26 Phase 3. Full write-up below ("Phase 3 — Onboarding").
+
 **Phase 1 (Supabase foundation) — COMPLETE, verified 2026-09-13.** The migration blocker described below is resolved: a fresh session picked up the project-scoped `mcp__supabase__*` tools immediately (confirmed via `ToolSearch`), and both draft migrations were applied to the live `ysjjgzakswaohmnaowmv` project.
 
 **What was done, in order, this session:**
@@ -131,6 +133,32 @@ All test/throwaway accounts and their `audit_logs`/`profiles`/`user_roles` rows 
 **No new migrations were needed** — `profiles`, `user_roles`, and `audit_logs` (from the Phase 1 foundation migration) already had everything Phase 2 needed, including the RLS policies (`profiles`/`user_roles`'s "own row" read policies, and the deliberate absence of any client-writable policy on either — every write in this phase goes through the service-role admin client from a server action, exactly the pattern the migration's own comments describe).
 
 `pnpm verify` (lint/typecheck/43 unit tests/build) passes clean throughout.
+
+## Phase 3 — Onboarding (Product Guide §5.4, §26 Phase 3)
+
+Built and verified live against the real `ysjjgzakswaohmnaowmv` database.
+
+**Scope delivered:**
+- `/onboarding` — captures the minimum required game identity per §5.4: full name, country (required), entity/company (recommended, shown once a country is picked, filtered to that country's entities). Email is never re-collected — it's already known from Auth.
+- `src/app/onboarding/actions.ts` (`completeOnboarding`) — writes through the service-role admin client (same reason as every other `profiles` write: no client-writable UPDATE policy exists), sets `full_name`, derives and sets `first_name` (new `src/lib/auth/profile.ts::deriveFirstName` — first whitespace-separated token of the full name; WALLY.md §18.2's dialogue variables use `{{first_name}}` specifically, not the full name), `country_id`, `entity_id`, and flips `onboarding_completed` to `true`.
+- `src/proxy.ts` — extended with a new gate: an authenticated user with `onboarding_completed = false` is redirected to `/onboarding` on every request (except `/first-login`, which still takes priority), regardless of role. This matches Product Guide §5.2's login-behavior order literally ("if must_change_password, go to /first-login... if required profile fields are incomplete, go to /onboarding... otherwise route by role") — no role-based exemption exists in the spec, so none was added: an admin account still needs a real name/country on file.
+- Landing page (`src/app/page.tsx`): added the Product Guide §6.1 "Enter the Game" primary CTA (→ `/login`), now that Phase 2 gives it a real destination instead of a dead link. "Sign In" isn't a separate control — this product is invite-only with a single entry point, so both spec CTAs resolve to the same page.
+
+**Squad auto-assignment** ("assign the player to an eligible squad if automatic squad assignment is enabled," §5.4) was **not** attempted — `squads`/`squad_members` don't exist yet (later than the Phase 1 foundation schema). Revisit once those tables exist.
+
+**A real bug caught by live testing, not `pnpm verify`:** `src/app/login/actions.ts`'s `signIn` and `src/app/first-login/actions.ts`'s `changePassword` both compute their own post-auth redirect destination directly (a deliberate pattern from Phase 2, to avoid a Next.js dev-mode double-redirect artifact — see their header comments) — but neither had been taught about the new `onboarding_completed` gate, so both sent a not-yet-onboarded user straight to `/play`/`/admin` instead of `/onboarding`. A first Playwright run of the live flow caught this immediately (`page.waitForURL("**/onboarding")` timed out; the browser had actually landed on `/play`). Fixed by extending both actions' own destination computation to check `onboarding_completed` first, mirroring exactly the check `completeOnboarding` and `src/proxy.ts` already use. Re-ran the same live test afterward — passed clean. This is the same class of bug the Phase 2 write-up already flags as something `pnpm verify` structurally cannot catch (it's a live request-routing behavior, not a type or lint issue).
+
+**Verified live, end-to-end** (Playwright, headless Chromium, a synthetic `onboarding.test@itm15.test` account created directly via the service-role key — same "create via service role, verify, delete" pattern as Phase 2 — deleted after verification):
+- Temporary-password login → `/first-login` (unchanged from Phase 2).
+- Password change → `/onboarding` (not `/play` — this is the new behavior; confirms the bugfix above).
+- Onboarding form renders the real seeded countries (🇧🇯 Benin, 🇧🇮 Burundi, 🇨🇩 DR Congo, 🇰🇪 Kenya, 🇸🇳 Senegal) via a live query, not fixture data.
+- Submitting the form → `/play`.
+- Re-visiting `/onboarding` directly after completion → bounced to `/play` (not shown again).
+- An unauthenticated visitor hitting `/onboarding` directly → bounced to `/login`.
+
+**A real, disclosed consequence for the live Super Admin account**: `alexander.gichangi@walumoafrica.com`'s profile was created the same way any employee's is (Product Guide §5.1) and has never been through onboarding — its `onboarding_completed` is `false`. **The next time that account signs in, it will be redirected to `/onboarding` before reaching Mission Control**, same as any other account, per the spec's own unconditional ordering. This is correct behavior, not a bug, but the user should know before it happens rather than being surprised by it mid-session.
+
+`pnpm verify` (lint/typecheck/51 unit tests/build) passes clean throughout.
 
 ## Wally placeholder assets (W0, per docs/WALLY.md §37)
 

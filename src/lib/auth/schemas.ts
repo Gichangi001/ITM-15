@@ -80,3 +80,17 @@ export const updateUserSchema = z.object({
 });
 
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+
+/**
+ * Product Guide §5.4 (Player onboarding). "The minimum required game
+ * identity is exactly: name, email, country" — email is already known from
+ * Auth and never re-collected here. Entity is "recommended," not required,
+ * matching the spec's own wording.
+ */
+export const onboardingSchema = z.object({
+  fullName: z.string().trim().min(1, "Your name is required"),
+  countryId: z.string().trim().min(1, "Select your country").uuid("Select your country"),
+  entityId: optionalFormField(z.string().uuid()),
+});
+
+export type OnboardingInput = z.infer<typeof onboardingSchema>;
