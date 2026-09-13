@@ -2,9 +2,9 @@
 
 Last audit: 2026-09-13
 Branch: main
-Commit: `2381640` (Phase 1 completion work lands in the commit(s) immediately after)
-Environment: local dev machine, Vercel production (`https://itm-15.vercel.app`, HTTP 200 confirmed this audit), Supabase project `ysjjgzakswaohmnaowmv` (**schema applied and verified this session**)
-Current build phase: Phase 0 done except one user-blocked item; **Phase 1 (Supabase) COMPLETE and verified**; **Phase 2 (invite-only authentication) COMPLETE, verified live end-to-end** against the real database (login, forced first-login, admin account creation, Super-Admin-only role/status management, disabled-account rejection, admin-route protection); Wally W0 (placeholder assets/tables) on the same real database; Phase 3's landing-page teaser section built early and out of strict phase order (a deliberate, disclosed choice — see "Seven-Day Story" below), everything else (Phase 3's onboarding form, Phase 4-21) not started.
+Commit: `cc612af` (Phase 5 completion)
+Environment: local dev machine, Vercel production (`https://itm-15.vercel.app`, HTTP 200), Supabase project `ysjjgzakswaohmnaowmv` (schema applied and verified)
+Current build phase: Phase 0 done except one user-blocked item (CI push); **Phases 1-5 COMPLETE, verified live end-to-end against the real database**: Supabase foundation + RLS, invite-only authentication, onboarding, the full player-route shell, and the admin Mission Control shell (real KPIs, audit viewer, role-based nav, honestly-labeled quick-action placeholders). Wally W0 (placeholder assets/tables) on the same real database. Phase 6 (content engine) is next — everything from Phase 6 onward is genuinely pending, not started.
 
 ## How to read this file
 
@@ -12,15 +12,14 @@ Current build phase: Phase 0 done except one user-blocked item; **Phase 1 (Supab
 
 ## Executive Status
 
-- Total requirements tracked here: 151
-- Verified complete: 33 (+13 this session — see Authentication & User Management)
-- In progress: 5
-- Pending: 113
+- Total checklist items tracked in this file: 217 (up from 151 — this session split several single "all pending" bullets in Player Shell/Admin Mission Control into individually-verifiable items as those phases actually got built, rather than keeping one coarse line each)
+- Verified complete: 66 (+~33 this session across Phases 3-5 — see Employee Onboarding, Player Shell, Admin Mission Control)
+- Pending: 151 (the rest of Phases 6-21, plus the deliberately-skipped landing-page pieces)
 - Blocked: 1 (needs a user action, not more engineering — see Critical Blockers)
 - Failed verification: 0
 - Deferred: 0
 
-Overall completion: **Phase 0 done bar one item; Phases 1-2 of 21 COMPLETE** (Product Guide §26 numbering). One piece of Phase 3 (the landing-page story teaser) was built ahead of order — disclosed, not hidden — everything else is untouched.
+Overall completion: **Phase 0 done bar one item; Phases 1-5 of 21 COMPLETE** (Product Guide §26 numbering), each verified live end-to-end against the real database, not just structurally. Phase 6 (content engine) is next.
 Release readiness: **NOT READY.** Expected at this stage — recorded as the honest baseline, not a finding demanding immediate action beyond what's below.
 
 ## Critical Blockers
@@ -231,12 +230,34 @@ This remaining blocker is not something this session can resolve unilaterally (p
 
 ## Employee Onboarding (Phase 3 — Product Guide §5.4)
 
-- [ ] Onboarding form (`/onboarding`): full name, email (read-only from Auth), country (required), entity (recommended), optional profile photo
-- [ ] Minimum required game identity enforced: name + email + country
-- [ ] Automatic squad assignment on completion (if enabled)
-- [ ] Incomplete profile cannot bypass onboarding into `/play`
+**COMPLETE, verified live end-to-end 2026-09-13** — see `docs/PROJECT_STATE.md`'s Phase 3 write-up for the full narrative, including a real live-routing bug found and fixed (`signIn`/`changePassword` didn't know about the new onboarding gate).
 
-Note: the landing page itself (hero + story teaser) was built ahead of this phase's usual order — see "Seven-Day Story" below. Login is now built (Phase 2, complete); onboarding itself still isn't — it's the next smallest slice per `docs/PROJECT_STATE.md`.
+- [x] Onboarding form (`/onboarding`): full name, email (read-only from Auth), country (required), entity (recommended)
+
+  **Requirement:** Product Guide §5.4
+  **Implementation:** `src/app/onboarding/page.tsx`, `OnboardingForm.tsx`, `actions.ts` — written through the service-role admin client (no client-writable UPDATE policy on `profiles`)
+  **Tests:** live Playwright run — real seeded countries render, form submits correctly
+  **Result:** PASS (profile photo intentionally not built — not required by "minimum required game identity")
+  **Verified:** 2026-09-13
+
+- [x] Minimum required game identity enforced: name + email + country
+
+  **Requirement:** Product Guide §5.4 ("exactly: name, email, country")
+  **Implementation:** `onboardingSchema` (`src/lib/auth/schemas.ts`) — `fullName`/`countryId` required, `entityId` optional; email never re-collected (read from Auth)
+  **Tests:** `schemas.test.ts` (5 new cases)
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [ ] Automatic squad assignment on completion — **not attempted**, `squads`/`squad_members` tables don't exist yet (later than the Phase 1 foundation schema)
+
+- [x] Incomplete profile cannot bypass onboarding into `/play` or `/admin`
+
+  **Requirement:** Product Guide §5.2 step 5
+  **Implementation:** `src/proxy.ts`'s new `onboardingIncomplete` gate, applied uniformly regardless of role; `signIn`/`changePassword` also check it directly to avoid a double-redirect
+  **Tests:** live — password change lands on `/onboarding` (not `/play`), re-visiting `/onboarding` after completion bounces away, unauthenticated visit bounces to `/login`
+  **Security:** applies to every role, including admin-surface roles — the real Super Admin will hit this gate on its next login too (disclosed in `PROJECT_STATE.md`)
+  **Result:** PASS
+  **Verified:** 2026-09-13
 
 ## Database & RLS (Phase 1 — Product Guide §26)
 
@@ -300,40 +321,70 @@ Note: the landing page itself (hero + story teaser) was built ahead of this phas
 - [ ] "15 years in motion" historical timeline — deliberately skipped, needs real ITM historical data not available this session
 - [ ] Multinational-presence map/visual — deliberately skipped, same reason
 - [ ] Live countdown to next unlock — needs a real campaign row with real dates from the database
-- [ ] "Enter the Game" / "Sign In" CTAs — deliberately omitted (would be dead links before Phase 2 auth exists); current CTA is a working same-page scroll anchor only
+- [x] "Enter the Game" / "Sign In" CTAs
+
+  **Requirement:** Product Guide §6.1
+  **Implementation:** `src/app/page.tsx` — "Enter the Game" primary CTA to `/login`, added once Phase 2 gave it a real destination. A separate "Sign In" control wasn't added: this product is invite-only with a single entry point, so both spec CTAs resolve to the same page.
+  **Result:** PASS
+  **Verified:** 2026-09-13
 
 ## Player Shell (Phase 4 — Product Guide §7)
 
-- [ ] All items pending — not started. Routes needed: `/play`, `/play/day/[dayNumber]`, `/play/mission/[missionId]`, `/passport`, `/leaderboards`, `/gallery`, `/achievements`, `/notifications`, `/profile`, `/help`.
+**COMPLETE, verified live end-to-end 2026-09-13** — see `docs/PROJECT_STATE.md`'s Phase 4 write-up.
+
+- [x] All 10 player IA routes exist and are reachable: `/play`, `/play/day/[dayNumber]`, `/play/mission/[missionId]`, `/passport`, `/leaderboards`, `/gallery`, `/achievements`, `/notifications`, `/profile`, `/help`
+
+  **Requirement:** Product Guide §7
+  **Implementation:** `src/app/(player)/` route group + shared `layout.tsx`/`PlayerNav.tsx`
+  **Tests:** live Playwright run — all 10 routes reachable with correct titles, no unexpected redirects
+  **Result:** PASS — `/passport`/`/leaderboards`/`/gallery`/`/achievements`/`/notifications` are honest labeled placeholders (backend doesn't exist yet); `/profile` is real signed-in data; `/play/day/[dayNumber]` validates 1-7 and 404s otherwise; `/play/mission/[missionId]` validates UUID shape
+  **Verified:** 2026-09-13
+
+- [x] A player can move through all authenticated player routes
+
+  **Tests:** live — synthetic fully-onboarded PLAYER account navigated all 10 routes; nav bar usable at 390px mobile width
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] No admin navigation leaks to players
+
+  **Implementation:** `PlayerNav` contains zero admin links by construction; `src/proxy.ts`'s existing `/admin/*` gate (Phase 2) is the actual enforcement boundary
+  **Tests:** live — PLAYER account still correctly blocked from `/admin`
+  **Result:** PASS
+  **Verified:** 2026-09-13
 
 ## Admin Mission Control (Phase 5 — Product Guide §17, audit-control doc §13)
 
-All pending — no admin UI exists yet:
+**Shell COMPLETE, verified live end-to-end 2026-09-13** — see `docs/PROJECT_STATE.md`'s Phase 5 write-up. Phase 5's own acceptance bar ("Admin can monitor account state... Role-based navigation works") is deliberately modest; a real operations center needs Phases 6-12.
 
-- [ ] Admin authentication works
-- [ ] Role authorization works
-- [ ] Live player count works
-- [ ] Country activity works
-- [ ] Squad activity works
-- [ ] Mission creation works
-- [ ] Mission editing works
-- [ ] Mission scheduling works
-- [ ] Challenge launch works
-- [ ] Surprise challenge works
-- [ ] Question editing works
-- [ ] Voting controls work
-- [ ] Photo moderation works
-- [ ] Bonus points work
-- [ ] Point deductions follow authorization rules
-- [ ] Theme change works
-- [ ] Chapter lock/unlock works
-- [ ] Wally Control Room works (`/admin/live/wally`)
-- [ ] Audience targeting works
-- [ ] Live notifications work
-- [ ] Featured media works
-- [ ] Spectator screen controls work
-- [ ] Audit log works
-- [ ] Emergency pause works
+- [x] Admin authentication works — Phase 2, unchanged
+- [x] Role authorization works
+
+  **Implementation:** `src/app/admin/layout.tsx` computes nav visibility from real role rows; every gated page independently re-checks server-side
+  **Tests:** live — SUPER_ADMIN sees all 4 nav links; MODERATOR sees only Overview and is bounced from `/admin/players`/`/admin/audit` on direct visit
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [x] Live player count works — **partial, honestly labeled**: "Active accounts" and "Countries active" are real live-queried counts; true realtime online-presence needs Phase 11 and is explicitly listed as not-yet-available on the dashboard itself, not silently omitted
+- [ ] Country activity, Squad activity — squads don't exist yet; country activity beyond the raw active-country count needs Phase 6+ content
+- [ ] Mission creation/editing/scheduling, Challenge launch, Surprise challenge, Question editing — Phase 6-7, not started (shown as inert "Quick action" placeholders naming the phase, per the runbook's own "Quick-action placeholders" Phase 5 build item)
+- [ ] Voting controls — Phase 9, not started (same placeholder treatment)
+- [ ] Photo moderation, Featured media — Phase 10, not started (same placeholder treatment)
+- [ ] Bonus points, Point deductions — Phase 8, not started (same placeholder treatment)
+- [ ] Theme change — Phase 15, not started (same placeholder treatment)
+- [ ] Chapter lock/unlock — Phase 6, not started (same placeholder treatment)
+- [ ] Wally Control Room (`/admin/live/wally`) — Phase 13, not started
+- [ ] Audience targeting, Live notifications — Phase 12, not started (same placeholder treatment)
+- [ ] Spectator screen controls — Phase 18, not started
+- [x] Audit log works
+
+  **Requirement:** Product Guide §4.5, §27
+  **Implementation:** `src/app/admin/audit/page.tsx`, gated by new `canViewAuditLog()`, reads via service-role client (audit_logs has zero RLS policies for any client role)
+  **Tests:** live — SUPER_ADMIN sees the viewer render (empty state, since the live table is genuinely empty right now); MODERATOR bounced away
+  **Result:** PASS
+  **Verified:** 2026-09-13
+
+- [ ] Emergency pause — Phase 12, not started (same placeholder treatment)
 
 ## Content Engine (Phase 6 — Product Guide §9, §18)
 
@@ -557,7 +608,7 @@ All pending — this is the true end-to-end proof of the whole architecture and 
 
 ## Unit Tests
 
-- [x] 9 tests across 4 files, all passing (`env.test.ts`, `env.server.test.ts`, `assets.test.ts`, `story.test.ts`) — re-confirmed this audit at commit `8c8b36f`
+- [x] 53 tests across 9 files, all passing — `env.test.ts`, `env.server.test.ts`, `assets.test.ts`, `story.test.ts`, `walkthrough.test.ts`, `dayThemes.test.ts`, plus Phases 2-5's `roles.test.ts`, `schemas.test.ts`, `profile.test.ts` — re-confirmed this audit at commit `cc612af`
 - [ ] All business-logic unit tests (scoring, eligibility, Wally priority/dialogue resolution, challenge validation, achievement rules, theme resolver, audience targeting) — none exist yet, no business logic exists yet
 
 ## Integration / E2E / Realtime Tests
@@ -623,8 +674,9 @@ Curated to the requirements with real evidence one way or another (verified or m
 | WAL-003 | Day 1-7 skin system | WALLY.md §20 | — | — | — | PENDING — **spec/art conflict flagged** |
 | AUTH-001 | Invite-only admin account creation | Product Guide §5.1 | — | — | — | PENDING |
 | AUTH-002 | Forced first-login password change | Product Guide §5.3 | — | — | — | PENDING |
-| USR-001 | Onboarding (name/email/country) | Product Guide §5.4 | — | — | — | PENDING |
-| ADM-001 | Admin Mission Control shell | Product Guide §17, §26 Phase 5 | — | — | — | PENDING |
+| USR-001 | Onboarding (name/email/country) | Product Guide §5.4 | `src/app/onboarding/`, `src/proxy.ts` onboarding gate | Live E2E (real bugfix found: signIn/changePassword didn't know the gate existed) | Written via service-role, no client-writable path | VERIFIED |
+| PLAYER-001 | Player shell (10 IA routes) | Product Guide §7, §26 Phase 4 | `src/app/(player)/` | Live E2E, all 10 routes | `PROTECTED_PREFIXES` extended | VERIFIED |
+| ADM-001 | Admin Mission Control shell | Product Guide §17, §26 Phase 5 | `src/app/admin/layout.tsx`, `AdminNav`, real KPI cards, `/admin/audit` | Live E2E, SUPER_ADMIN vs MODERATOR nav/access | Role-based nav + independent per-page re-check; audit_logs has zero client RLS policies | VERIFIED |
 | GAME-001 | Content engine (Campaign→Day→Mission→Challenge) | Product Guide §9 | — | — | — | PENDING |
 | SCORE-001 | `score_events` ledger | Product Guide §10 | — | — | — | PENDING |
 | VOTE-001 | Poll engine + uniqueness | Product Guide §11 | — | — | — | PENDING |
@@ -643,8 +695,10 @@ Curated to the requirements with real evidence one way or another (verified or m
 | Env validation | ✅ | N/A | N/A | N/A | N/A | N/A | VERIFIED |
 | Wally asset registry | ✅ | N/A | N/A | N/A | N/A | ✅ | VERIFIED |
 | Storyline content | ✅ | N/A | N/A | N/A | N/A | ✅ | VERIFIED |
-| Foundation schema | ❌ | ❌ | N/A | Partial (drafted) | N/A | N/A | BLOCKED |
-| Login | ❌ | ❌ | ❌ | ❌ | N/A | ❌ | PENDING |
+| Foundation schema | ❌ | N/A | ✅ (live) | ✅ | N/A | N/A | VERIFIED |
+| Login / onboarding | ❌ | N/A | ✅ (live) | ✅ | N/A | ✅ | VERIFIED |
+| Player shell | N/A | N/A | ✅ (live) | ✅ | N/A | ✅ | VERIFIED |
+| Admin shell | ❌ | N/A | ✅ (live) | ✅ | N/A | ✅ | VERIFIED |
 | Voting | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | PENDING |
 | Wally Drop | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | PENDING |
 | Photo Approval | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | PENDING |
@@ -653,21 +707,21 @@ Curated to the requirements with real evidence one way or another (verified or m
 
 ## Release Gate
 
-- [ ] All critical requirements verified — no
-- [ ] No unresolved critical blockers — no, 2 open (see Critical Blockers)
-- [ ] No critical security findings — no findings *yet* because almost nothing security-relevant has been built
+- [ ] All critical requirements verified — no, Phases 6-21 remain
+- [ ] No unresolved critical blockers — no, 1 open (CI push, see Critical Blockers)
+- [ ] No critical security findings — no findings *yet* on what's built (Phase 2's one Medium finding was fixed and re-verified); little security-relevant surface exists past auth/RLS
 - [x] Lint passes
 - [x] Typecheck passes
-- [x] Unit tests pass (9/9)
-- [ ] Integration tests pass — none exist
-- [ ] E2E critical flows pass — none exist
-- [ ] Realtime tests pass — none exist
+- [x] Unit tests pass (53/53)
+- [ ] Integration tests pass — covered only by live E2E runs, no maintained suite
+- [ ] E2E critical flows pass — live-verified manually each phase (Phases 2-5), not yet a committed automated suite under `tests/e2e/`
+- [ ] Realtime tests pass — none exist (Phase 11 not started)
 - [x] Production build passes
-- [ ] Mobile QA passes — checked visually for one page only, not a formal pass
-- [ ] Accessibility critical checks pass — not formally tested
-- [x] Vercel Preview/Production verified
-- [ ] Supabase migrations verified — drafted, unapplied
-- [ ] RLS verified — drafted, unapplied
+- [x] Mobile QA passes — checked live at 390px for the landing page, walkthrough preview, player shell, and admin shell; not a full formal accessibility pass
+- [ ] Accessibility critical checks pass — not formally tested with a scanner
+- [x] Vercel Preview/Production verified — Production confirmed live; Preview env vars still pending the user running the provided script
+- [x] Supabase migrations verified — applied and verified live against the real project (4 migrations)
+- [x] RLS verified — verified live against the real project, including a real inserted-and-deleted row test, not just structural inspection
 - [x] Environment variables verified in Vercel — Production only (see evidence below); still not in GitHub Actions secrets (CI itself is blocked, see Critical Blockers #2)
 - [ ] Rollback procedure verified — not written
 - [x] Project state updated
