@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { LiveRefresh } from "@/components/realtime/LiveRefresh";
 
 export const metadata: Metadata = { title: "Day — ITM@15" };
+
+const LIVE_EVENTS = ["mission.updated", "day.updated"] as const;
 
 /**
  * Product Guide §7's player IA lists /play/day/[dayNumber]. Reads via the
@@ -45,6 +48,11 @@ export default async function DayPage({
   if (!day) {
     return (
       <main className="mx-auto flex max-w-lg flex-col gap-4 px-4 py-16 sm:px-6">
+        {/* Phase 11: this exact page live-refreshes the moment an admin
+            publishes the day/mission this bug (see updateGameDayStatus's
+            header comment) was originally found through — no reload
+            needed to see it become real. */}
+        <LiveRefresh topic={`game:day:${dayNumber}`} events={LIVE_EVENTS} />
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">Day {dayNumber}</p>
         <h1 className="text-3xl">Not published yet</h1>
         <p className="text-sm text-muted">
@@ -67,6 +75,7 @@ export default async function DayPage({
 
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-16 sm:px-6">
+      <LiveRefresh topic={`game:day:${dayNumber}`} events={LIVE_EVENTS} />
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">Day {dayNumber}</p>
         <h1 className="text-3xl">{day.title}</h1>

@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { canManageContent } from "@/lib/auth/roles";
 import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminActivity } from "@/lib/admin/audit";
+import { broadcast } from "@/lib/realtime/broadcast";
 
 const MISSION_STATUSES = ["DRAFT", "SCHEDULED", "LIVE", "PAUSED", "COMPLETED", "ARCHIVED"] as const;
 
@@ -35,20 +37,34 @@ export async function updateMissionStatus(formData: FormData) {
   }
 
   const admin = createAdminClient();
-  const { data: before } = await admin.from("missions").select("status, title").eq("id", missionId).maybeSingle();
+  const { data: before } = await admin
+    .from("missions")
+    .select("status, title, game_days(day_number)")
+    .eq("id", missionId)
+    .maybeSingle();
 
   const { error } = await admin.from("missions").update({ status }).eq("id", missionId);
   if (error) {
     redirect("/admin/missions?error=update_failed");
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: "mission_status_changed",
-    target_type: "mission",
-    target_id: missionId,
+    targetType: "mission",
+    targetId: missionId,
     metadata: { title: before?.title, previous_status: before?.status, new_status: status },
   });
+
+  // Phase 11: players on that day's page live-refresh instead of needing
+  // to reload to see a newly-published (or paused) mission. The payload
+  // carries no mission detail — the client's own refetch (RLS-scoped) is
+  // what actually reveals or hides it, per the "broadcast is a ping, not
+  // the data" rule in src/lib/realtime/broadcast.ts.
+  const dayNumber = before?.game_days?.day_number;
+  if (dayNumber) {
+    await broadcast(`game:day:${dayNumber}`, "mission.updated");
+  }
 
   revalidatePath("/admin/missions");
   redirect("/admin/missions?success=1");
@@ -103,13 +119,17 @@ export async function updateGameDayStatus(formData: FormData) {
     redirect("/admin/missions?error=update_failed");
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: "game_day_status_changed",
-    target_type: "game_day",
-    target_id: gameDayId,
+    targetType: "game_day",
+    targetId: gameDayId,
     metadata: { day_number: before?.day_number, previous_status: before?.status, new_status: status },
   });
+
+  if (before?.day_number) {
+    await broadcast(`game:day:${before.day_number}`, "day.updated");
+  }
 
   revalidatePath("/admin/missions");
   revalidatePath("/play/day/[dayNumber]", "page");

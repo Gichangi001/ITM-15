@@ -6,6 +6,7 @@ import { updateUserSchema } from "@/lib/auth/schemas";
 import { canManageUserRoles } from "@/lib/auth/roles";
 import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminActivity } from "@/lib/admin/audit";
 
 /**
  * Product Guide §4.5: "user administration, permission management" is
@@ -91,11 +92,11 @@ export async function updateUser(formData: FormData) {
     redirect("/admin/players?error=update_failed");
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: "user_role_status_updated",
-    target_type: "profile",
-    target_id: userId,
+    targetType: "profile",
+    targetId: userId,
     metadata: { previous_roles: previousRoles, new_role: role, new_status: status },
   });
 

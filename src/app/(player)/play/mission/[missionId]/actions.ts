@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { submitAnswerSchema } from "@/lib/content/schemas";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { broadcast } from "@/lib/realtime/broadcast";
 
 export type SubmitAnswerState = {
   error?: string;
@@ -126,6 +127,10 @@ export async function submitAnswer(
       isUnityChallenge: mission.is_unity_challenge,
     });
 
+    if (pointsAwarded > 0) {
+      await broadcast("leaderboard", "points.awarded");
+    }
+
     revalidatePath(`/play/mission/${challenge.mission_id}`);
     revalidatePath("/leaderboards");
     return { success: { message: "Correct! That counts.", pointsAwarded } };
@@ -145,6 +150,7 @@ export async function submitAnswer(
     if (submissionError) {
       return { error: "Could not record your answer. Try again." };
     }
+    await broadcast("admin:mission-control", "submission.pending");
     revalidatePath(`/play/mission/${challenge.mission_id}`);
     return { success: { message: "Got it. It's with the moderators now." } };
   }
@@ -170,6 +176,7 @@ export async function submitAnswer(
     if (submissionError) {
       return { error: "Could not record your submission. Try again." };
     }
+    await broadcast("admin:mission-control", "submission.pending");
     revalidatePath(`/play/mission/${challenge.mission_id}`);
     return { success: { message: "Got it. It's with the moderators now." } };
   }

@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/session";
 import { VoteForm } from "./VoteForm";
+import { LiveRefresh } from "@/components/realtime/LiveRefresh";
+
+const LIVE_EVENTS = ["poll.updated", "vote.cast"] as const;
 
 export const metadata: Metadata = { title: "Vote — ITM@15" };
 
@@ -40,6 +43,7 @@ export default async function VotePage({
   if (!poll) {
     return (
       <main className="mx-auto flex max-w-lg flex-col gap-4 px-4 py-16 sm:px-6">
+        <LiveRefresh topic={`poll:${pollId}`} events={LIVE_EVENTS} />
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">Vote</p>
         <h1 className="text-3xl">Not available</h1>
         <p className="text-sm text-muted">
@@ -79,6 +83,7 @@ export default async function VotePage({
 
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-16 sm:px-6">
+      <LiveRefresh topic={`poll:${pollId}`} events={LIVE_EVENTS} />
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">Vote</p>
         <h1 className="text-3xl">{poll.title}</h1>

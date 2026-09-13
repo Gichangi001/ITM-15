@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { LiveRefresh } from "@/components/realtime/LiveRefresh";
 
 export const metadata: Metadata = { title: "Gallery — ITM@15" };
 
@@ -63,6 +64,7 @@ export default async function GalleryPage() {
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-10 sm:px-6">
+      <LiveRefresh topic="gallery" events={["submission.approved"]} />
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
           ITM@15 — Wally Takeover

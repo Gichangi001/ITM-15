@@ -4,6 +4,7 @@ import { createEmployeeSchema } from "@/lib/auth/schemas";
 import { canCreateEmployeeAccounts } from "@/lib/auth/roles";
 import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminActivity } from "@/lib/admin/audit";
 
 export type CreateEmployeeState = {
   error?: string;
@@ -110,11 +111,11 @@ export async function createEmployeeAccount(
     return { error: "Could not assign the account's role. Try again." };
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: "employee_account_created",
-    target_type: "profile",
-    target_id: newUserId,
+    targetType: "profile",
+    targetId: newUserId,
     metadata: { email, role },
   });
 

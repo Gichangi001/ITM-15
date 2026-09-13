@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { castVoteSchema } from "@/lib/voting/schemas";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { broadcast } from "@/lib/realtime/broadcast";
 
 export type CastVoteState = { error?: string; success?: boolean } | null;
 
@@ -91,6 +92,11 @@ export async function castVote(
     }
     return { error: "Could not record your vote. Try again." };
   }
+
+  // Phase 11: lets a LIVE-results-visibility poll's vote count update for
+  // every connected viewer (including the admin's live count on
+  // /admin/voting) without a reload; carries no vote content itself.
+  await broadcast(`poll:${pollId}`, "vote.cast");
 
   revalidatePath(`/vote/${pollId}`);
   return { success: true };

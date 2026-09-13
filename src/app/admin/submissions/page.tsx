@@ -4,6 +4,7 @@ import { getCurrentRoles } from "@/lib/auth/session";
 import { canModerateSubmissions } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { moderateSubmission } from "./actions";
+import { LiveRefresh } from "@/components/realtime/LiveRefresh";
 
 export const metadata: Metadata = { title: "Submissions — ITM@15" };
 
@@ -85,6 +86,11 @@ export default async function SubmissionsPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 bg-bg px-6 py-16">
+      {/* A new pending submission (submission.pending) or another
+          moderator's decision (activity.created) both refresh this queue
+          live — no reload needed to see a photo land or disappear once
+          someone else moderates it. */}
+      <LiveRefresh topic="admin:mission-control" events={["activity.created", "submission.pending"]} />
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
           ITM@15 — Mission Control

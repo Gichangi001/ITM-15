@@ -5,6 +5,7 @@ import { createMissionSchema } from "@/lib/content/schemas";
 import { canManageContent } from "@/lib/auth/roles";
 import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminActivity } from "@/lib/admin/audit";
 
 export type CreateMissionState = { error?: string } | null;
 
@@ -161,11 +162,11 @@ export async function createMission(
     }
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: "mission_created",
-    target_type: "mission",
-    target_id: mission.id,
+    targetType: "mission",
+    targetId: mission.id,
     metadata: { title, day_number: dayNumber, challenge_type: challengeType },
   });
 

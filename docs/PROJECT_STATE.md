@@ -230,6 +230,18 @@ The one gap left from the Phases 6-9 audit. Product Guide §12.4: "Admins must b
 
 **Phase 10 is now fully complete**: the core evidence-upload/moderation/gallery loop (verified in the Phases 6-9 work above) plus the admin Media Library — nothing from Product Guide §12/§26 Phase 10's build list remains unbuilt.
 
+## Mission Control home page — decorative → real (2026-09-13)
+
+The product owner pasted a large (~56-section) "ITM@15 ADMIN MISSION CONTROL" vision document (a "Live Game Studio" concept: Challenge Builder rule engine, Easter Egg Engine, Golden Ticket economy, Secret Missions, Wally Agents, Bounties, Twist Engine, Boss Missions, auctions, Mystery Boxes, Story Scheduler, Game Simulator, AI-assisted Game Master, and more) and asked to "retain what is just improve using [this document]." Almost every named mechanic in it is new, unspecced scope — building any of it in one pass would violate this project's own "smallest complete vertical slice" rule and the document's own §55 ("every button must connect to real state, not a decorative control"). So:
+
+- Preserved the full document as `docs/ITM15_ADMIN_MISSION_CONTROL_VISION.md` — authority level 5 (supporting, non-controlling, same tier as a Word doc per the runbook's authority model), with a section-by-section mapping against what's already built or already specified elsewhere (e.g. §35 Wally Director = `docs/WALLY.md` §16 already spec'd; §18 Golden Wally = `docs/WALLY.md` §23, distinct from the new "Golden Ticket" concept in §13-17; §39-40 Audit Log/Fairness already built and enforced) versus genuinely new scope that would need its own dedicated future phase before being buildable safely.
+- Applied the one piece of the document that was immediately real and bounded: made the *existing* `/admin` Mission Control page (`src/app/admin/page.tsx`, Phase 5) stop showing decorative locked "Quick Action" buttons for features that already exist. `QUICK_ACTIONS` is now a small, capability-gated array of real `<Link>`s to the five admin surfaces actually built (`/admin/missions/new`, `/admin/missions`, `/admin/submissions`, `/admin/scoring`, `/admin/voting/new`), filtered per-viewer by the same real `src/lib/auth/roles.ts` capability functions every underlying page independently re-checks server-side; genuinely unbuilt actions (send notification, trigger Wally, change theme, pause game — Phases 12/13/15) now render as an honestly-locked card naming the phase that unlocks them, never a fake clickable button.
+- Added `ACTIVITY_ICONS`, an emoji-per-`audit_logs`-action-string map (visual language borrowed from the vision doc's live-feed style) restricted to the exact 12 action strings actually written anywhere in the codebase today (verified by grepping every `action: "..."` call site) — no guessed/aspirational category. The "Recent admin activity" feed now prefixes each real entry with its icon.
+
+**Verified live** (Playwright, `rt.super@itm15.test` SUPER_ADMIN test fixture — its password was reset via the Admin API for this test, a throwaway credential on a non-real account, no real user affected): all 5 Quick Action links render as real `<a href>`s for a SUPER_ADMIN and one was clicked through to confirm it actually navigates (`/admin/missions/new`); the 4 not-yet-built cards render as non-interactive locked divs naming their phase; the activity feed renders the correct icon (🖼) against real `media_asset_featured_toggled`/`media_asset_uploaded` rows read straight from the database, not a fabricated example. `pnpm verify` (lint/typecheck/79 unit tests/build) clean throughout.
+
+**Deliberately not done in this slice, and not silently implied by "improve":** none of the vision document's ~50 new mechanics were built. Whether/which of them become real future phases is the product owner's call, not something to decide unilaterally — see the vision doc's own closing note on what would need a real spec (schema, RLS, server authority, a phase number) before being buildable.
+
 ## Wally placeholder assets (W0, per docs/WALLY.md §37)
 
 The user supplied `MASCOTTE.zip` (8 pre-rendered PNGs of the Walumo brand mascot, transparent background). This session:
@@ -289,7 +301,7 @@ Verified with `pnpm verify` (lint/typecheck/9 unit tests/build, all passing) and
 
 ## Last verified commit
 
-`a9be3d5` on `main` (origin `Gichangi001/ITM-15`), pushed and deployed — audit-checklist reconciliation after Phase 5. This session's Phases 6-9 audit/fix/verification (found as uncommitted work, one real bug fixed) is staged for commit — see "In progress."
+`668546d` on `main` (origin `Gichangi001/ITM-15`) — Phase 10 finish (admin Media Library). Since then: `d08f42c` (login progressive password reveal, UI only) landed from a concurrent session. This session's Mission Control home-page improvement (see above) is staged for commit — see "In progress."
 
 ## Completed
 

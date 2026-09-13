@@ -6,6 +6,7 @@ import { z } from "zod";
 import { canManageContent } from "@/lib/auth/roles";
 import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminActivity } from "@/lib/admin/audit";
 
 const uploadMediaAssetSchema = z.object({
   assetType: z.enum(["PHOTO", "VIDEO", "AUDIO"]),
@@ -99,11 +100,11 @@ export async function uploadMediaAsset(
     return { error: "Could not save the media record. Try again." };
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: "media_asset_uploaded",
-    target_type: "media_asset",
-    target_id: asset.id,
+    targetType: "media_asset",
+    targetId: asset.id,
     metadata: { asset_type: assetType, tags: tagList },
   });
 
@@ -140,11 +141,11 @@ export async function toggleMediaFeatured(formData: FormData) {
     redirect("/admin/media?error=update_failed");
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: "media_asset_featured_toggled",
-    target_type: "media_asset",
-    target_id: assetId,
+    targetType: "media_asset",
+    targetId: assetId,
     metadata: { new_featured: !featured },
   });
 

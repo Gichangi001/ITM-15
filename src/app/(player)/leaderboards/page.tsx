@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getPlayerLeaderboard, getCountryLeaderboard } from "@/lib/scoring/leaderboard";
+import { LiveRefresh } from "@/components/realtime/LiveRefresh";
 
 export const metadata: Metadata = { title: "Leaderboards — ITM@15" };
 
@@ -26,6 +27,7 @@ export default async function LeaderboardsPage() {
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-10 sm:px-6">
+      <LiveRefresh topic="leaderboard" events={["points.awarded"]} />
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
           ITM@15 — Wally Takeover

@@ -5,6 +5,7 @@ import { getCurrentRoles } from "@/lib/auth/session";
 import { canManageVoting } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { updatePollStatus } from "./actions";
+import { LiveRefresh } from "@/components/realtime/LiveRefresh";
 
 export const metadata: Metadata = { title: "Voting — ITM@15" };
 
@@ -59,6 +60,11 @@ export default async function VotingPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 bg-bg px-6 py-16">
+      {/* Refreshes when another admin creates/changes a poll. Live vote
+          counts as players vote are a real, disclosed follow-up — this
+          would need each poll's own poll:{id} topic subscribed here too,
+          not just the shared admin feed. */}
+      <LiveRefresh topic="admin:mission-control" events={["activity.created"]} />
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
           ITM@15 — Mission Control

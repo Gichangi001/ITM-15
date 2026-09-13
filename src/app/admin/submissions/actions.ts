@@ -6,6 +6,8 @@ import { moderateSubmissionSchema } from "@/lib/content/schemas";
 import { canModerateSubmissions } from "@/lib/auth/roles";
 import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminActivity } from "@/lib/admin/audit";
+import { broadcast } from "@/lib/realtime/broadcast";
 
 /**
  * Product Guide §12.2 (media/moderation flow) + §26 Phase 10 acceptance:
@@ -67,6 +69,7 @@ export async function moderateSubmission(formData: FormData) {
     redirect("/admin/submissions?error=update_failed");
   }
 
+  let pointsAwarded = false;
   if (decision === "APPROVE") {
     const { data: challenge } = await admin
       .from("challenges")
@@ -93,6 +96,7 @@ export async function moderateSubmission(formData: FormData) {
           reason: "Submission approved by moderator",
           created_by: actor.id,
         });
+        pointsAwarded = true;
       }
       if (mission.is_unity_challenge && mission.unity_points > 0) {
         await admin.from("score_events").insert({
@@ -104,17 +108,28 @@ export async function moderateSubmission(formData: FormData) {
           reason: "Cross-country unity challenge approved",
           created_by: actor.id,
         });
+        pointsAwarded = true;
       }
     }
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: decision === "APPROVE" ? "submission_approved" : "submission_rejected",
-    target_type: "submission",
-    target_id: submissionId,
+    targetType: "submission",
+    targetId: submissionId,
     metadata: { note },
   });
+
+  // Phase 11: leaderboard/gallery pages live-refresh instead of needing a
+  // reload — same "ping only, refetch for real data" rule as every other
+  // broadcast (see src/lib/realtime/broadcast.ts).
+  if (pointsAwarded) {
+    await broadcast("leaderboard", "points.awarded");
+  }
+  if (decision === "APPROVE") {
+    await broadcast("gallery", "submission.approved");
+  }
 
   revalidatePath("/admin/submissions");
   revalidatePath("/leaderboards");

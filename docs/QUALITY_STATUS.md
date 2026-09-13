@@ -1,6 +1,8 @@
 # ITM@15 Quality Status
 
-_Last updated: 2026-09-13, Phase 10 completed (admin Media Library) — Phases 1-10 now all verified live end-to-end (see `docs/PROJECT_STATE.md`)._
+_Last updated: 2026-09-13, Mission Control home-page improvement (decorative Quick Actions → real capability-gated links; real-data-only activity-feed icons) on top of Phase 10 — see `docs/PROJECT_STATE.md`._
+
+**This slice** (`src/app/admin/page.tsx`, no migration): `pnpm verify` clean (lint/typecheck/79 tests/build). Live-verified with Playwright against a SUPER_ADMIN test fixture (`rt.super@itm15.test`): all 5 real Quick Action links render and one was clicked through to confirm actual navigation; the 4 not-yet-built actions render as honestly-locked, non-interactive cards; the activity feed's icon map renders correctly against real `audit_logs` rows read from the database (not a fabricated example). No security-relevant surface changed — the page still re-derives every capability from `src/lib/auth/roles.ts` server-side; the Quick Actions array only controls what is *shown*, not authorization itself.
 
 | Gate | Status | Notes |
 |---|---|---|

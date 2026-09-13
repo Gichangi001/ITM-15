@@ -5,6 +5,7 @@ import { createPollSchema } from "@/lib/voting/schemas";
 import { canManageVoting } from "@/lib/auth/roles";
 import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminActivity } from "@/lib/admin/audit";
 
 export type CreatePollState = { error?: string } | null;
 
@@ -78,11 +79,11 @@ export async function createPoll(
     return { error: "Could not create the poll options. Try again." };
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: "poll_created",
-    target_type: "poll",
-    target_id: poll.id,
+    targetType: "poll",
+    targetId: poll.id,
     metadata: { title, option_count: labels.length },
   });
 

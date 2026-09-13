@@ -6,6 +6,8 @@ import { awardBonusPointsSchema } from "@/lib/scoring/schemas";
 import { canAwardBonusPoints } from "@/lib/auth/roles";
 import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminActivity } from "@/lib/admin/audit";
+import { broadcast } from "@/lib/realtime/broadcast";
 
 export type AwardBonusPointsState = { error?: string; success?: boolean } | null;
 
@@ -59,13 +61,15 @@ export async function awardBonusPoints(
     return { error: "Could not award points. Try again." };
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: "bonus_points_awarded",
-    target_type: "profile",
-    target_id: playerId,
+    targetType: "profile",
+    targetId: playerId,
     metadata: { points, reason },
   });
+
+  await broadcast("leaderboard", "points.awarded");
 
   revalidatePath("/admin/scoring");
   revalidatePath("/leaderboards");

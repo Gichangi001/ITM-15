@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { canManageVoting } from "@/lib/auth/roles";
 import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminActivity } from "@/lib/admin/audit";
+import { broadcast } from "@/lib/realtime/broadcast";
 
 const POLL_STATUSES = ["DRAFT", "OPEN", "CLOSED", "REVEALED"] as const;
 
@@ -41,13 +43,18 @@ export async function updatePollStatus(formData: FormData) {
     redirect("/admin/voting?error=update_failed");
   }
 
-  await admin.from("audit_logs").insert({
-    actor_id: actor.id,
+  await logAdminActivity(admin, {
+    actorId: actor.id,
     action: "poll_status_changed",
-    target_type: "poll",
-    target_id: pollId,
+    targetType: "poll",
+    targetId: pollId,
     metadata: { title: before?.title, previous_status: before?.status, new_status: status },
   });
+
+  // Phase 11: the player-facing vote page and this admin list both
+  // live-refresh — an OPEN poll appears without reload, a REVEALED one
+  // shows counts immediately.
+  await broadcast(`poll:${pollId}`, "poll.updated");
 
   revalidatePath("/admin/voting");
   redirect("/admin/voting?success=1");
