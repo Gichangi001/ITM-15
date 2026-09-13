@@ -9,7 +9,6 @@ export const metadata: Metadata = {
 const MIDDLEWARE_ERROR_MESSAGES: Record<string, string> = {
   disabled: "This account has been disabled. Contact your administrator.",
   account_not_found: "We couldn't find your player profile. Contact your administrator.",
-  magic_link_failed: "That sign-in link has expired or was already used. Request a new one below.",
 };
 
 export default async function LoginPage({
@@ -27,8 +26,8 @@ export default async function LoginPage({
         </p>
         <h1 className="text-3xl">Sign in</h1>
         <p className="max-w-sm text-sm text-muted">
-          Enter your email to continue — some accounts need a password, most just need a
-          sign-in link.
+          Enter your email to continue — admins need a password, everyone else is straight
+          in.
         </p>
       </div>
 

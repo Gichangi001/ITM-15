@@ -93,32 +93,17 @@ const emailOnlySchema = z.object({
   email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
 });
 
-export type LoginMethod = "password" | "magic_link";
+export type LoginMethod = "password" | "instant";
 
 /**
- * Decides which credential the email field on `/login` should ask for —
- * called by `LoginForm` once the visitor has typed a real-looking email.
+ * Decides what the email field on `/login` asks for next — called by
+ * `LoginForm` once the visitor has typed a real-looking email.
  * Admin-surface accounts (Product Guide §4: everything but plain PLAYER)
- * keep the password they were explicitly given; every other email — an
- * existing non-admin account *or* one never seen before — signs in (or,
- * for a brand-new email, self-onboards; see `sendMagicLink` and
- * `src/app/auth/callback/route.ts`) with a one-time emailed link instead.
- *
- * DISCLOSED PRODUCT DECISION, not an oversight: Product Guide §5 and
- * CLAUDE.md both state this product is invite-only with no
- * self-registration path. That rule is deliberately reversed here, for
- * non-admin accounts only, per the product owner's explicit instruction
- * (event scale — "so many participants" that pre-creating every account
- * by hand isn't realistic). Admin-surface accounts are NOT affected by
- * this reversal: nothing in this file, `sendMagicLink`, or the callback
- * route can ever grant an admin-surface role — a self-onboarded account
- * is always created with exactly one role, PLAYER, hardcoded, never
- * derived from anything the visitor supplies. See
- * `docs/PROJECT_STATE.md` for the full record of this decision.
- *
- * `sendMagicLink` below re-derives this same admin/non-admin check
- * server-side before doing anything, so a client can't force a different
- * outcome than what this returned.
+ * keep the password they were explicitly given; every other email —
+ * existing or never seen before — goes straight in via `instantJoin`
+ * below, no password, no link, no wait. `instantJoin` re-derives this
+ * same admin/non-admin check server-side before doing anything, so a
+ * client can't force a different outcome than what this returned.
  */
 export async function checkLoginMethod(email: string): Promise<LoginMethod> {
   const parsed = emailOnlySchema.safeParse({ email });
@@ -131,39 +116,52 @@ export async function checkLoginMethod(email: string): Promise<LoginMethod> {
     .eq("email", parsed.data.email)
     .maybeSingle();
 
-  if (!profile) return "magic_link";
+  if (!profile) return "instant";
 
   const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", profile.id);
   const roles = (roleRows ?? []).map((row) => row.role as Role);
-  return hasAdminSurfaceAccess(roles) ? "password" : "magic_link";
+  return hasAdminSurfaceAccess(roles) ? "password" : "instant";
 }
 
-export type MagicLinkState = { error?: string; success?: boolean } | null;
+export type InstantJoinState = { error?: string } | null;
 
 /**
- * Sends a real, single-use, expiring sign-in link — never a bare "typing
- * an email logs you in" shortcut. Whoever clicks it still has to actually
- * receive and open that email; nothing here authenticates anyone on the
- * strength of an email address alone.
+ * Signs a non-admin visitor in the instant they type their email — no
+ * password, no emailed link to wait for or click. Product owner's
+ * explicit, repeated instruction (an earlier version of this feature sent
+ * a real one-time emailed link instead; asked to remove that and make it
+ * immediate — see `docs/PROJECT_STATE.md` for the full record of both
+ * decisions and the trade-off each one makes).
  *
- * `shouldCreateUser: true` is the deliberate policy reversal described on
- * `checkLoginMethod` above: a brand-new email is welcome to self-onboard.
- * It is a safe no-op for an email that already has an account — Supabase
- * only creates a new one if none exists yet, so this can never duplicate
- * or hijack an existing account. `src/app/auth/callback/route.ts` is
- * where a genuinely new account actually gets its `profiles`/`user_roles`
- * rows (role hardcoded to PLAYER) once the link is clicked.
+ * DISCLOSED SECURITY TRADE-OFF, not an oversight: this means anyone who
+ * knows or guesses a colleague's email can open that colleague's account
+ * — there is no proof-of-ownership step left in this path at all (not
+ * even "clicked the link in their inbox"). Deliberately bounded to make
+ * that acceptable for what this actually is — an internal company event
+ * game, not a system holding money or sensitive records — by never
+ * letting this path touch an admin-surface account (`checkLoginMethod`
+ * above never offers it one, and this function independently re-checks
+ * that before doing anything) and never assigning anything but PLAYER to
+ * a brand-new account. A password remains mandatory for every
+ * admin-surface role. If real participant privacy/integrity concerns
+ * outweigh the requested convenience, the fix is re-adding a real
+ * verification step here (a password, an emailed link, an OTP the user
+ * actually types) — not something to silently reintroduce without being
+ * asked, since that would reverse an explicit instruction the same way
+ * skipping it now would.
  *
- * Always returns the same generic success response regardless of whether
- * an OTP was actually sent. The email is silently *not* sent for an
- * existing DISABLED account (Product Guide §5.2 step 3) or an existing
- * admin-surface account (those use `signIn` with a password — see
- * `checkLoginMethod`); neither distinction ever reaches the caller.
+ * Implementation: `auth.admin.generateLink` mints a real one-time email
+ * OTP without emailing anything (generating a link/code is a distinct
+ * admin operation from sending one — nothing here calls `signInWithOtp`,
+ * which would dispatch a real email), then `auth.verifyOtp` redeems it in
+ * the same request, server-side, using the ordinary cookie-aware client
+ * so the resulting session is written the normal way. The visitor never
+ * sees a code or a link.
  */
-export async function sendMagicLink(
-  _prevState: MagicLinkState,
+export async function instantJoin(
+  _prevState: InstantJoinState,
   formData: FormData,
-): Promise<MagicLinkState> {
+): Promise<InstantJoinState> {
   const parsed = emailOnlySchema.safeParse({ email: formData.get("email") });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Enter a valid email address" };
@@ -171,26 +169,94 @@ export async function sendMagicLink(
 
   const { email } = parsed.data;
   const admin = createAdminClient();
-  const { data: profile } = await admin.from("profiles").select("id, status").eq("email", email).maybeSingle();
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("id, status")
+    .eq("email", email)
+    .maybeSingle();
 
   let roles: Role[] = [];
-  if (profile) {
-    const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", profile.id);
+  if (existingProfile) {
+    const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", existingProfile.id);
     roles = (roleRows ?? []).map((row) => row.role as Role);
   }
 
-  const blockedExistingAccount = profile !== null && (profile.status === "DISABLED" || hasAdminSurfaceAccess(roles));
-
-  if (!blockedExistingAccount) {
-    const supabase = await createClient();
-    await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback`,
-      },
-    });
+  if (existingProfile && hasAdminSurfaceAccess(roles)) {
+    return { error: "This is an admin account — use the password field instead." };
+  }
+  if (existingProfile && existingProfile.status === "DISABLED") {
+    return { error: "This account is not able to sign in." };
   }
 
-  return { success: true };
+  let userId: string;
+  if (existingProfile) {
+    userId = existingProfile.id;
+  } else {
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+    });
+    if (createError || !created.user) {
+      return { error: "Could not create your account. Try again." };
+    }
+    userId = created.user.id;
+
+    const { error: profileInsertError } = await admin.from("profiles").insert({
+      id: userId,
+      email,
+      status: "ACTIVE",
+      must_change_password: false,
+      onboarding_completed: false,
+    });
+    // PLAYER, hardcoded — the one line in this entire flow that decides
+    // what a self-onboarded account can do. Never derived from anything
+    // the visitor supplies.
+    const { error: roleInsertError } = await admin.from("user_roles").insert({ user_id: userId, role: "PLAYER" });
+    if (profileInsertError || roleInsertError) {
+      await admin.auth.admin.deleteUser(userId); // roll back the orphaned auth user
+      return { error: "Could not create your account. Try again." };
+    }
+  }
+
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({ type: "magiclink", email });
+  if (linkError || !linkData.properties?.email_otp) {
+    return { error: "Could not sign you in. Try again." };
+  }
+
+  const supabase = await createClient();
+  const { error: verifyError } = await supabase.auth.verifyOtp({
+    email,
+    token: linkData.properties.email_otp,
+    type: "magiclink",
+  });
+  if (verifyError) {
+    return { error: "Could not sign you in. Try again." };
+  }
+
+  if (existingProfile) {
+    // Same rationale as this project's earlier link-based version: a
+    // verified sign-in through this path is treated as an equally valid
+    // identity check as a password, so there's no reason to also force
+    // the temporary-password-replacement screen afterward.
+    if (
+      (await admin.from("profiles").select("must_change_password").eq("id", userId).maybeSingle()).data
+        ?.must_change_password
+    ) {
+      await admin.from("profiles").update({ must_change_password: false }).eq("id", userId);
+    }
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_completed")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!profile?.onboarding_completed) {
+    redirect("/onboarding");
+  }
+
+  // Never /admin here — every account this function ever touches is
+  // confirmed non-admin-surface above before this point is reached.
+  redirect("/play");
 }

@@ -34,7 +34,7 @@ export async function QrCode({ url, size = 160 }: { url: string; size?: number }
   );
 }
 
-/** Resolves the same way every other server-side redirect in this app already does — see src/app/login/actions.ts's sendMagicLink. */
+/** Resolves the same way every other server-side redirect in this app already does — see src/app/login/actions.ts. */
 export function getAppUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }

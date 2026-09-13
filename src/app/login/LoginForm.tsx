@@ -1,30 +1,26 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { signIn, checkLoginMethod, sendMagicLink, type SignInState, type LoginMethod, type MagicLinkState } from "./actions";
+import { signIn, checkLoginMethod, instantJoin, type SignInState, type LoginMethod, type InstantJoinState } from "./actions";
 
 const initialSignInState: SignInState = null;
-const initialMagicLinkState: MagicLinkState = null;
+const initialInstantJoinState: InstantJoinState = null;
 
 /**
  * Per the product owner's explicit instruction: the real admin account
  * (and any other admin-surface account) signs in with a password, same as
- * always. Every other invited account no longer needs one at all — once
- * the visitor types a real-looking email, `checkLoginMethod` (a server
- * action, so this can never be spoofed by editing client state — the
- * actual sign-in path re-derives the same check server-side regardless of
- * what the UI showed) decides which credential to ask for next.
- *
- * This is a genuine one-time emailed sign-in link (see
- * `src/app/login/actions.ts`'s `sendMagicLink`), never a bare "typing an
- * email logs you in" shortcut — no account can be authenticated without
- * actually receiving and clicking that link.
+ * always. Every other invited account — or a brand-new one, see
+ * `instantJoin` — goes straight in the instant a real-looking email is
+ * typed. `checkLoginMethod` (a server action, so this can never be
+ * spoofed by editing client state — the actual sign-in path re-derives
+ * the same check server-side regardless of what the UI showed) decides
+ * which happens.
  */
 export function LoginForm() {
   const [signInState, signInAction, isSigningIn] = useActionState(signIn, initialSignInState);
-  const [magicLinkState, magicLinkAction, isSendingLink] = useActionState(sendMagicLink, initialMagicLinkState);
+  const [instantJoinState, instantJoinAction, isJoining] = useActionState(instantJoin, initialInstantJoinState);
   const [email, setEmail] = useState("");
-  const [method, setMethod] = useState<LoginMethod | "checking" | null>(null);
+  const [method, setMethod] = useState<LoginMethod | null>(null);
   const [isChecking, startChecking] = useTransition();
 
   function handleEmailChange(value: string) {
@@ -45,8 +41,7 @@ export function LoginForm() {
   }
 
   const showPassword = method === "password";
-  const showMagicLink = method === "magic_link";
-  const linkSent = showMagicLink && magicLinkState?.success === true;
+  const showInstant = method === "instant";
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-4">
@@ -63,8 +58,7 @@ export function LoginForm() {
           value={email}
           onChange={(e) => handleEmailChange(e.target.value)}
           onBlur={handleEmailBlur}
-          disabled={linkSent}
-          className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-ink outline-none focus-visible:border-walumo disabled:opacity-60"
+          className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-ink outline-none focus-visible:border-walumo"
         />
         {isChecking ? <p className="text-xs text-muted">Checking…</p> : null}
       </div>
@@ -97,37 +91,26 @@ export function LoginForm() {
         </form>
       ) : null}
 
-      {showMagicLink ? (
-        linkSent ? (
-          <p role="status" className="text-sm text-walumo">
-            Check {email} for a sign-in link. It expires after a while and works once — request a new one if it doesn&apos;t arrive.
-          </p>
-        ) : (
-          <form action={magicLinkAction} className="flex flex-col gap-3">
-            <input type="hidden" name="email" value={email} />
-            {magicLinkState?.error ? (
-              <p role="alert" className="text-sm text-red-400">
-                {magicLinkState.error}
-              </p>
-            ) : null}
-            <button type="submit" disabled={isSendingLink} className="btn-primary">
-              {isSendingLink ? "Sending…" : "Email me a sign-in link"}
-            </button>
-            <p className="text-xs text-muted">No password needed — we&apos;ll email you a one-time link instead.</p>
-          </form>
-        )
+      {showInstant ? (
+        <form action={instantJoinAction} className="flex flex-col gap-3">
+          <input type="hidden" name="email" value={email} />
+          {instantJoinState?.error ? (
+            <p role="alert" className="text-sm text-red-400">
+              {instantJoinState.error}
+            </p>
+          ) : null}
+          <button type="submit" disabled={isJoining} className="btn-primary">
+            {isJoining ? "Joining…" : "Enter ITM@15"}
+          </button>
+          <p className="text-xs text-muted">No password needed.</p>
+        </form>
       ) : null}
 
       {/* Fallback path when the email field is only prefilled/autofilled
-          without a real blur event (e.g. a password manager) — plain
-          Enter still submits a password sign-in if that's what was
-          resolved; otherwise this stays inert (no method chosen yet). */}
-      {!showPassword && !showMagicLink ? (
-        <button
-          type="button"
-          onClick={handleEmailBlur}
-          className="btn-secondary"
-        >
+          without a real blur event (e.g. a password manager) — this
+          triggers the same check `onBlur` does. */}
+      {!showPassword && !showInstant ? (
+        <button type="button" onClick={handleEmailBlur} className="btn-secondary">
           Continue
         </button>
       ) : null}
