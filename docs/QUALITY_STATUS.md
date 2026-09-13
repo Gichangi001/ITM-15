@@ -48,6 +48,10 @@ _Last updated: 2026-09-13, non-admin sign-in made instant (emailed link removed)
 | Docker | Not installed — blocks local Supabase dev stack (`supabase start`, `db lint`, `db reset`) |
 | Prisma | `prisma`/`@prisma/client` 7.10.0 installed (pinned — `prisma`'s npm `latest` tag is currently an `8.0.0-rc` pre-release). `prisma version` runs correctly. Not yet functional: `DATABASE_URL`/`DIRECT_URL` need the real DB password; introspection-only per `docs/adr/0001-prisma-alongside-supabase-migrations.md` |
 
+## Phase 17 addendum — leaderboard online status + gallery camera capture (2026-09-13)
+
+Built in the same working tree alongside a concurrent session's Passport/Achievements/Notifications/instant-sign-in work (see this file's other entries above). `pnpm verify` (lint/typecheck/104 tests/build) clean against the combined state of both sessions' changes. Live-verified with Playwright (synthetic accounts, fully deleted after): leaderboard "Newest members" + online dot renders without error; a real camera-capture (`capture="environment"` file input) upload flows through `/admin/gallery-moderation` into the public `/gallery`; a real `updateGameDayStatus(LIVE)` produces a real `DAY_STARTED` row in a player's own notifications inbox. New migration `20260913120000_phase17_passport_achievements_gallery.sql` applied live (via the account-level `mcp__claude_ai_Supabase__*` connector reaching the ITM-15 project directly by `project_id`, newly discovered this session), plus the previously-blocked `20260913100000_admin_notifications.sql` in the same pass — `get_advisors` run after both, one real finding (missing FK index) fixed immediately. One real, cross-cutting bug found live and fixed (by the concurrent session, root-caused jointly): a second independent `channel("game:global")` subscription crashed every player page — see `docs/PROJECT_STATE.md`'s Phase 17 addendum for the full account.
+
 ## Rule for future updates to this file
 
 Never mark a gate green based on a prior commit after relevant code has changed. Record the exact commit SHA the result belongs to, and if a gate was skipped, say so explicitly rather than omitting the row.
