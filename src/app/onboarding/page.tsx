@@ -28,8 +28,12 @@ export default async function OnboardingPage() {
   }
 
   const supabase = await createClient();
+  // Only used to know which countries already have a DB row (so entities
+  // already recorded under one can be offered) — the actual country
+  // *picker* now shows every world country regardless of whether it's
+  // been seeded yet; see src/content/worldCountries.ts.
   const [{ data: countries }, { data: entities }] = await Promise.all([
-    supabase.from("countries").select("id, name, flag_emoji").order("name"),
+    supabase.from("countries").select("id, iso_code").order("name"),
     supabase.from("entities").select("id, name, country_id").order("name"),
   ]);
 
@@ -46,7 +50,7 @@ export default async function OnboardingPage() {
         </p>
       </div>
 
-      <OnboardingForm countries={countries ?? []} entities={entities ?? []} />
+      <OnboardingForm existingCountries={countries ?? []} entities={entities ?? []} />
     </main>
   );
 }

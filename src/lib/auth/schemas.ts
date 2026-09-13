@@ -86,11 +86,26 @@ export type UpdateUserInput = z.infer<typeof updateUserSchema>;
  * identity is exactly: name, email, country" — email is already known from
  * Auth and never re-collected here. Entity is "recommended," not required,
  * matching the spec's own wording.
+ *
+ * Country is chosen from the fixed world reference list
+ * (`src/content/worldCountries.ts`) by ISO code, not from `public.countries`
+ * directly — the onboarding action gets-or-creates the matching DB row,
+ * so the picker always offers every country even if an admin never
+ * pre-seeded it (event-scale onboarding, many participants, many
+ * countries). Entity has no such external reference list (it's
+ * ITM-specific), so it stays a genuine choice between an *existing*
+ * entity id (`entityId`) or free-text for a new one (`entityName`) — the
+ * action prefers `entityName` when both are present.
  */
 export const onboardingSchema = z.object({
   fullName: z.string().trim().min(1, "Your name is required"),
-  countryId: z.string().trim().min(1, "Select your country").uuid("Select your country"),
+  countryIsoCode: z
+    .string()
+    .trim()
+    .length(2, "Select your country")
+    .transform((value) => value.toUpperCase()),
   entityId: optionalFormField(z.string().uuid()),
+  entityName: optionalFormField(z.string().trim().min(1).max(200)),
 });
 
 export type OnboardingInput = z.infer<typeof onboardingSchema>;

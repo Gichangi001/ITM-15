@@ -2,6 +2,16 @@ import Image from "next/image";
 import { WALLY_POSES } from "@/wally/rendering/assets";
 import { STORY_DAYS } from "@/content/story";
 import { RevealOnScroll } from "@/components/RevealOnScroll";
+import { QrCode, getAppUrl } from "@/components/QrCode";
+
+// This page reads no cookies/headers, so Next.js would otherwise prerender
+// it once at BUILD time and bake `getAppUrl()`'s result into the QR code
+// forever — correct only by coincidence if the build machine's
+// NEXT_PUBLIC_APP_URL happens to match. Forced dynamic so the QR code
+// always reflects the real deployed origin, resolved at request time —
+// same lesson as `leaderboards`/`gallery`'s own `force-dynamic` fix
+// earlier in this project (see docs/PROJECT_STATE.md).
+export const dynamic = "force-dynamic";
 
 const HOW_IT_WORKS = [
   {
@@ -22,7 +32,7 @@ const HOW_IT_WORKS = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
   const wally = WALLY_POSES.investigate;
   const silhouette = WALLY_POSES["dance-pose"];
 
@@ -111,6 +121,11 @@ export default function Home() {
         >
           Read the story ↓
         </a>
+
+        <div className="mt-12 flex flex-col items-center gap-2">
+          <QrCode url={`${getAppUrl()}/login`} size={128} />
+          <p className="text-xs text-muted">Scan to join on your phone</p>
+        </div>
       </section>
 
       {/* The seven days */}

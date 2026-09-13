@@ -19,6 +19,12 @@ import { resolveRoleBasedDestination } from "@/lib/auth/session";
  * before their very next request hit `src/proxy.ts`'s own re-check —
  * closing that gap here matches the "fail closed at the earliest point"
  * pattern already used everywhere else in this file's siblings.
+ *
+ * Also the one place a brand-new self-onboarded account's `profiles` row
+ * actually gets created — see `src/app/login/actions.ts`'s `sendMagicLink`
+ * for the disclosed policy decision this implements (non-admin accounts
+ * may now self-register; admin-surface accounts still cannot, and nothing
+ * here ever assigns anything but PLAYER).
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -29,13 +35,52 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && data.user) {
-      const { data: profile } = await supabase
+      const { data: existingProfile } = await supabase
         .from("profiles")
         .select("status, must_change_password, onboarding_completed")
         .eq("id", data.user.id)
         .maybeSingle();
 
-      if (!profile || profile.status === "DISABLED") {
+      const profile = existingProfile;
+
+      if (!profile) {
+        if (!data.user.email) {
+          // Should not be reachable — this app only ever authenticates via
+          // email (password or OTP), never phone/OAuth. Fail closed rather
+          // than create a profile with no email to key it by.
+          await supabase.auth.signOut();
+          return NextResponse.redirect(`${origin}/login?error=magic_link_failed`);
+        }
+
+        const admin = createAdminClient();
+        const { data: newProfile, error: profileInsertError } = await admin
+          .from("profiles")
+          .insert({
+            id: data.user.id,
+            email: data.user.email,
+            status: "ACTIVE",
+            must_change_password: false,
+            onboarding_completed: false,
+          })
+          .select("status, must_change_password, onboarding_completed")
+          .single();
+
+        // PLAYER, hardcoded — the one line in this whole flow that decides
+        // what a self-onboarded account can do. Never derived from
+        // anything the visitor supplied.
+        const { error: roleInsertError } = await admin
+          .from("user_roles")
+          .insert({ user_id: data.user.id, role: "PLAYER" });
+
+        if (profileInsertError || roleInsertError || !newProfile) {
+          await supabase.auth.signOut();
+          return NextResponse.redirect(`${origin}/login?error=magic_link_failed`);
+        }
+
+        return NextResponse.redirect(`${origin}/onboarding`);
+      }
+
+      if (profile.status === "DISABLED") {
         await supabase.auth.signOut();
         return NextResponse.redirect(`${origin}/login?error=disabled`);
       }

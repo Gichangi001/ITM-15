@@ -161,22 +161,42 @@ describe("updateUserSchema", () => {
 });
 
 describe("onboardingSchema", () => {
-  const countryId = "11111111-1111-4111-8111-111111111111";
+  const entityId = "11111111-1111-4111-8111-111111111111";
 
-  it("accepts a full name and country with no entity", () => {
+  it("accepts a full name and country ISO code with no entity", () => {
     const result = onboardingSchema.safeParse({
       fullName: "Amina Kenya",
-      countryId,
+      countryIsoCode: "KE",
       entityId: null,
     });
     expect(result.success).toBe(true);
   });
 
-  it("accepts an entity when provided", () => {
+  it("uppercases a lowercase ISO code", () => {
     const result = onboardingSchema.safeParse({
       fullName: "Amina Kenya",
-      countryId,
-      entityId: countryId,
+      countryIsoCode: "ke",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.countryIsoCode).toBe("KE");
+    }
+  });
+
+  it("accepts an existing entityId when provided", () => {
+    const result = onboardingSchema.safeParse({
+      fullName: "Amina Kenya",
+      countryIsoCode: "KE",
+      entityId,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a free-text entityName for a new entity", () => {
+    const result = onboardingSchema.safeParse({
+      fullName: "Amina Kenya",
+      countryIsoCode: "KE",
+      entityName: "ITM Nairobi Branch",
     });
     expect(result.success).toBe(true);
   });
@@ -184,7 +204,7 @@ describe("onboardingSchema", () => {
   it("rejects a missing full name", () => {
     const result = onboardingSchema.safeParse({
       fullName: "",
-      countryId,
+      countryIsoCode: "KE",
     });
     expect(result.success).toBe(false);
   });
@@ -192,15 +212,15 @@ describe("onboardingSchema", () => {
   it("rejects a missing country — it's required at onboarding, unlike admin-time account creation", () => {
     const result = onboardingSchema.safeParse({
       fullName: "Amina Kenya",
-      countryId: "",
+      countryIsoCode: "",
     });
     expect(result.success).toBe(false);
   });
 
-  it("rejects a non-UUID countryId", () => {
+  it("rejects a country code that isn't exactly two letters", () => {
     const result = onboardingSchema.safeParse({
       fullName: "Amina Kenya",
-      countryId: "not-a-uuid",
+      countryIsoCode: "KEN",
     });
     expect(result.success).toBe(false);
   });

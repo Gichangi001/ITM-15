@@ -99,23 +99,26 @@ export type LoginMethod = "password" | "magic_link";
  * Decides which credential the email field on `/login` should ask for —
  * called by `LoginForm` once the visitor has typed a real-looking email.
  * Admin-surface accounts (Product Guide §4: everything but plain PLAYER)
- * keep the password they were explicitly given; every other invited
- * account signs in with a one-time emailed link instead, per the product
- * owner's explicit instruction that non-admin accounts shouldn't need a
- * password at all.
+ * keep the password they were explicitly given; every other email — an
+ * existing non-admin account *or* one never seen before — signs in (or,
+ * for a brand-new email, self-onboards; see `sendMagicLink` and
+ * `src/app/auth/callback/route.ts`) with a one-time emailed link instead.
  *
- * An unrecognized email also gets "magic_link" back — never "we don't
- * know that email" — so this endpoint can't be used to enumerate which
- * addresses are enrolled (same rationale as `signIn`'s generic "Incorrect
- * email or password."). `sendMagicLink` below re-derives this same check
- * server-side before actually sending anything, so a client can't force a
- * different answer by skipping this call.
+ * DISCLOSED PRODUCT DECISION, not an oversight: Product Guide §5 and
+ * CLAUDE.md both state this product is invite-only with no
+ * self-registration path. That rule is deliberately reversed here, for
+ * non-admin accounts only, per the product owner's explicit instruction
+ * (event scale — "so many participants" that pre-creating every account
+ * by hand isn't realistic). Admin-surface accounts are NOT affected by
+ * this reversal: nothing in this file, `sendMagicLink`, or the callback
+ * route can ever grant an admin-surface role — a self-onboarded account
+ * is always created with exactly one role, PLAYER, hardcoded, never
+ * derived from anything the visitor supplies. See
+ * `docs/PROJECT_STATE.md` for the full record of this decision.
  *
- * Trade-off, disclosed rather than hidden: this endpoint *does* reveal
- * whether a specific known email belongs to an admin-surface account
- * (password) versus everyone else (magic link) — an explicit, accepted
- * cost of the product owner's requested UX, not a gap nobody noticed. It
- * does not reveal whether an unknown email is enrolled at all.
+ * `sendMagicLink` below re-derives this same admin/non-admin check
+ * server-side before doing anything, so a client can't force a different
+ * outcome than what this returned.
  */
 export async function checkLoginMethod(email: string): Promise<LoginMethod> {
   const parsed = emailOnlySchema.safeParse({ email });
@@ -139,17 +142,23 @@ export type MagicLinkState = { error?: string; success?: boolean } | null;
 
 /**
  * Sends a real, single-use, expiring sign-in link — never a bare "typing
- * an email logs you in" shortcut. `shouldCreateUser: false` is load-bearing:
- * this product is invite-only (Product Guide §5, no self-registration
- * path anywhere), and Supabase would otherwise happily create a brand new
- * account for any email typed here.
+ * an email logs you in" shortcut. Whoever clicks it still has to actually
+ * receive and open that email; nothing here authenticates anyone on the
+ * strength of an email address alone.
+ *
+ * `shouldCreateUser: true` is the deliberate policy reversal described on
+ * `checkLoginMethod` above: a brand-new email is welcome to self-onboard.
+ * It is a safe no-op for an email that already has an account — Supabase
+ * only creates a new one if none exists yet, so this can never duplicate
+ * or hijack an existing account. `src/app/auth/callback/route.ts` is
+ * where a genuinely new account actually gets its `profiles`/`user_roles`
+ * rows (role hardcoded to PLAYER) once the link is clicked.
  *
  * Always returns the same generic success response regardless of whether
- * an OTP was actually sent — mirrors `signIn`'s account-enumeration
- * hardening. The email is silently *not* sent for: an unknown address
- * (invite-only), a DISABLED account (Product Guide §5.2 step 3), or an
- * admin-surface account (those use `signIn` with a password instead — see
- * `checkLoginMethod`). None of that distinction ever reaches the caller.
+ * an OTP was actually sent. The email is silently *not* sent for an
+ * existing DISABLED account (Product Guide §5.2 step 3) or an existing
+ * admin-surface account (those use `signIn` with a password — see
+ * `checkLoginMethod`); neither distinction ever reaches the caller.
  */
 export async function sendMagicLink(
   _prevState: MagicLinkState,
@@ -170,12 +179,14 @@ export async function sendMagicLink(
     roles = (roleRows ?? []).map((row) => row.role as Role);
   }
 
-  if (profile && profile.status !== "DISABLED" && !hasAdminSurfaceAccess(roles)) {
+  const blockedExistingAccount = profile !== null && (profile.status === "DISABLED" || hasAdminSurfaceAccess(roles));
+
+  if (!blockedExistingAccount) {
     const supabase = await createClient();
     await supabase.auth.signInWithOtp({
       email,
       options: {
-        shouldCreateUser: false,
+        shouldCreateUser: true,
         emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback`,
       },
     });

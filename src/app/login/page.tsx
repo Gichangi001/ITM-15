@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LoginForm } from "./LoginForm";
+import { QrCode, getAppUrl } from "@/components/QrCode";
 
 export const metadata: Metadata = {
   title: "Sign in — ITM@15",
@@ -38,6 +39,11 @@ export default async function LoginPage({
       ) : null}
 
       <LoginForm />
+
+      <div className="mt-4 flex flex-col items-center gap-2">
+        <QrCode url={`${getAppUrl()}/login`} size={128} />
+        <p className="text-xs text-muted">Scan to open this page on your phone</p>
+      </div>
     </main>
   );
 }
