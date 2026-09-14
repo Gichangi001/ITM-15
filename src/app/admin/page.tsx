@@ -10,6 +10,7 @@ import {
   canManageVoting,
   canModerateSubmissions,
   canTriggerWally,
+  canViewAnalytics,
   canViewAuditLog,
 } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -37,6 +38,7 @@ const QUICK_ACTIONS = [
   { label: "🗳 Open a vote", href: "/admin/voting/new", capability: "canManageVoting" },
   { label: "🧍 Trigger Wally", href: "/admin/live/wally", capability: "canTriggerWally" },
   { label: "🎨 Change theme", href: "/admin/themes", capability: "canManageThemes" },
+  { label: "📊 View analytics", href: "/admin/analytics", capability: "canViewAnalytics" },
 ] as const;
 
 const NOT_YET_AVAILABLE = [
@@ -113,6 +115,7 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
     canManageVoting: canManageVoting(roles),
     canTriggerWally: canTriggerWally(roles),
     canManageThemes: canManageThemes(roles),
+    canViewAnalytics: canViewAnalytics(roles),
   } as const;
 
   const [

@@ -139,3 +139,17 @@ export function canTriggerWally(roles: readonly Role[]): boolean {
 export function canManageThemes(roles: readonly Role[]): boolean {
   return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
 }
+
+/**
+ * Product Guide §4.6: "Analytics Viewer — Read-only access to dashboards
+ * and exports." A distinct role set from CONTENT_MANAGEMENT_ROLES —
+ * ANALYTICS_VIEWER can see the dashboard without being able to touch
+ * missions/points/votes/themes, and GAME_MASTER/SUPER_ADMIN can see it
+ * too since they can already see everything it's built from individually
+ * (players, scoring, submissions, voting) through their own pages.
+ */
+const ANALYTICS_ROLES: readonly Role[] = ["ANALYTICS_VIEWER", "GAME_MASTER", "SUPER_ADMIN"];
+
+export function canViewAnalytics(roles: readonly Role[]): boolean {
+  return roles.some((role) => ANALYTICS_ROLES.includes(role));
+}

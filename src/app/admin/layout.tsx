@@ -8,6 +8,7 @@ import {
   canManageUserRoles,
   canManageVoting,
   canModerateSubmissions,
+  canViewAnalytics,
   canViewAuditLog,
 } from "@/lib/auth/roles";
 import { AdminNav } from "@/components/admin/AdminNav";
@@ -34,6 +35,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           canAwardBonusPoints: canAwardBonusPoints(roles),
           canManageVoting: canManageVoting(roles),
           canManageThemes: canManageThemes(roles),
+          canViewAnalytics: canViewAnalytics(roles),
         }}
       />
       <div className="flex-1">{children}</div>
