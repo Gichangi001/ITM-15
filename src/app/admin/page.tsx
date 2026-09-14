@@ -6,6 +6,7 @@ import {
   canAwardBonusPoints,
   canControlGameState,
   canManageContent,
+  canManageThemes,
   canManageVoting,
   canModerateSubmissions,
   canTriggerWally,
@@ -35,14 +36,12 @@ const QUICK_ACTIONS = [
   { label: "💰 Award bonus points", href: "/admin/scoring", capability: "canAwardBonusPoints" },
   { label: "🗳 Open a vote", href: "/admin/voting/new", capability: "canManageVoting" },
   { label: "🧍 Trigger Wally", href: "/admin/live/wally", capability: "canTriggerWally" },
+  { label: "🎨 Change theme", href: "/admin/themes", capability: "canManageThemes" },
 ] as const;
-
-const NOT_YET_BUILT = [{ label: "🎨 Change theme", phase: "Phase 15 — Themes" }] as const;
 
 const NOT_YET_AVAILABLE = [
   "Main mission completion rate (Phase 6-8 — needs per-mission attempt/completion aggregation, not built)",
   "Live vote status (Phase 9 — see the real per-poll status on /admin/voting instead)",
-  "Current theme (Phase 15)",
 ];
 
 // One icon per audit_logs action string that actually exists in the
@@ -113,6 +112,7 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
     canAwardBonusPoints: canAwardBonusPoints(roles),
     canManageVoting: canManageVoting(roles),
     canTriggerWally: canTriggerWally(roles),
+    canManageThemes: canManageThemes(roles),
   } as const;
 
   const [
@@ -120,6 +120,7 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
     { data: countryRows },
     { data: campaign },
     { count: pendingModerationCount },
+    { data: activeTheme },
   ] = await Promise.all([
     admin.from("profiles").select("id", { count: "exact", head: true }).eq("status", "ACTIVE"),
     admin.from("profiles").select("country_id").eq("status", "ACTIVE").not("country_id", "is", null),
@@ -130,6 +131,7 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
       .limit(1)
       .maybeSingle(),
     admin.from("submissions").select("id", { count: "exact", head: true }).eq("status", "PENDING"),
+    admin.from("themes").select("name").eq("is_active", true).maybeSingle(),
   ]);
 
   const activeCountryCount = new Set((countryRows ?? []).map((row) => row.country_id)).size;
@@ -208,6 +210,7 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
           />
           <KpiCard label="Players online now" value={<OnlineCount />} />
           <KpiCard label="Pending moderation" value={String(pendingModerationCount ?? 0)} />
+          <KpiCard label="Current theme" value={activeTheme?.name ?? "None active"} />
         </div>
         <p className="text-xs text-muted">
           Not yet available (need later phases): {NOT_YET_AVAILABLE.join(" · ")}.
@@ -286,16 +289,6 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
             >
               <p className="text-sm text-ink">{action.label}</p>
             </Link>
-          ))}
-          {NOT_YET_BUILT.map((action) => (
-            <div
-              key={action.label}
-              aria-disabled="true"
-              className="cursor-not-allowed rounded-xl border border-white/5 bg-white/[0.02] p-4 opacity-50"
-            >
-              <p className="text-sm text-ink">{action.label}</p>
-              <p className="mt-1 text-xs text-muted">{action.phase}</p>
-            </div>
           ))}
         </div>
       </section>

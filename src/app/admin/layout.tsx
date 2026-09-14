@@ -4,6 +4,7 @@ import {
   canAwardBonusPoints,
   canCreateEmployeeAccounts,
   canManageContent,
+  canManageThemes,
   canManageUserRoles,
   canManageVoting,
   canModerateSubmissions,
@@ -32,6 +33,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           canModerateSubmissions: canModerateSubmissions(roles),
           canAwardBonusPoints: canAwardBonusPoints(roles),
           canManageVoting: canManageVoting(roles),
+          canManageThemes: canManageThemes(roles),
         }}
       />
       <div className="flex-1">{children}</div>

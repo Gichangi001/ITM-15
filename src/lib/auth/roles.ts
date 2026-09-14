@@ -129,3 +129,13 @@ export function canSendNotifications(roles: readonly Role[]): boolean {
 export function canTriggerWally(roles: readonly Role[]): boolean {
   return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
 }
+
+/**
+ * Product Guide §19.2: "Admin clicks Activate Theme" — filed under the
+ * same Game Master content-control capability as missions/days/voting,
+ * matching §4.4's "Change live themes" line in Game Master's own
+ * capability list.
+ */
+export function canManageThemes(roles: readonly Role[]): boolean {
+  return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
+}

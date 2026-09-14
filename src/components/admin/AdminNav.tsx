@@ -12,6 +12,7 @@ export type AdminNavCapabilities = {
   canModerateSubmissions: boolean;
   canAwardBonusPoints: boolean;
   canManageVoting: boolean;
+  canManageThemes: boolean;
 };
 
 /**
@@ -48,6 +49,9 @@ export function AdminNav({ capabilities }: { capabilities: AdminNavCapabilities 
   }
   if (capabilities.canManageVoting) {
     items.push({ href: "/admin/voting", label: "Voting" });
+  }
+  if (capabilities.canManageThemes) {
+    items.push({ href: "/admin/themes", label: "Themes" });
   }
   if (capabilities.canViewAudit) {
     items.push({ href: "/admin/audit", label: "Audit Log" });
