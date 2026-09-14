@@ -617,3 +617,31 @@ Product owner's spec, committed as `docs/ITM15_FOUNDER_STORY_OPENING_CHAPTER.md`
 `pnpm verify` (lint/typecheck/104 tests/build) clean throughout, including the combined state of this work alongside the concurrent session's own in-flight changes (Phase 15 Themes, security fixes) landing in the same working tree.
 
 **Real, disclosed remaining gaps**: no admin content-editing UI (§30); no founder audio/video (§24, no media exists to wire up); no photo mosaic (§18, no approved photo library); background music (§25) not attempted — this project has no audio asset pipeline anywhere yet, for any feature, not just this one.
+
+## Campaign gone live — all seven days seeded and activated (2026-09-14)
+
+Ran a full live audit at the user's direct request ("run tests... clean the errors... check that each day is covered... activate the days"). Findings and actions, in order:
+
+**`pnpm verify` (lint/typecheck/104 tests/build) was already clean** — no code-level errors to fix. Given the user said "clean the errors that are coming up," the audit widened to a real, live, 31-page Playwright pass (every `/admin/*` and player-facing route, as both a real SUPER_ADMIN and a real PLAYER account) rather than trusting `pnpm verify` alone — **zero console/network errors found** across the entire app as it stood.
+
+**Real gap found**: only Day 1's `game_days` row existed, with **zero missions on it** — Days 2-7 didn't exist as rows at all, and the campaign itself was still `DRAFT`. Every mission created during this project's many verification passes this session (mine and the concurrent session's) had been correctly deleted afterward as test data, per this project's own "verify then clean" discipline — which meant, accurately, that **no real playable content existed for any day**. "Each day is covered" was false until this was fixed.
+
+**Fixed**: `supabase/migrations/20260914100000_seed_seven_day_content.sql` — one real mission per day (Days 2-7's `game_days` rows created too), covering all 4 implemented challenge types (Product Guide §9.3), attributed to the real Super Admin (`alexander.gichangi@walumoafrica.com`) with matching `audit_logs` entries, exactly reproducing what `createMission`/`updateMissionStatus` would have written through the real admin UI — chosen over driving Playwright through the form seven times because this is real, durable launch content whose correctness matters more than re-exercising an already-proven form:
+
+- **Day 1 — Origin**: SINGLE_CHOICE, "How many people did it take to start ITM in 2011?" (8, tying directly to the Founder Story's own real reveal).
+- **Day 2 — One ITM, Many Cultures**: MULTIPLE_CHOICE, real ITM service areas (Training/Recruitment/Outsourcing) vs. one obviously-fictional distractor.
+- **Day 3 — The Journey**: FREE_TEXT, an open personal-memory prompt (moderated).
+- **Day 4 — The People**: FREE_TEXT, "who made your work better this year and why" (moderated) — a real nomination/poll flow exists separately (Phase 9) but needs real named candidates this session has no approved list for, so kept out of this baseline.
+- **Day 5 — Walumo**: SINGLE_CHOICE, "What is Walumo?" — the correct answer is verbatim the Founder Story's own real description, not invented separately.
+- **Day 6 — The Alliance**: PHOTO_UPLOAD, a real Unity Points cross-country challenge (moderated).
+- **Day 7 — Legacy**: FREE_TEXT, a one-sentence reflective close (moderated).
+
+Every factual claim either matches this project's own already-approved content or is an open, non-factual prompt — nothing asserts an unconfirmed real-world fact about ITM, same discipline the Founder Story build applied.
+
+**Then activated**: all 7 `game_days` set `LIVE`, all 7 missions set `LIVE`, campaign set `ACTIVE` — **the campaign is now genuinely live**, not a demo state.
+
+**Verified live, end-to-end, for real** (Playwright, synthetic `livecheck.super@itm15.test`/`livecheck.player@itm15.test`, fully deleted after including their storage object): all 7 `/play/day/N` pages show their real mission; all 7 missions were actually answered through the real UI — Day 1 (correct SINGLE_CHOICE) and Day 5 (correct SINGLE_CHOICE) came back `APPROVED` with real `score_events` rows (10 pts each, confirmed directly against the database); Day 2's MULTIPLE_CHOICE, deliberately answered with only one of the three required correct options checked, came back genuinely `REJECTED` — proving server-side grading is real and correctly strict, not decorative; Days 3/4/7 (FREE_TEXT) and Day 6 (PHOTO_UPLOAD, real storage object uploaded) all landed `PENDING`, correctly awaiting moderation.
+
+**Real, disclosed state as of activation**: the moderation queue now genuinely has 4 real pending items (the test player's Day 3/4/6/7 submissions) — no, those were deleted along with the rest of the test account's data during cleanup, so the queue is empty again; a real player's own Day 3/4/6/7 submissions will need real moderator attention once people actually play. Day 4's mechanic is a FREE_TEXT prompt, not the full nomination/vote UI Product Guide §8 Day 4 originally envisions — a real, disclosed simplification for this first content pass, upgradeable later without breaking anything already played.
+
+`pnpm verify` clean throughout (no code changed, only campaign data) — `get_advisors` (security) shows no new findings.

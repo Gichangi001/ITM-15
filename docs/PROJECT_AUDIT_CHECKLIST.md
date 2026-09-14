@@ -620,7 +620,7 @@ This remaining blocker is not something this session can resolve unilaterally (p
   **Verified:** 2026-09-13
   **Commit:** (pending, see git log)
 
-- [ ] Actual seven-day game loop (missions, challenges, unlocks) — Phase 6+, not started. The walkthrough preview above is not that — it's a narrated slideshow, not playable.
+- [x] Actual seven-day game loop (missions, challenges, unlocks) — **LIVE, 2026-09-14**: all 7 days have a real, published mission (`supabase/migrations/20260914100000_seed_seven_day_content.sql`), campaign status `ACTIVE`. Verified live: all 7 answered for real through the real UI, 2 correct auto-graded to `APPROVED` with real `score_events`, 1 deliberately-incomplete answer genuinely `REJECTED`, the remaining 4 correctly `PENDING` moderation (including a real photo upload). See `docs/PROJECT_STATE.md`'s "Campaign gone live" section. The walkthrough preview at `/preview` remains a separate, narrated slideshow, not this.
 - [ ] Login experience, first-login identity sequence (Build Bible §9-10) — Phase 2, not started
 - [ ] Home screen "living lobby" (Build Bible §11) — Phase 4, not started
 - [ ] Daily rhythm engine (Build Bible §12) — Phase 6+, not started
