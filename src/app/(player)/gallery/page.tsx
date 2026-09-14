@@ -67,7 +67,10 @@ export default async function GalleryPage() {
     const player = playerById.get(playerId);
     const country = player?.country_id ? countryById.get(player.country_id) : undefined;
     return {
-      playerName: player?.full_name || player?.email || "A player",
+      // Never fall back to email — this is visible to every signed-in
+      // player, same class of finding a security review caught on
+      // /leaderboards (see src/lib/scoring/leaderboard.ts).
+      playerName: player?.full_name || "A player",
       countryFlag: country?.flag_emoji ?? null,
     };
   }

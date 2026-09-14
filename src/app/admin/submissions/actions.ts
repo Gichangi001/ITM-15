@@ -55,6 +55,24 @@ export async function moderateSubmission(formData: FormData) {
     redirect("/admin/submissions?error=already_moderated");
   }
 
+  // Scoring integrity (found by a dedicated security review, Product
+  // Guide §33.3: "Duplicate completion does not double-pay unless
+  // configured"): the `status !== "PENDING"` check above only stops a
+  // second click on *this* submission — it didn't stop a player from
+  // submitting the same FREE_TEXT/PHOTO_UPLOAD challenge multiple times
+  // and a moderator approving more than one, each paying full points
+  // again. Checked here, before this submission's own status flips to
+  // APPROVED below, against every *other* submission for the same
+  // challenge/player — same rule as the identical guard in
+  // src/app/(player)/play/mission/[missionId]/actions.ts.
+  const { count: alreadyApprovedCount } = await admin
+    .from("submissions")
+    .select("id", { count: "exact", head: true })
+    .eq("challenge_id", submission.challenge_id)
+    .eq("player_id", submission.player_id)
+    .eq("status", "APPROVED");
+  const alreadyAwarded = (alreadyApprovedCount ?? 0) > 0;
+
   const newStatus = decision === "APPROVE" ? "APPROVED" : "REJECTED";
   const { error: updateError } = await admin
     .from("submissions")
@@ -86,7 +104,7 @@ export async function moderateSubmission(formData: FormData) {
           .maybeSingle()
       : { data: null };
 
-    if (mission) {
+    if (mission && !alreadyAwarded) {
       if (mission.base_points > 0) {
         await admin.from("score_events").insert({
           player_id: submission.player_id,

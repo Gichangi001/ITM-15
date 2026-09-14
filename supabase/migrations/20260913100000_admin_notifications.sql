@@ -84,13 +84,22 @@ create policy "players can read their own notifications"
 
 -- A player MAY mark their own notification read/unread directly — this is
 -- the one exception to this project's usual "no client-writable policy,
--- everything through a server action" pattern for player-owned rows, and
--- it's deliberately narrow: the policy only allows changing read_at on a
--- row that is already theirs, never any other column, and never another
--- player's row. There is no meaningful way to abuse "I marked my own
--- notification as read/unread" the way there is for, say, must_change_password
--- or a score field, so a server round trip isn't required for it to stay
--- server-authoritative in any sense that matters.
+-- everything through a server action" pattern for player-owned rows.
+--
+-- CORRECTED 2026-09-14 (security review, Phase 20) — this comment
+-- previously claimed the policy "only allows changing read_at... never
+-- any other column," which is not true: Postgres RLS is row-level, not
+-- column-level, so `using`/`with check` can restrict *which row* an
+-- UPDATE may touch (a player's own, never another's — that part is
+-- real), but cannot restrict *which columns* within that row change. A
+-- player can PATCH title/message/cta_href/source_type on their own
+-- notification rows via a direct REST call, not just read_at. Accepted
+-- as-is rather than adding a column-enforcing trigger: the blast radius
+-- is confirmed self-only (a player can only ever corrupt their own
+-- inbox's display text, never another player's, never anything shown to
+-- anyone else, never a score/permission/moderation field) — there is
+-- still no meaningful way to abuse this the way there is for, say,
+-- must_change_password or a score field.
 create policy "players can update read_at on their own notifications"
   on public.notifications for update
   to authenticated

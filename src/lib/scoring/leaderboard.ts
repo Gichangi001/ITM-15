@@ -58,7 +58,13 @@ export async function getPlayerLeaderboard(limit = 50): Promise<PlayerLeaderboar
     const country = profile.country_id ? countryById.get(profile.country_id) : undefined;
     return {
       playerId: profile.id,
-      displayName: profile.full_name || profile.email,
+      // Never fall back to email here — this is public/semi-public
+      // (every signed-in player sees it; /screen, Phase 18, shows it to
+      // no one at all signed in). Found by a dedicated security review:
+      // a not-yet-onboarded self-registered account (`full_name` still
+      // null) would otherwise leak the raw email address a visitor just
+      // typed into the instant-join form to every other player.
+      displayName: profile.full_name || "A player",
       countryName: country?.name ?? null,
       countryFlag: country?.flag_emoji ?? null,
       points: totals.get(profile.id) ?? 0,

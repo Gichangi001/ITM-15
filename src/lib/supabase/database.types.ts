@@ -358,6 +358,27 @@ export type Database = {
           },
         ]
       }
+      login_rate_limit_hits: {
+        Row: {
+          bucket: string
+          created_at: string
+          id: string
+          identifier: string
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          id?: string
+          identifier: string
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          id?: string
+          identifier?: string
+        }
+        Relationships: []
+      }
       media_assets: {
         Row: {
           asset_type: string

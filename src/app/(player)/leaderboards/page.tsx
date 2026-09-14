@@ -29,10 +29,18 @@ export default async function LeaderboardsPage() {
   const [players, countries, { data: recentJoins }] = await Promise.all([
     getPlayerLeaderboard(50),
     getCountryLeaderboard(),
+    // onboarding_completed filter (found by a dedicated security review):
+    // a self-registered account (Product Guide's instant sign-in) has no
+    // full_name until onboarding — without this filter, this list would
+    // otherwise be the first place a brand-new, not-yet-named account
+    // appears, forcing a fallback to their raw email (fixed below too,
+    // as defense in depth, but filtering here means there's normally
+    // nothing un-named to fall back for in the first place).
     admin
       .from("profiles")
-      .select("id, full_name, email, country_id, created_at")
+      .select("id, full_name, country_id, created_at")
       .eq("status", "ACTIVE")
+      .eq("onboarding_completed", true)
       .order("created_at", { ascending: false })
       .limit(8),
   ]);
@@ -99,7 +107,7 @@ export default async function LeaderboardsPage() {
             {recentJoins.map((profile) => (
               <li key={profile.id} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
                 <span className="text-ink">
-                  {profile.full_name || profile.email}
+                  {profile.full_name || "A new player"}
                   {profile.country_id && flagByCountryId.get(profile.country_id)
                     ? ` ${flagByCountryId.get(profile.country_id)}`
                     : ""}

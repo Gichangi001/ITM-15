@@ -86,6 +86,24 @@ export async function submitAnswer(
     return { error: "You've used all your attempts for this mission." };
   }
 
+  // Scoring integrity (found by a dedicated security review, Product Guide
+  // §33.3: "Duplicate completion does not double-pay unless configured"):
+  // `max_attempts` only bounds how many TRIES exist, not how many times a
+  // correct one pays. Without this, resubmitting the same correct answer
+  // — or, for FREE_TEXT/PHOTO_UPLOAD, having several separate submissions
+  // each independently approved (see the identical guard in
+  // src/app/admin/submissions/actions.ts) — paid full points every time,
+  // an unlimited point-farming path requiring no special access. A
+  // challenge may only ever pay out once per player, checked here before
+  // either grading path so both share the exact same rule.
+  const { count: alreadyApprovedCount } = await admin
+    .from("submissions")
+    .select("id", { count: "exact", head: true })
+    .eq("challenge_id", challengeId)
+    .eq("player_id", user.id)
+    .eq("status", "APPROVED");
+  const alreadyAwarded = (alreadyApprovedCount ?? 0) > 0;
+
   if (challenge.type === "SINGLE_CHOICE" || challenge.type === "MULTIPLE_CHOICE") {
     if (!chosenIds || chosenIds.length === 0) {
       return { error: "Select an answer first." };
@@ -121,6 +139,11 @@ export async function submitAnswer(
     if (!isCorrect) {
       revalidatePath(`/play/mission/${challenge.mission_id}`);
       return { error: "Not quite. Try again." };
+    }
+
+    if (alreadyAwarded) {
+      revalidatePath(`/play/mission/${challenge.mission_id}`);
+      return { success: { message: "Correct! (Already counted from an earlier attempt.)", pointsAwarded: 0 } };
     }
 
     const pointsAwarded = await awardMissionPoints({

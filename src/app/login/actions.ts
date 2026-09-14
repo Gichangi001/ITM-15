@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasAdminSurfaceAccess, type Role } from "@/lib/auth/roles";
 import { resolveRoleBasedDestination } from "@/lib/auth/session";
+import { isRateLimited } from "@/lib/security/rateLimit";
 
 export type SignInState = {
   error?: string;
@@ -89,8 +90,19 @@ export async function signIn(
   redirect(await resolveRoleBasedDestination(supabase, data.user.id));
 }
 
+// .toLowerCase() (security review, Phase 20 — a data-hygiene finding, not
+// independently exploitable since Supabase Auth already normalizes case
+// at the auth.users level, but this app's own exact-string `profiles`
+// lookups in checkLoginMethod/instantJoin didn't, which could otherwise
+// treat "Name@x.com" and "name@x.com" as two different accounts here even
+// though Supabase Auth would refuse to create the second one).
 const emailOnlySchema = z.object({
-  email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .email("Enter a valid email address")
+    .toLowerCase(),
 });
 
 export type LoginMethod = "password" | "instant";
@@ -104,12 +116,28 @@ export type LoginMethod = "password" | "instant";
  * below, no password, no link, no wait. `instantJoin` re-derives this
  * same admin/non-admin check server-side before doing anything, so a
  * client can't force a different outcome than what this returned.
+ *
+ * Rate-limited (security review finding, Phase 20): without a limit, this
+ * function is an unauthenticated oracle — call it with enough different
+ * emails and you learn exactly which ones hold an admin-surface role,
+ * with no friction. Rate-limited by IP, not by the email being checked
+ * (see rateLimit.ts's own comment on why). When limited, defaults to
+ * `"instant"` — the answer that reveals nothing about admin status —
+ * rather than erroring, so a legitimately-fast typist never sees a
+ * broken login form; `instantJoin`'s own re-derivation of this same check
+ * still refuses the password branch for a real admin account regardless
+ * of what this returned.
  */
 export async function checkLoginMethod(email: string): Promise<LoginMethod> {
   const parsed = emailOnlySchema.safeParse({ email });
   if (!parsed.success) return "password"; // malformed input — no meaningful answer either way; the real submit path re-validates regardless
 
   const admin = createAdminClient();
+
+  if (await isRateLimited(admin, "login_method_check", 30, 300)) {
+    return "instant";
+  }
+
   const { data: profile } = await admin
     .from("profiles")
     .select("id")
@@ -169,6 +197,16 @@ export async function instantJoin(
 
   const { email } = parsed.data;
   const admin = createAdminClient();
+
+  // Rate-limited (security review finding, Phase 20): this path creates a
+  // real auth.users + profiles row for an unrecognized email with zero
+  // other friction — without a limit, it's a way to harvest arbitrary
+  // email addresses into the app at no cost. Tighter than
+  // checkLoginMethod's limit since this actually mutates state.
+  if (await isRateLimited(admin, "instant_join", 8, 600)) {
+    return { error: "Too many attempts. Wait a few minutes and try again." };
+  }
+
   const { data: existingProfile } = await admin
     .from("profiles")
     .select("id, status")
