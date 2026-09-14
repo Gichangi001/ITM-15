@@ -93,6 +93,88 @@ h3 {
 }
 
 /*
+ * Founder Story (docs/ITM15_FOUNDER_STORY_OPENING_CHAPTER.md) — a
+ * generalized version of .scene-0-line above, usable across every scene
+ * rather than one homepage section. Same technique (pure CSS
+ * animation-delay, works before hydration, no JS timing/mismatch risk):
+ * each staged line sets its own --founder-delay and this class handles
+ * the fade+rise. prefers-reduced-motion shows everything immediately,
+ * matching every other staged reveal in this app.
+ */
+@keyframes founder-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.founder-line {
+  opacity: 0;
+  animation: founder-line-in 1s ease-out forwards;
+  animation-delay: var(--founder-delay, 0s);
+  /* Paused (not just delayed) until FounderScene marks itself "armed" via
+     IntersectionObserver — animation-delay alone counts from page load,
+     which is right for the homepage's Scene 0 (top of page, visible
+     immediately) but wrong for a scene the fifth screen down a
+     scroll-snap sequence: it would have already finished counting down
+     before the visitor ever scrolls there. Pausing freezes the delay
+     countdown itself, not just the visible animation, so the whole
+     staged sequence genuinely starts when the scene comes into view. */
+  animation-play-state: paused;
+}
+
+.founder-scene-armed .founder-line {
+  animation-play-state: running;
+}
+
+/* A gold-highlighted emphasis line (Build Bible §5's "rare/golden... do
+   not overuse gold" rule) — reserved for the single strongest statement
+   in a scene (IT STARTED WITH EIGHT, HOLDING, CAPABILITY, and similar). */
+.founder-line-gold {
+  color: var(--color-gold);
+  text-shadow: 0 0 24px rgba(201, 162, 39, 0.35);
+}
+
+/* §3's hero image treatment: "left or bottom gradient, deep black into
+   transparent... subtle vignette... avoid excessive corporate blue." A
+   radial vignette plus a bottom-biased linear fade, both using the
+   theme's own --color-bg so it stays correct if that token ever changes,
+   never a hard-coded blue. */
+.founder-hero-scrim {
+  background:
+    radial-gradient(120% 90% at 50% 30%, transparent 45%, rgba(5, 6, 10, 0.55) 100%),
+    linear-gradient(to top, var(--color-bg) 2%, rgba(5, 6, 10, 0.15) 45%, transparent 70%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .founder-line {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+/* §26: "Use scroll snapping... do not trap the user." A real scroll
+   container (not a fixed-position hijack), so normal scrollbar/keyboard
+   (PageDown/arrow keys)/touch scrolling all still work — snapping only
+   changes where scrolling *settles*, it never blocks input. */
+.founder-story-container {
+  height: 100svh;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .founder-story-container {
+    scroll-behavior: auto;
+  }
+}
+
+/*
  * Wally speech bubble (src/components/wally/WallySpeechBubble.tsx) —
  * enters from below, `motion-safe:` only so prefers-reduced-motion users
  * get it appearing instantly instead (WALLY.md §31/§13.3).

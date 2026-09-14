@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { signOut } from "@/app/logout/actions";
+import { createClient } from "@/lib/supabase/server";
+import { PlayerTransition } from "@/components/story/founder/PlayerTransition";
 
 export const metadata: Metadata = {
   title: "Play — ITM@15",
@@ -48,8 +50,26 @@ export default async function PlayPage() {
   const profile = await getCurrentProfile();
   const greetingName = profile?.first_name || profile?.email;
 
+  let countryName: string | null = null;
+  if (profile?.country_id) {
+    const supabase = await createClient();
+    const { data: country } = await supabase
+      .from("countries")
+      .select("name")
+      .eq("id", profile.country_id)
+      .maybeSingle();
+    countryName = country?.name ?? null;
+  }
+
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-10 sm:px-6">
+      {/* docs/ITM15_FOUNDER_STORY_OPENING_CHAPTER.md §23 — the one, real,
+          personalized moment that follows the public founder story;
+          firstName/countryName come from this player's real profile,
+          never invented (see PlayerTransition's own header comment). */}
+      {profile?.first_name ? (
+        <PlayerTransition firstName={profile.first_name} countryName={countryName} />
+      ) : null}
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
           ITM@15 — Wally Takeover

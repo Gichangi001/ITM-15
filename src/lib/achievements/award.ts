@@ -17,7 +17,7 @@ type AdminClient = ReturnType<typeof createAdminClient>;
  * qualifying event (not just the one that first crosses a threshold) is
  * intentional and cheap, not a bug to dedupe further up the call chain.
  */
-async function tryAward(
+export async function tryAward(
   admin: AdminClient,
   playerId: string,
   achievementKey: string,

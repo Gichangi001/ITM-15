@@ -43,9 +43,16 @@ export default async function Home() {
         full-viewport section in normal document flow, not a fixed overlay:
         a fixed overlay would need JS to dismiss, which either flashes
         unstyled content before hydration or permanently traps a visitor
-        with JS disabled. An in-flow section plus a plain <a href="#hero">
-        anchor works with or without JS, and the reveal itself is pure CSS
+        with JS disabled. An in-flow section plus a plain <a> anchor works
+        with or without JS, and the reveal itself is pure CSS
         (animation-delay), so it runs even if JS never loads.
+
+        "Enter the story" now leads to /story/founder (2026-09-14, docs/
+        ITM15_FOUNDER_STORY_OPENING_CHAPTER.md) rather than scrolling to
+        this page's own #hero section — the founder story is "the very
+        first meaningful story page after the ITM@15 opening" per that
+        spec, so it's the real next step, not a secondary detour. #hero
+        and the seven-day timeline below remain reachable by scrolling.
       */}
       <section className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-6 text-center">
         <Image
@@ -71,7 +78,7 @@ export default async function Home() {
           Before Walumo.
         </p>
         <a
-          href="#hero"
+          href="/story/founder"
           className="scene-0-line mt-10 inline-block rounded-full border border-walumo px-8 py-3 text-sm font-medium tracking-wide text-ink uppercase transition hover:bg-walumo [--scene0-delay:6.7s]"
         >
           Enter the story
