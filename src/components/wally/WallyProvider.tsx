@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   selectDialogue,
@@ -54,6 +55,7 @@ export function WallyProvider({
   playerId: string;
   firstName: string | null;
 }) {
+  const router = useRouter();
   const [active, setActive] = useState<ActiveWally | null>(null);
   const shownIds = useRef<Set<string>>(new Set());
   // GLOBAL wally.triggered events — see PresenceHeartbeat.tsx's header
@@ -193,12 +195,19 @@ export function WallyProvider({
     playerChannel.on("broadcast", { event: "wally.triggered" }, () => {
       fetchAndShowLatestTargetedEvent();
     });
+    // Phase 12 admin notification composer (src/app/admin/notifications/
+    // actions.ts) — a PLAYER-targeted send pings this same per-player
+    // channel, which this component already owns exclusively (see this
+    // effect's own comment below). A plain router.refresh() is enough:
+    // it re-runs whatever Server Component route is currently mounted, so
+    // an already-open /notifications tab picks up the new row live.
+    playerChannel.on("broadcast", { event: "notification.created" }, () => router.refresh());
     playerChannel.subscribe();
 
     return () => {
       supabase.removeChannel(playerChannel);
     };
-  }, [playerId, fetchAndShowLatestTargetedEvent]);
+  }, [playerId, fetchAndShowLatestTargetedEvent, router]);
 
   // GLOBAL wally.triggered events arrive via PresenceHeartbeat, which owns
   // the "game:global" channel for the whole player shell — this just

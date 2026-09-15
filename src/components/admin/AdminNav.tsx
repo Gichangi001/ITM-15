@@ -14,6 +14,7 @@ export type AdminNavCapabilities = {
   canManageVoting: boolean;
   canManageThemes: boolean;
   canViewAnalytics: boolean;
+  canSendNotifications: boolean;
 };
 
 /**
@@ -50,6 +51,9 @@ export function AdminNav({ capabilities }: { capabilities: AdminNavCapabilities 
   }
   if (capabilities.canManageVoting) {
     items.push({ href: "/admin/voting", label: "Voting" });
+  }
+  if (capabilities.canSendNotifications) {
+    items.push({ href: "/admin/notifications", label: "Notifications" });
   }
   if (capabilities.canManageThemes) {
     items.push({ href: "/admin/themes", label: "Themes" });

@@ -62,6 +62,14 @@ export function PresenceHeartbeat({ playerId, children }: { playerId: string; ch
     channel.on("broadcast", { event: "wally.triggered" }, () => {
       setWallyTriggerTick((tick) => tick + 1);
     });
+    // Phase 12 admin notification composer (src/app/admin/notifications/
+    // actions.ts) — a GLOBAL send pings this same channel. A plain
+    // router.refresh() is enough here (unlike wally.triggered, nothing
+    // needs to decide whether to interrupt anything): it re-runs whatever
+    // Server Component route is currently mounted, so an already-open
+    // /notifications tab picks up the new row with no reload, the same
+    // way game.paused/game.resumed already do above.
+    channel.on("broadcast", { event: "notification.created" }, () => router.refresh());
 
     channel.subscribe((status) => {
       if (status === "SUBSCRIBED") {
