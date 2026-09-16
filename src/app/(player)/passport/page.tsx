@@ -68,13 +68,13 @@ export default async function PassportPage() {
         </p>
         <h1 className="text-3xl">Your passport</h1>
         <p className="text-sm text-muted">
-          A shareable networking badge — scan-to-connect at the event. Only the fields
-          you fill in below appear on it.
+          Your shareable badge for the event — scan to connect. Only what you fill in below
+          appears on it.
         </p>
       </div>
 
       {shareUrl ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-surface p-6 text-center">
+        <div className="itm-card itm-hero-card flex flex-col items-center gap-3 p-6 text-center">
           <QrCode url={shareUrl} size={180} />
           <p className="text-xs text-muted break-all">{shareUrl}</p>
           <p className="text-xs text-muted">
@@ -82,7 +82,7 @@ export default async function PassportPage() {
           </p>
         </div>
       ) : (
-        <p className="rounded-xl border border-white/10 bg-surface p-4 text-sm text-muted">
+        <p className="itm-card p-4 text-sm text-muted">
           Save your passport once below to get your shareable QR code.
         </p>
       )}

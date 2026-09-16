@@ -44,7 +44,7 @@ export default async function AchievementsPage() {
       </div>
 
       {!achievements || achievements.length === 0 ? (
-        <p className="text-sm text-muted">No achievements defined yet.</p>
+        <p className="text-sm text-muted">Nothing here yet.</p>
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {achievements.map((achievement) => {
@@ -53,14 +53,14 @@ export default async function AchievementsPage() {
             return (
               <li
                 key={achievement.id}
-                className={`flex flex-col gap-2 rounded-xl border p-5 ${
+                className={
                   isUnlocked
-                    ? "border-walumo/40 bg-surface"
-                    : "border-white/5 bg-white/[0.02] opacity-60"
-                }`}
+                    ? "itm-reward flex flex-col gap-2 p-5"
+                    : "itm-card flex flex-col gap-2 p-5 opacity-50"
+                }
               >
                 <span className="text-3xl" aria-hidden="true">
-                  {achievement.icon}
+                  {isUnlocked ? achievement.icon : "🔒"}
                 </span>
                 <p className="text-lg font-semibold text-ink">{achievement.title}</p>
                 <p className="text-sm text-muted">{achievement.description}</p>
@@ -69,7 +69,7 @@ export default async function AchievementsPage() {
                     Unlocked {new Date(awardedAt).toLocaleDateString()}
                   </p>
                 ) : (
-                  <p className="mt-auto text-xs text-muted">Locked</p>
+                  <p className="mt-auto text-xs text-muted">Waiting to be earned</p>
                 )}
               </li>
             );

@@ -1,6 +1,8 @@
 # ITM@15 Quality Status
 
-_Last updated: 2026-09-16, Experience Transformation Slice 3 (DRC opening + Kinshasa finale) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 3" section for the full account._
+_Last updated: 2026-09-16, Experience Transformation Slice 4 (Passport + Achievements) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 4" section for the full account._
+
+**Experience Transformation Slice 4 (Passport + Achievements)**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. Live `curl` confirms `/achievements`/`/passport` still redirect unauthenticated visitors to `/login`, and the public `/passport/[slug]` route still 404s (not redirects) for an unknown slug. Per the user's explicit direction, visual verification (still no Playwright tool this session) is deferred to a later pass rather than blocking further slices.
 
 **Experience Transformation Slice 3 (DRC opening + Kinshasa finale)**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. The DRC cold-open line's presence was confirmed directly in the homepage's live rendered output via `curl` — the one executed check this slice got beyond a clean build. **Not done, disclosed**: the Kinshasa finale state (gated on a real Day-7-complete check) has no live player who has actually reached it yet and no Playwright tool to drive a synthetic one through all 7 missions, so it's verified by code review only. No Playwright/browser tool was available for this slice, same gap as Slices 1 and 2. Deliberately did NOT test theme activation for the other 6 countries against the live production database, since the campaign has real connected players right now and the currently-active theme (Kenya) is genuinely what they should be seeing — that verification needs a non-production context a future Playwright-equipped session can set up safely.
 

@@ -59,7 +59,7 @@ export default async function PublicPassportPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-16 sm:px-6">
-      <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-surface p-8 text-center">
+      <div className="itm-card itm-hero-card flex flex-col items-center gap-2 p-8 text-center">
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">ITM@15 Passport</p>
         <h1 className="text-3xl">{card.full_name || "ITM@15 Player"}</h1>
         {card.country_name ? (
