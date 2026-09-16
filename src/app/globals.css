@@ -342,3 +342,201 @@ h3 {
     box-shadow: 0 0 0 1px var(--color-gold) inset;
   }
 }
+
+/*
+ * Experience Transformation, Slice 1 (2026-09-16) — motion tokens + a
+ * shared card/choice language, replacing the plain
+ * `rounded-xl border border-white/10 bg-surface` box used everywhere
+ * (day page, mission page, leaderboard). One system, reused across every
+ * screen, so the redesign doesn't fragment into page-specific CSS —
+ * the brief's own §39 rule.
+ *
+ * Motion durations follow the brief's §13 bands: instant feedback
+ * (button press), micro transitions (hover/select), standard component
+ * transitions (card entrance/state change). Page-level/cinematic timing
+ * is handled per-component, not tokenized here yet — nothing in this
+ * slice needs it.
+ */
+:root {
+  --motion-instant: 140ms;
+  --motion-micro: 200ms;
+  --motion-standard: 320ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Card surface — depth and warmth instead of a flat bordered box. Applied
+   as a base; add .itm-card--interactive for anything clickable/hoverable
+   (a destination/mission link), leave it off for static content
+   (a leaderboard row, a static info card). */
+.itm-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+    var(--color-surface);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+    0 12px 30px -18px rgba(0, 0, 0, 0.6);
+}
+
+.itm-card--interactive {
+  transition:
+    transform var(--motion-standard) var(--ease-standard),
+    border-color var(--motion-standard) var(--ease-standard),
+    box-shadow var(--motion-standard) var(--ease-standard);
+}
+
+.itm-card--interactive:hover,
+.itm-card--interactive:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(59, 111, 237, 0.35);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
+    0 20px 40px -20px rgba(0, 0, 0, 0.7);
+}
+
+/* A hero card reserved for one primary action per screen (§9's "one
+   primary action should normally dominate a screen") — the /play home's
+   today's-mission card. Reuses the button system's breathing-glow
+   language at a lower intensity so the whole surface feels alive, not
+   just its CTA. */
+.itm-hero-card {
+  border-radius: 1.25rem;
+  border: 1px solid rgba(59, 111, 237, 0.25);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(59, 111, 237, 0.14), transparent 60%),
+    var(--color-surface);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+    0 24px 60px -30px rgba(59, 111, 237, 0.45);
+}
+
+/* Tap-to-choose option card (§14 "Tap to choose... Multiple choice can
+   become interactive cards") — replaces a literal bordered radio/checkbox
+   row. The real <input> stays in the DOM (visually hidden, not
+   display:none) so screen readers and keyboard users get the exact same
+   semantics as before; :has() drives the checked/focus visual state so no
+   JS is needed to keep it in sync with the underlying form control. */
+.itm-choice {
+  position: relative;
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.85rem 1.1rem;
+  transition:
+    transform 150ms var(--ease-spring),
+    border-color var(--motion-micro) var(--ease-standard),
+    background var(--motion-micro) var(--ease-standard);
+}
+
+.itm-choice:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.itm-choice:active {
+  transform: scale(0.985);
+}
+
+.itm-choice:has(input:checked) {
+  border-color: var(--color-walumo);
+  background: rgba(59, 111, 237, 0.12);
+  box-shadow: 0 0 0 1px var(--color-walumo) inset;
+}
+
+.itm-choice:has(input:focus-visible) {
+  outline: 2px solid var(--color-walumo);
+  outline-offset: 2px;
+}
+
+.itm-choice input {
+  position: absolute;
+  opacity: 0;
+}
+
+/* A small checkmark glyph shown only once the option is actually selected
+   — a second, non-color signal alongside the border/background change
+   (§30: never communicate state through color alone). */
+.itm-choice-check {
+  display: flex;
+  height: 1.1rem;
+  width: 1.1rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: transparent;
+  font-size: 0.7rem;
+  transition:
+    border-color var(--motion-micro) var(--ease-standard),
+    background var(--motion-micro) var(--ease-standard),
+    color var(--motion-micro) var(--ease-standard);
+}
+
+.itm-choice:has(input:checked) .itm-choice-check {
+  border-color: var(--color-walumo);
+  background: var(--color-walumo);
+  color: var(--color-ink);
+}
+
+/* Reward reveal (§15 correct feedback: "card gently locks into place,
+   subtle glow") — used for a successful mission/challenge completion. */
+@keyframes itm-reward-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.itm-reward {
+  animation: itm-reward-in var(--motion-standard) var(--ease-spring);
+  border-radius: 1rem;
+  border: 1px solid rgba(59, 111, 237, 0.35);
+  background: rgba(59, 111, 237, 0.1);
+  box-shadow: 0 0 30px -8px rgba(59, 111, 237, 0.45);
+}
+
+/* Gentle "look again" nudge (§15 incorrect feedback — no red FAILED
+   screen, a soft shake instead of punishment). */
+@keyframes itm-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.itm-nudge {
+  animation: itm-nudge 320ms var(--ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itm-card--interactive:hover,
+  .itm-card--interactive:focus-visible {
+    transform: none;
+  }
+  .itm-choice:active {
+    transform: none;
+  }
+  .itm-reward {
+    animation: none;
+  }
+  .itm-nudge {
+    animation: none;
+  }
+}

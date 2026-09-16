@@ -54,10 +54,9 @@ export default async function DayPage({
             needed to see it become real. */}
         <LiveRefresh topic={`game:day:${dayNumber}`} events={LIVE_EVENTS} />
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">Day {dayNumber}</p>
-        <h1 className="text-3xl">Not published yet</h1>
+        <h1 className="text-3xl">Still ahead</h1>
         <p className="text-sm text-muted">
-          Day {dayNumber}&apos;s story and missions haven&apos;t been published. Curious
-          what Day {dayNumber} will feel like? The{" "}
+          Day {dayNumber} hasn&apos;t opened yet. Curious what it will feel like? The{" "}
           <a href="/preview" className="text-walumo underline underline-offset-4">
             narrative walkthrough
           </a>{" "}
@@ -83,23 +82,23 @@ export default async function DayPage({
       </div>
 
       {!missions || missions.length === 0 ? (
-        <p className="text-sm text-muted">No missions published for this day yet.</p>
+        <p className="text-sm text-muted">Nothing here yet — this chapter is still being written.</p>
       ) : (
         <div className="flex flex-col gap-3">
           {missions.map((mission) => (
             <Link
               key={mission.id}
               href={`/play/mission/${mission.id}`}
-              className="flex flex-col gap-1 rounded-xl border border-white/10 bg-surface p-5 transition hover:border-walumo/40"
+              className="itm-card itm-card--interactive flex flex-col gap-1 p-5"
             >
               <p className="font-semibold text-ink">{mission.title}</p>
               {mission.description ? (
                 <p className="text-sm text-muted">{mission.description}</p>
               ) : null}
               <p className="text-xs text-muted">
-                {mission.base_points} points
+                {mission.base_points} pts
                 {mission.unity_points > 0 ? ` + ${mission.unity_points} unity` : ""}
-                {mission.status === "COMPLETED" ? " · completed" : ""}
+                {mission.status === "COMPLETED" ? " · done" : ""}
                 {mission.status === "PAUSED" ? " · paused" : ""}
               </p>
             </Link>

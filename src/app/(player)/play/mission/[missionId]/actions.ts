@@ -138,12 +138,12 @@ export async function submitAnswer(
 
     if (!isCorrect) {
       revalidatePath(`/play/mission/${challenge.mission_id}`);
-      return { error: "Not quite. Try again." };
+      return { error: "Not quite. Take another look." };
     }
 
     if (alreadyAwarded) {
       revalidatePath(`/play/mission/${challenge.mission_id}`);
-      return { success: { message: "Correct! (Already counted from an earlier attempt.)", pointsAwarded: 0 } };
+      return { success: { message: "That's it — already counted from an earlier attempt.", pointsAwarded: 0 } };
     }
 
     const pointsAwarded = await awardMissionPoints({
@@ -165,7 +165,7 @@ export async function submitAnswer(
 
     revalidatePath(`/play/mission/${challenge.mission_id}`);
     revalidatePath("/leaderboards");
-    return { success: { message: "Correct! That counts.", pointsAwarded } };
+    return { success: { message: "That's it. Nice one.", pointsAwarded } };
   }
 
   if (challenge.type === "FREE_TEXT") {

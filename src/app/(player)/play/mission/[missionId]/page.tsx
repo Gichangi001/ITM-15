@@ -50,10 +50,9 @@ export default async function MissionPage({
     return (
       <main className="mx-auto flex max-w-lg flex-col gap-4 px-4 py-16 sm:px-6">
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">Mission</p>
-        <h1 className="text-3xl">Not available</h1>
+        <h1 className="text-3xl">Not here</h1>
         <p className="text-sm text-muted">
-          This mission doesn&apos;t exist, isn&apos;t published yet, or isn&apos;t
-          targeted at you.
+          This one doesn&apos;t exist, isn&apos;t open yet, or isn&apos;t meant for you.
         </p>
       </main>
     );
@@ -148,19 +147,17 @@ export default async function MissionPage({
       </div>
 
       {mission.status !== "LIVE" ? (
-        <p className="text-sm text-muted">
-          This mission isn&apos;t currently open for new submissions.
-        </p>
+        <p className="text-sm text-muted">This one isn&apos;t open right now — check back soon.</p>
       ) : !challenge ? (
-        <p className="text-sm text-muted">This mission has no challenge configured yet.</p>
+        <p className="text-sm text-muted">This one isn&apos;t ready yet.</p>
       ) : alreadyApproved ? (
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-walumo">
-            You&apos;ve already completed this mission. That counts.
-            {earnedPoints > 0 ? ` +${earnedPoints} points earned.` : ""}
+        <div className="itm-reward flex flex-col gap-3 p-5">
+          <p className="text-sm text-ink">
+            Nice one — that counts.
+            {earnedPoints > 0 ? ` +${earnedPoints} points.` : ""}
           </p>
           {wallyReactionText ? (
-            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-surface p-4">
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
               <Image
                 src={WALLY_POSES["dance-pose"].src}
                 alt=""
@@ -174,7 +171,7 @@ export default async function MissionPage({
         </div>
       ) : hasPendingSubmission ? (
         <p className="text-sm text-muted">
-          Your submission is with the moderators. Check back soon.
+          Got it. It&apos;s with the moderators now — check back soon.
         </p>
       ) : (
         <>

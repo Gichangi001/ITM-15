@@ -3,6 +3,7 @@ import { getPlayerLeaderboard, getCountryLeaderboard } from "@/lib/scoring/leade
 import { LiveRefresh } from "@/components/realtime/LiveRefresh";
 import { PlayerOnlineList } from "@/components/leaderboard/PlayerOnlineList";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = { title: "Leaderboards — ITM@15" };
 
@@ -26,7 +27,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function LeaderboardsPage() {
   const admin = createAdminClient();
-  const [players, countries, { data: recentJoins }] = await Promise.all([
+  const [players, countries, { data: recentJoins }, user] = await Promise.all([
     getPlayerLeaderboard(50),
     getCountryLeaderboard(),
     // onboarding_completed filter (found by a dedicated security review):
@@ -43,6 +44,7 @@ export default async function LeaderboardsPage() {
       .eq("onboarding_completed", true)
       .order("created_at", { ascending: false })
       .limit(8),
+    getCurrentUser(),
   ]);
 
   const recentCountryIds = [...new Set((recentJoins ?? []).map((p) => p.country_id).filter(Boolean))] as string[];
@@ -59,21 +61,19 @@ export default async function LeaderboardsPage() {
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
           ITM@15 — Wally Takeover
         </p>
-        <h1 className="text-3xl">Leaderboards</h1>
+        <h1 className="text-3xl">The board</h1>
         <p className="max-w-lg text-sm text-muted">
-          Built from a real, server-authoritative score ledger — every point
-          here came from a completed mission or an admin-awarded bonus, never
-          a client-side claim. Squad leaderboards will appear once squad
-          assignment is built.
+          Every point here came from a real completed mission or an admin-awarded bonus — never a
+          client-side claim. Squad standings arrive once squads exist.
         </p>
       </div>
 
       <section className="flex flex-col gap-4">
         <h2 className="text-xs font-semibold tracking-[0.15em] text-muted uppercase">Countries</h2>
         {countries.length === 0 ? (
-          <p className="text-sm text-muted">No country points yet.</p>
+          <p className="text-sm text-muted">Nobody&apos;s on the board yet.</p>
         ) : (
-          <ol className="flex flex-col divide-y divide-white/5 rounded-xl border border-white/10 bg-surface">
+          <ol className="itm-card flex flex-col divide-y divide-white/5">
             {countries.map((entry, index) => (
               <li key={entry.countryId} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
                 <span className="text-ink">
@@ -90,9 +90,9 @@ export default async function LeaderboardsPage() {
       <section className="flex flex-col gap-4">
         <h2 className="text-xs font-semibold tracking-[0.15em] text-muted uppercase">Individuals</h2>
         {players.length === 0 ? (
-          <p className="text-sm text-muted">No points awarded yet — be the first.</p>
+          <p className="text-sm text-muted">No points yet — be the first to move.</p>
         ) : (
-          <PlayerOnlineList players={players} />
+          <PlayerOnlineList players={players} currentPlayerId={user?.id} />
         )}
       </section>
 
@@ -103,7 +103,7 @@ export default async function LeaderboardsPage() {
         {!recentJoins || recentJoins.length === 0 ? (
           <p className="text-sm text-muted">No one has joined yet.</p>
         ) : (
-          <ol className="flex flex-col divide-y divide-white/5 rounded-xl border border-white/10 bg-surface">
+          <ol className="itm-card flex flex-col divide-y divide-white/5">
             {recentJoins.map((profile) => (
               <li key={profile.id} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
                 <span className="text-ink">

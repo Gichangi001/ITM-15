@@ -15,6 +15,15 @@ type Challenge = {
 
 const initialState: SubmitAnswerState = null;
 
+// Brief §3/§14: avoid "Submit" as a generic exam verb — say what the
+// action actually does for this challenge type.
+const SUBMIT_LABEL: Record<Challenge["type"], string> = {
+  SINGLE_CHOICE: "Lock it in",
+  MULTIPLE_CHOICE: "Lock it in",
+  FREE_TEXT: "Send it",
+  PHOTO_UPLOAD: "Send your photo",
+};
+
 export function MissionChallengeForm({ challenge, playerId }: { challenge: Challenge; playerId: string }) {
   const [state, formAction, isPending] = useActionState(submitAnswer, initialState);
   const [uploadedPath, setUploadedPath] = useState<string | null>(null);
@@ -46,7 +55,7 @@ export function MissionChallengeForm({ challenge, playerId }: { challenge: Chall
 
   if (state?.success) {
     return (
-      <div className="flex flex-col gap-2 rounded-lg border border-walumo/40 bg-walumo/10 p-5">
+      <div className="itm-reward flex flex-col gap-2 p-5">
         <p className="text-sm text-ink">{state.success.message}</p>
         {state.success.pointsAwarded ? (
           <p className="text-sm text-walumo">+{state.success.pointsAwarded} points</p>
@@ -56,23 +65,22 @@ export function MissionChallengeForm({ challenge, playerId }: { challenge: Chall
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className={`flex flex-col gap-4 ${state?.error ? "itm-nudge" : ""}`}>
       <input type="hidden" name="challengeId" value={challenge.id} />
 
       {challenge.type === "SINGLE_CHOICE" || challenge.type === "MULTIPLE_CHOICE" ? (
         <div className="flex flex-col gap-2">
           {challenge.options.map((option) => (
-            <label
-              key={option.id}
-              className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-ink"
-            >
+            <label key={option.id} className="itm-choice text-sm text-ink">
               <input
                 type={challenge.type === "SINGLE_CHOICE" ? "radio" : "checkbox"}
                 name="selectedOptionIds"
                 value={option.id}
                 required={challenge.type === "SINGLE_CHOICE"}
-                className="size-4 accent-(--color-walumo)"
               />
+              <span className="itm-choice-check" aria-hidden>
+                ✓
+              </span>
               {option.label}
             </label>
           ))}
@@ -84,7 +92,7 @@ export function MissionChallengeForm({ challenge, playerId }: { challenge: Chall
           name="answerText"
           rows={4}
           required
-          placeholder="Your answer"
+          placeholder="Tell us"
           className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-ink outline-none focus-visible:border-walumo"
         />
       ) : null}
@@ -97,8 +105,8 @@ export function MissionChallengeForm({ challenge, playerId }: { challenge: Chall
             onChange={handleFileChange}
             className="text-sm text-muted"
           />
-          {isUploading ? <p className="text-xs text-muted">Uploading…</p> : null}
-          {uploadedPath ? <p className="text-xs text-walumo">Photo ready to submit.</p> : null}
+          {isUploading ? <p className="text-xs text-muted">Sending it over…</p> : null}
+          {uploadedPath ? <p className="text-xs text-walumo">Got it — ready to go.</p> : null}
           {uploadError ? (
             <p role="alert" className="text-xs text-red-400">
               {uploadError}
@@ -119,7 +127,7 @@ export function MissionChallengeForm({ challenge, playerId }: { challenge: Chall
         disabled={isPending || (challenge.type === "PHOTO_UPLOAD" && !uploadedPath)}
         className="btn-primary self-start"
       >
-        {isPending ? "Submitting…" : "Submit"}
+        {isPending ? "Sending…" : SUBMIT_LABEL[challenge.type]}
       </button>
     </form>
   );

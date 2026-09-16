@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getCurrentProfile } from "@/lib/auth/session";
+import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
 import { signOut } from "@/app/logout/actions";
 import { createClient } from "@/lib/supabase/server";
 import { PlayerTransition } from "@/components/story/founder/PlayerTransition";
@@ -8,6 +8,8 @@ import { PlayerTransition } from "@/components/story/founder/PlayerTransition";
 export const metadata: Metadata = {
   title: "Play — ITM@15",
 };
+
+export const dynamic = "force-dynamic";
 
 const SHELL_LINKS = [
   {
@@ -17,8 +19,8 @@ const SHELL_LINKS = [
   },
   {
     href: "/leaderboards",
-    label: "Leaderboards",
-    blurb: "Individual, squad and country standings.",
+    label: "Leaderboard",
+    blurb: "See where you and your country stand.",
   },
   {
     href: "/gallery",
@@ -32,27 +34,41 @@ const SHELL_LINKS = [
   },
 ] as const;
 
+type LiveMission = {
+  id: string;
+  title: string;
+  description: string | null;
+  basePoints: number;
+  unityPoints: number;
+  dayNumber: number;
+  dayTitle: string;
+};
+
 /**
- * Product Guide §7.1's full player home (Wally greeting with live game
- * state, current day/mission card, points, Unity Points, squad rank,
- * country position, countdown, live event banner...) needs the
- * content/mission/scoring engines (Phases 6-8) — none of that exists yet.
+ * Experience Transformation Slice 1 (2026-09-16) — this page previously
+ * always rendered a static "the mission engine isn't built yet" shell,
+ * regardless of real game state. That was accurate when originally
+ * written (Phase 4, before Phases 6+ existed) but has been stale since
+ * the campaign went live with real seeded missions for all 7 days
+ * (docs/PROJECT_STATE.md's "Campaign gone live" section) — the single
+ * biggest concrete cause of the "feels like an exam" feedback: a player's
+ * actual home screen showed them nothing to do.
  *
- * This is the real Phase 4 shell instead: real signed-in profile data (the
- * greeting uses the player's actual first name, captured at onboarding),
- * real navigation to every player route, and honestly labeled placeholders
- * for everything that needs a backend this app doesn't have yet. Per the
- * Storyline Build Bible §39, a fabricated mission card or a fake point
- * total here would be exactly the "fake demo" it forbids — this isn't
- * that.
+ * Finds the player's next real, uncompleted, LIVE mission (lowest day
+ * number first) and makes it the one dominant primary action on the
+ * screen (brief §9/§20) instead of a wall of equally-weighted nav links.
+ * Never invents a mission, a day theme, or a "today" that doesn't
+ * actually exist — if nothing is LIVE yet, or everything LIVE is already
+ * completed, that is shown honestly.
  */
 export default async function PlayPage() {
-  const profile = await getCurrentProfile();
+  const [profile, user] = await Promise.all([getCurrentProfile(), getCurrentUser()]);
   const greetingName = profile?.first_name || profile?.email;
+
+  const supabase = await createClient();
 
   let countryName: string | null = null;
   if (profile?.country_id) {
-    const supabase = await createClient();
     const { data: country } = await supabase
       .from("countries")
       .select("name")
@@ -61,35 +77,151 @@ export default async function PlayPage() {
     countryName = country?.name ?? null;
   }
 
+  const { data: campaign } = await supabase
+    .from("campaigns")
+    .select("id")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let nextMission: LiveMission | null = null;
+  let allCaughtUp = false;
+
+  if (campaign && user) {
+    const { data: days } = await supabase
+      .from("game_days")
+      .select("id, day_number, title")
+      .eq("campaign_id", campaign.id)
+      .eq("status", "LIVE")
+      .order("day_number");
+
+    const dayById = new Map((days ?? []).map((d) => [d.id, d]));
+    const dayIds = (days ?? []).map((d) => d.id);
+
+    const { data: missions } =
+      dayIds.length > 0
+        ? await supabase
+            .from("missions")
+            .select("id, title, description, base_points, unity_points, game_day_id")
+            .in("game_day_id", dayIds)
+            .eq("status", "LIVE")
+        : { data: [] };
+
+    const missionIds = (missions ?? []).map((m) => m.id);
+    const { data: challenges } =
+      missionIds.length > 0
+        ? await supabase.from("challenges").select("id, mission_id").in("mission_id", missionIds)
+        : { data: [] };
+
+    const challengeIds = (challenges ?? []).map((c) => c.id);
+    const { data: approvedSubmissions } =
+      challengeIds.length > 0
+        ? await supabase
+            .from("submissions")
+            .select("challenge_id")
+            .eq("player_id", user.id)
+            .eq("status", "APPROVED")
+            .in("challenge_id", challengeIds)
+        : { data: [] };
+
+    const approvedChallengeIds = new Set((approvedSubmissions ?? []).map((s) => s.challenge_id));
+    const missionIdToChallengeIds = new Map<string, string[]>();
+    for (const c of challenges ?? []) {
+      const list = missionIdToChallengeIds.get(c.mission_id) ?? [];
+      list.push(c.id);
+      missionIdToChallengeIds.set(c.mission_id, list);
+    }
+
+    const sortedMissions = [...(missions ?? [])].sort((a, b) => {
+      const dayA = dayById.get(a.game_day_id)?.day_number ?? 0;
+      const dayB = dayById.get(b.game_day_id)?.day_number ?? 0;
+      return dayA - dayB;
+    });
+
+    const firstIncomplete = sortedMissions.find((m) => {
+      const challengeIdsForMission = missionIdToChallengeIds.get(m.id) ?? [];
+      // A mission with no challenge configured yet can't be "completed" —
+      // treat it as not actionable rather than silently skipping it.
+      return challengeIdsForMission.length === 0 || !challengeIdsForMission.some((id) => approvedChallengeIds.has(id));
+    });
+
+    if (firstIncomplete) {
+      const day = dayById.get(firstIncomplete.game_day_id);
+      nextMission = {
+        id: firstIncomplete.id,
+        title: firstIncomplete.title,
+        description: firstIncomplete.description,
+        basePoints: firstIncomplete.base_points,
+        unityPoints: firstIncomplete.unity_points,
+        dayNumber: day?.day_number ?? 0,
+        dayTitle: day?.title ?? "",
+      };
+    } else if (sortedMissions.length > 0) {
+      allCaughtUp = true;
+    }
+  }
+
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-10 sm:px-6">
-      {/* docs/ITM15_FOUNDER_STORY_OPENING_CHAPTER.md §23 — the one, real,
-          personalized moment that follows the public founder story;
-          firstName/countryName come from this player's real profile,
-          never invented (see PlayerTransition's own header comment). */}
       {profile?.first_name ? (
         <PlayerTransition firstName={profile.first_name} countryName={countryName} />
       ) : null}
+
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
           ITM@15 — Wally Takeover
         </p>
-        <h1 className="text-3xl">Welcome, {greetingName}.</h1>
-        <p className="max-w-lg text-sm text-muted">
-          The seven-day mission engine (Product Guide Phase 6+) isn&apos;t built
-          yet, so there&apos;s no active day or mission to show here. This is the
-          real player shell — every link below is a working route that will
-          fill in with real game state as each part of the game is built.
-        </p>
+        <h1 className="text-3xl">Hi, {greetingName}.</h1>
       </div>
+
+      {nextMission ? (
+        <Link
+          href={`/play/mission/${nextMission.id}`}
+          className="itm-card itm-hero-card itm-card--interactive flex flex-col gap-3 p-7"
+        >
+          <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
+            Day {nextMission.dayNumber} · {nextMission.dayTitle}
+          </p>
+          <h2 className="text-2xl font-semibold">{nextMission.title}</h2>
+          {nextMission.description ? (
+            <p className="max-w-md text-sm text-muted">{nextMission.description}</p>
+          ) : null}
+          <p className="mt-2 text-sm font-medium text-ink">
+            Continue the journey →
+            <span className="ml-2 text-xs font-normal text-muted">
+              {nextMission.basePoints} pts
+              {nextMission.unityPoints > 0 ? ` + ${nextMission.unityPoints} unity` : ""}
+            </span>
+          </p>
+        </Link>
+      ) : allCaughtUp ? (
+        <div className="itm-card flex flex-col gap-2 p-7">
+          <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
+            All caught up
+          </p>
+          <p className="text-sm text-muted">
+            You&apos;ve completed everything that&apos;s open right now. The next chapter is on its
+            way — check back soon.
+          </p>
+        </div>
+      ) : (
+        <div className="itm-card flex flex-col gap-2 p-7">
+          <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
+            Nothing open yet
+          </p>
+          <p className="text-sm text-muted">
+            The next chapter hasn&apos;t started. In the meantime, the{" "}
+            <a href="/preview" className="text-walumo underline underline-offset-4">
+              narrative walkthrough
+            </a>{" "}
+            previews the whole story arc.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {SHELL_LINKS.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="rounded-xl border border-white/10 bg-surface p-5 transition hover:border-walumo/40"
-          >
+          <Link key={link.href} href={link.href} className="itm-card itm-card--interactive flex flex-col gap-1 p-5">
             <p className="font-semibold">{link.label}</p>
             <p className="mt-1 text-sm text-muted">{link.blurb}</p>
           </Link>
