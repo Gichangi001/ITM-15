@@ -1,6 +1,8 @@
 # ITM@15 Quality Status
 
-_Last updated: 2026-09-16, Experience Transformation Slice 8 (admin-editable journey copy) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 8" section for the full account._
+_Last updated: 2026-09-16, Experience Transformation Slice 9 (DRC flight arrival cinematic) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 9" section for the full account._
+
+**Experience Transformation Slice 9 (DRC flight arrival cinematic)**: `pnpm verify` (lint/typecheck/121 tests/build — 5 new tests for the African-countries content list) clean. The production `.next/static/chunks/` output was `grep`'d directly and confirmed to contain the cinematic's distinctive strings, proving it's genuinely bundled. **Not done, disclosed**: this feature is gated behind real sign-in + onboarding, so — unlike Slice 8's homepage check — there was no way to `curl`-verify the actual rendered animation this session. No Playwright/browser tool available, same gap as every slice, more consequential here than most since this is a purely visual/motion feature with no way to inspect its correctness from code alone.
 
 **Experience Transformation Slice 8 (admin-editable journey copy)**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. `supabase/migrations/20260916110000_journey_theme_content_fields.sql` applied live and re-confirmed via direct read-only query (all 9 rows correctly carry countryName/countryFlag/tagline/dayNumber). **Stronger than usual verification**: after switching the homepage's DRC line to read live from the database instead of the static file, re-confirmed via `curl` that it still renders correctly — proving the full live chain (anon RLS read → helper → page) genuinely works end-to-end, not just that the code compiles. The new admin "Edit copy" form itself is unverified live — no Playwright, same gap as every slice.
 

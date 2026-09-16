@@ -557,3 +557,134 @@ h3 {
     animation: none;
   }
 }
+
+/*
+ * DRC arrival cinematic (src/components/story/founder/PlayerTransition.tsx)
+ * — a player's real first-access moment, replacing what was previously a
+ * long static pause. Pure CSS/SVG throughout (no animation library exists
+ * in this project — see globals.css's own earlier note on why
+ * color-mix() is avoided; the same "don't add a dependency for this"
+ * reasoning applies here). The component itself skips this whole sequence
+ * under prefers-reduced-motion rather than trying to show a "static
+ * version" of a flight animation — there isn't a meaningful one.
+ */
+
+/* Beat 1 — an unbroken, seamlessly-looping strip of every African
+   country's flag. Doubled content + a 50%-translate loop is the standard
+   seamless-marquee technique: at the halfway point the second copy is
+   pixel-identical to where the first copy started, so the loop has no
+   visible seam. */
+@keyframes itm-flag-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.itm-flag-marquee {
+  width: max-content;
+  animation: itm-flag-scroll 7s linear infinite;
+}
+
+/* Beats 2/3 — a flag chip popping in with a little confidence, used both
+   for the staggered "seven destinations" reveal and any other momentary
+   flag callout. */
+@keyframes itm-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6) translateY(6px);
+  }
+  60% {
+    transform: scale(1.08) translateY(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.itm-pop-in {
+  opacity: 0;
+  animation: itm-pop-in 500ms var(--ease-spring) forwards;
+  animation-delay: var(--pop-delay, 0s);
+}
+
+/* A slow confident breathing glow for whichever flag is currently the
+   hero of the beat (the player's own country, then DRC/Kinshasa). */
+@keyframes itm-flag-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px var(--color-gold));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px var(--color-gold));
+  }
+}
+
+.itm-flag-hero {
+  animation: itm-flag-glow 1.8s ease-in-out infinite;
+}
+
+/* Beat 5 — the flight. A fixed decorative curve (not literally
+   geographic — this project has no accurate world-map asset, and a
+   guessed one would risk misrepresenting real borders) connecting a
+   departure point to Kinshasa, drawn once via stroke-dashoffset, with a
+   plane travelling the same curve via `offset-path`. */
+@keyframes itm-flight-trail-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.itm-flight-trail {
+  stroke-dasharray: 6 8;
+  stroke-dashoffset: 420;
+  animation: itm-flight-trail-draw 2.4s var(--ease-standard) forwards;
+}
+
+@keyframes itm-flight-move {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+.itm-flight-plane {
+  offset-path: path("M 10 70 Q 150 -20 290 70");
+  offset-rotate: auto;
+  animation: itm-flight-move 2.4s var(--ease-standard) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itm-flag-marquee {
+    animation: none;
+  }
+  .itm-pop-in {
+    opacity: 1;
+    animation: none;
+  }
+  .itm-flag-hero {
+    animation: none;
+    filter: drop-shadow(0 0 10px var(--color-gold));
+  }
+  .itm-flight-trail {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .itm-flight-plane {
+    animation: none;
+    offset-distance: 50%;
+  }
+}

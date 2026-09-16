@@ -70,13 +70,15 @@ export default async function PlayPage() {
   const supabase = await createClient();
 
   let countryName: string | null = null;
+  let countryFlag: string | null = null;
   if (profile?.country_id) {
     const { data: country } = await supabase
       .from("countries")
-      .select("name")
+      .select("name, flag_emoji")
       .eq("id", profile.country_id)
       .maybeSingle();
     countryName = country?.name ?? null;
+    countryFlag = country?.flag_emoji ?? null;
   }
 
   const { data: campaign } = await supabase
@@ -182,7 +184,7 @@ export default async function PlayPage() {
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-10 sm:px-6">
       {profile?.first_name ? (
-        <PlayerTransition firstName={profile.first_name} countryName={countryName} />
+        <PlayerTransition firstName={profile.first_name} countryName={countryName} countryFlag={countryFlag} />
       ) : null}
 
       <div className="flex flex-col gap-2">
