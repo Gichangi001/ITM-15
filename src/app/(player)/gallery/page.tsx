@@ -136,7 +136,7 @@ export default async function GalleryPage() {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {photos.map((photo) => (
-            <figure key={photo.id} className="flex flex-col gap-1 overflow-hidden rounded-xl border border-white/10">
+            <figure key={photo.id} className="itm-card flex flex-col gap-1 overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URLs pointing at private storage, not worth Next/Image's remote-pattern config for this */}
               <img src={photo.url} alt={photo.caption ?? "Approved photo"} className="aspect-square w-full object-cover" />
               <figcaption className="px-2 pb-2 text-xs text-muted">

@@ -1,6 +1,6 @@
 # ITM@15 Quality Status
 
-_Last updated: 2026-09-16, Experience Transformation Slice 4 (Passport + Achievements) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 4" section for the full account._
+_Last updated: 2026-09-16, Experience Transformation Slice 5 (Gallery, Notifications, Profile — closes the mechanical card-consistency pass) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 5" section for the full account._
 
 **Experience Transformation Slice 4 (Passport + Achievements)**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. Live `curl` confirms `/achievements`/`/passport` still redirect unauthenticated visitors to `/login`, and the public `/passport/[slug]` route still 404s (not redirects) for an unknown slug. Per the user's explicit direction, visual verification (still no Playwright tool this session) is deferred to a later pass rather than blocking further slices.
 

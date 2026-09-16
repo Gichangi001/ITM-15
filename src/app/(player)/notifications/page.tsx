@@ -59,7 +59,7 @@ export default async function NotificationsPage() {
           {notifications.map((n) => (
             <li
               key={n.id}
-              className={`flex flex-col gap-1 rounded-xl border bg-surface p-4 ${
+              className={`itm-card flex flex-col gap-1 p-4 ${
                 SEVERITY_STYLES[n.severity] ?? SEVERITY_STYLES.INFO
               } ${n.read_at ? "opacity-60" : ""}`}
             >

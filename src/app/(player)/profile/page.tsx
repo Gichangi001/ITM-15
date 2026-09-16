@@ -55,7 +55,7 @@ export default async function ProfilePage() {
         <h1 className="text-3xl">Your profile</h1>
       </div>
 
-      <dl className="flex flex-col divide-y divide-white/5 rounded-xl border border-white/10 bg-surface">
+      <dl className="itm-card flex flex-col divide-y divide-white/5">
         <ProfileRow label="Name" value={profile.full_name ?? "—"} />
         <ProfileRow label="Email" value={profile.email} />
         <ProfileRow label="Country" value={countryLabel} />

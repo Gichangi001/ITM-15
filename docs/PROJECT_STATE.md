@@ -1,6 +1,6 @@
 # ITM@15 Project State
 
-_Last updated: 2026-09-16, Experience Transformation Slice 4 (Passport + Achievements) — see "Experience Transformation — Slice 4" near the end of this file for the current state; the "full audit session" narrative directly below is historical._
+_Last updated: 2026-09-16, Experience Transformation Slice 5 (Gallery, Notifications, Profile) — see "Experience Transformation — Slice 5" near the end of this file for the current state; the "full audit session" narrative directly below is historical._
 
 ## Full audit completed 2026-09-13
 
@@ -729,3 +729,13 @@ The user said to keep pushing and verify visually later. Continued to the two re
 - Reviewed `src/components/player/PlayerNav.tsx` and left it unchanged — it's already a calm, minimal pill nav with correct active/focus states; the audit didn't find anything "exam-like" about it, and the brief's own "calm interfaces" principle argues against adding decoration that isn't earning its place.
 
 **Verification**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. Live `curl` confirms `/achievements` and `/passport` still correctly redirect an unauthenticated visitor to `/login`, and the public `/passport/[slug]` route still correctly 404s for an unknown slug (never a redirect — it must stay reachable without auth). **Still no Playwright/browser tool this session** — per the user's explicit direction, deferred to a later visual-verification pass rather than blocking further slices on it.
+
+## Experience Transformation — Slice 5: Gallery, Notifications, Profile (2026-09-16)
+
+The last of the plain `rounded-xl border border-white/10 bg-surface` boxes across the player shell, swapped to `.itm-card` for visual consistency: the gallery photo grid (`src/app/(player)/gallery/page.tsx`), the notification list (`.../notifications/page.tsx`, keeping its existing per-severity border-color accent layered on top), and the profile detail list (`.../profile/page.tsx`). No copy changes here — none of these three pages had exam-like language to begin with (gallery/profile are plainly descriptive; notifications already reads naturally), just the same flat-box-to-elevated-card visual pass already applied everywhere else.
+
+**Deliberately left as-is**: `/help` (a plain support page — no card grid to convert, nothing gamified about troubleshooting text) and `/screen` (the spectator/event-screen display mode, Product Guide §21.2) — not reviewed this slice; a large display meant to run unattended during the live event is higher-risk to touch without any way to see it rendered, and lower player-facing priority than the surfaces every individual player actually uses daily.
+
+**Verification**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. Live `curl` confirms `/gallery`, `/notifications`, `/profile` all still correctly redirect an unauthenticated visitor to `/login`. Same disclosed gap as every slice this session — no Playwright/browser tool available, visual verification deferred per the user's explicit direction.
+
+**This closes out the "mechanical consistency" pass** — every plain bordered box in the player-facing shell now uses the shared card language from Slice 1. Remaining Experience Transformation scope is qualitatively different work, not more of the same sweep: DRC/Kinshasa cinematic scenes, admin theme/tagline controls, a real `AnimatedButton`/`DestinationCard` component library, audio/haptics, accessibility/performance passes, and — still the single largest open risk — an actual live visual review of all five slices built so far.
