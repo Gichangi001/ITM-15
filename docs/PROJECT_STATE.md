@@ -1,6 +1,6 @@
 # ITM@15 Project State
 
-_Last updated: 2026-09-16, Experience Transformation Slice 5 (Gallery, Notifications, Profile) — see "Experience Transformation — Slice 5" near the end of this file for the current state; the "full audit session" narrative directly below is historical._
+_Last updated: 2026-09-16, Experience Transformation Slice 6 (admin theme controls show journey identity) — see "Experience Transformation — Slice 6" near the end of this file for the current state; the "full audit session" narrative directly below is historical._
 
 ## Full audit completed 2026-09-13
 
@@ -739,3 +739,11 @@ The last of the plain `rounded-xl border border-white/10 bg-surface` boxes acros
 **Verification**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. Live `curl` confirms `/gallery`, `/notifications`, `/profile` all still correctly redirect an unauthenticated visitor to `/login`. Same disclosed gap as every slice this session — no Playwright/browser tool available, visual verification deferred per the user's explicit direction.
 
 **This closes out the "mechanical consistency" pass** — every plain bordered box in the player-facing shell now uses the shared card language from Slice 1. Remaining Experience Transformation scope is qualitatively different work, not more of the same sweep: DRC/Kinshasa cinematic scenes, admin theme/tagline controls, a real `AnimatedButton`/`DestinationCard` component library, audio/haptics, accessibility/performance passes, and — still the single largest open risk — an actual live visual review of all five slices built so far.
+
+## Experience Transformation — Slice 6: admin theme controls show journey identity (2026-09-16)
+
+A small, contained admin-UX gap left over from Slice 2: `/admin/themes` listed every theme row (including the 9 new journey destinations) as just an internal name ("Journey — Kenya: Build the Future") and a color swatch — no indication of which country/day it represents or that Slice 2 made day-publish auto-activate it. An admin publishing Day 2 would have no way to know from this page alone that doing so also changes the site's color mood.
+
+**Built**: `src/app/admin/themes/page.tsx` now cross-references `src/content/journey.ts` by the theme's `key` column and shows each journey destination's flag/country/tagline/day number as a subtitle under its name, and the page's own intro copy now explains the auto-activation behavior. Read-only display change — no new server action, no schema change, no change to `activateTheme` itself.
+
+**Verification**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. Live `curl` confirms `/admin/themes` still correctly redirects an unauthenticated visitor to `/login`. The `key`↔`themeKey` cross-reference reuses the exact same lookup already verified character-for-character correct in Slice 2 — no new risk of a silent mismatch. Same disclosed gap as every slice: no Playwright, so nobody has seen this rendered.

@@ -4,6 +4,7 @@ import { canManageThemes } from "@/lib/auth/roles";
 import { getCurrentRoles } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { activateTheme } from "./actions";
+import { JOURNEY_STOPS } from "@/content/journey";
 
 export const metadata: Metadata = { title: "Themes — ITM@15" };
 
@@ -47,8 +48,10 @@ export default async function ThemesPage({
   const admin = createAdminClient();
   const { data: themes } = await admin
     .from("themes")
-    .select("id, name, tokens, is_active")
+    .select("id, key, name, tokens, is_active")
     .order("created_at");
+
+  const journeyStopByThemeKey = new Map(JOURNEY_STOPS.map((s) => [s.themeKey, s]));
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 bg-bg px-6 py-16">
@@ -59,7 +62,8 @@ export default async function ThemesPage({
         <h1 className="text-3xl">Themes</h1>
         <p className="text-sm text-muted">
           Activating a theme applies live to every connected visitor — no redeploy, no page
-          reload.
+          reload. Journey destinations (marked below) also activate automatically whenever
+          their matching day is published — use this page to override or preview ahead.
         </p>
       </div>
 
@@ -80,6 +84,7 @@ export default async function ThemesPage({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {themes.map((theme) => {
             const tokens = theme.tokens as unknown as ThemeTokens;
+            const stop = journeyStopByThemeKey.get(theme.key);
             return (
               <div
                 key={theme.id}
@@ -97,7 +102,15 @@ export default async function ThemesPage({
                     Aa
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-ink">{theme.name}</p>
+                <div>
+                  <p className="text-sm font-semibold text-ink">{theme.name}</p>
+                  {stop ? (
+                    <p className="text-xs text-muted">
+                      {stop.countryFlag} {stop.countryName} — {stop.tagline}
+                      {stop.dayNumber ? ` · Day ${stop.dayNumber}` : ""}
+                    </p>
+                  ) : null}
+                </div>
                 {theme.is_active ? (
                   <p className="text-xs text-walumo">Active now</p>
                 ) : (
