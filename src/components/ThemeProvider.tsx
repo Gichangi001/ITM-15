@@ -12,6 +12,23 @@ const TOKEN_TO_CSS_VAR: Record<string, string> = {
   colorGold: "--color-gold",
 };
 
+/**
+ * `#rrggbb` -> `rgba(r, g, b, alpha)`. This project deliberately avoids
+ * `color-mix()` for broader browser support (see globals.css's own header
+ * comment on `.btn-primary`'s `--btn-glow-soft`) — computing the soft tint
+ * here, once, in plain JS achieves the same "derive a translucent version
+ * of the accent" result without it.
+ */
+function hexToRgba(hex: string, alpha: number): string | null {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!match) return null;
+  const int = parseInt(match[1], 16);
+  const r = (int >> 16) & 255;
+  const g = (int >> 8) & 255;
+  const b = int & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 async function applyActiveTheme() {
   const supabase = createClient();
   // `themes` is publicly readable (see the migration) — this runs for
@@ -26,6 +43,27 @@ async function applyActiveTheme() {
     if (typeof value === "string") {
       document.documentElement.style.setProperty(cssVar, value);
     }
+  }
+
+  // Experience Transformation Slice 6 fix: found while reviewing the new
+  // multi-destination journey themes — `.btn-primary`'s glow
+  // (`--btn-glow-soft`) and every `.itm-*` card/choice/reward effect in
+  // globals.css were using a hardcoded walumo-blue rgba rather than a
+  // translucent version of whichever accent is actually active. Invisible
+  // while only the blue-ish Origin/Kenya themes existed; wrong the moment
+  // a genuinely different accent (Senegal's terracotta, Nigeria's magenta,
+  // ...) activates — the button/card glow would stay blue while its
+  // border correctly changed color. Setting these here, once, fixes every
+  // consumer (existing and future) without each one needing its own
+  // per-theme color logic.
+  const walumoHex = typeof tokens.colorWalumo === "string" ? tokens.colorWalumo : null;
+  if (walumoHex) {
+    const soft = hexToRgba(walumoHex, 0.28);
+    const weak = hexToRgba(walumoHex, 0.12);
+    const strong = hexToRgba(walumoHex, 0.35);
+    if (soft) document.documentElement.style.setProperty("--btn-glow-soft", soft);
+    if (weak) document.documentElement.style.setProperty("--color-walumo-soft-weak", weak);
+    if (strong) document.documentElement.style.setProperty("--color-walumo-soft-strong", strong);
   }
 }
 

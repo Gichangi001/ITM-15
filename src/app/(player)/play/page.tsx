@@ -217,7 +217,7 @@ export default async function PlayPage() {
           </div>
         </Link>
       ) : reachedFinale && kinshasa ? (
-        <div className="itm-card itm-hero-card relative flex flex-col gap-2 overflow-hidden p-7 text-gold">
+        <div className="itm-card itm-hero-card itm-hero-card--gold relative flex flex-col gap-2 overflow-hidden p-7 text-gold">
           <JourneyPattern />
           <div className="relative flex flex-col gap-2 text-ink">
             <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">

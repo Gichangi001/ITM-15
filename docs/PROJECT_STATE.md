@@ -1,6 +1,6 @@
 # ITM@15 Project State
 
-_Last updated: 2026-09-16, Experience Transformation Slice 6 (admin theme controls show journey identity) — see "Experience Transformation — Slice 6" near the end of this file for the current state; the "full audit session" narrative directly below is historical._
+_Last updated: 2026-09-16, Experience Transformation Slice 7 (theme-aware glow bug fix) — see "Experience Transformation — Slice 7" near the end of this file for the current state; the "full audit session" narrative directly below is historical._
 
 ## Full audit completed 2026-09-13
 
@@ -747,3 +747,13 @@ A small, contained admin-UX gap left over from Slice 2: `/admin/themes` listed e
 **Built**: `src/app/admin/themes/page.tsx` now cross-references `src/content/journey.ts` by the theme's `key` column and shows each journey destination's flag/country/tagline/day number as a subtitle under its name, and the page's own intro copy now explains the auto-activation behavior. Read-only display change — no new server action, no schema change, no change to `activateTheme` itself.
 
 **Verification**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. Live `curl` confirms `/admin/themes` still correctly redirects an unauthenticated visitor to `/login`. The `key`↔`themeKey` cross-reference reuses the exact same lookup already verified character-for-character correct in Slice 2 — no new risk of a silent mismatch. Same disclosed gap as every slice: no Playwright, so nobody has seen this rendered.
+
+## Experience Transformation — Slice 7: theme-aware glow bug fix (2026-09-16)
+
+Found while double-checking Slice 6's work, not asked for: `.itm-card--interactive:hover`, `.itm-hero-card`, `.itm-choice:has(input:checked)`, and `.itm-reward` (all added in Slice 1) hardcode a walumo-**blue** `rgba()` for their soft glow/tint effects, instead of deriving from whichever destination's accent is actually active. Invisible for the whole time only the blue-ish Origin/Kenya theme existed; a real, visible bug the moment a genuinely different accent (Senegal's terracotta, Nigeria's magenta, ...) activates — the border would correctly change color (it already used `var(--color-walumo)`) while the glow stayed blue. Also found the identical latent bug already existed in `.btn-primary`'s glow (`--btn-glow-soft`) from before this session — `ThemeProvider` was never setting that variable at all, so every primary-action button's glow has been silently blue-only regardless of the active theme since Phase 15 shipped, for the entire time multiple themes have existed.
+
+**Fixed at the root, not per-component**: `src/components/ThemeProvider.tsx` now also computes two translucent rgba tints (`--color-walumo-soft-weak` 12%, `--color-walumo-soft-strong` 35%) and the button system's own `--btn-glow-soft` (28%) directly from the active theme's `colorWalumo` hex, via a small `hexToRgba()` helper — no `color-mix()`, matching this project's existing, deliberate browser-support decision (see `.btn-primary`'s own header comment). Every consumer (the existing buttons, all four `.itm-*` effects, and anything built on top of them later) now reacts correctly with one shared fix instead of each needing its own per-theme color logic.
+
+**Also added `.itm-hero-card--gold`**: reviewing this surfaced that the Kinshasa finale card (Slice 3) would have inherited whichever destination's accent happened to be active for its glow — wrong for the one moment this project's own design language (`.btn-golden`, Day 7/legacy treatments) says should stay the reserved, fixed gold regardless of theme. Added a gold-specific variant (fixed rgba, not JS-computed, since gold is deliberately non-varying) and applied it to the finale card.
+
+**Verification**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. This is a CSS-variable/color-only change — no logic, schema, or route changed. Not independently exercised live (same disclosed no-Playwright gap as every slice), but the fix is narrowly scoped and directly addresses a bug found by re-reading the actual CSS values against the actual theme data, not a speculative one.

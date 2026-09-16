@@ -390,7 +390,7 @@ h3 {
 .itm-card--interactive:hover,
 .itm-card--interactive:focus-visible {
   transform: translateY(-2px);
-  border-color: rgba(59, 111, 237, 0.35);
+  border-color: var(--color-walumo-soft-strong, rgba(59, 111, 237, 0.35));
   box-shadow:
     0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
     0 20px 40px -20px rgba(0, 0, 0, 0.7);
@@ -403,13 +403,30 @@ h3 {
    just its CTA. */
 .itm-hero-card {
   border-radius: 1.25rem;
-  border: 1px solid rgba(59, 111, 237, 0.25);
+  border: 1px solid var(--color-walumo-soft-strong, rgba(59, 111, 237, 0.25));
   background:
-    radial-gradient(120% 140% at 0% 0%, rgba(59, 111, 237, 0.14), transparent 60%),
+    radial-gradient(120% 140% at 0% 0%, var(--color-walumo-soft-weak, rgba(59, 111, 237, 0.14)), transparent 60%),
     var(--color-surface);
   box-shadow:
     0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
-    0 24px 60px -30px rgba(59, 111, 237, 0.45);
+    0 24px 60px -30px var(--color-walumo-soft-strong, rgba(59, 111, 237, 0.45));
+}
+
+/* Gold variant — for the one moment that should stay visually distinct
+   from whichever destination happens to be active (the Kinshasa finale,
+   src/app/(player)/play/page.tsx) — reusing --color-gold, which this
+   project already keeps reserved/rare rather than swapping per theme
+   (every journey theme's colorGold token is the same fixed value; see
+   supabase/migrations/20260916100000_journey_country_themes.sql). Fixed
+   rgba, not JS-computed, since gold is deliberately NOT meant to vary. */
+.itm-hero-card--gold {
+  border-color: rgba(201, 162, 39, 0.35);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(201, 162, 39, 0.14), transparent 60%),
+    var(--color-surface);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+    0 24px 60px -30px rgba(201, 162, 39, 0.45);
 }
 
 /* Tap-to-choose option card (§14 "Tap to choose... Multiple choice can
@@ -445,7 +462,7 @@ h3 {
 
 .itm-choice:has(input:checked) {
   border-color: var(--color-walumo);
-  background: rgba(59, 111, 237, 0.12);
+  background: var(--color-walumo-soft-weak, rgba(59, 111, 237, 0.12));
   box-shadow: 0 0 0 1px var(--color-walumo) inset;
 }
 
@@ -501,9 +518,9 @@ h3 {
 .itm-reward {
   animation: itm-reward-in var(--motion-standard) var(--ease-spring);
   border-radius: 1rem;
-  border: 1px solid rgba(59, 111, 237, 0.35);
-  background: rgba(59, 111, 237, 0.1);
-  box-shadow: 0 0 30px -8px rgba(59, 111, 237, 0.45);
+  border: 1px solid var(--color-walumo-soft-strong, rgba(59, 111, 237, 0.35));
+  background: var(--color-walumo-soft-weak, rgba(59, 111, 237, 0.1));
+  box-shadow: 0 0 30px -8px var(--color-walumo-soft-strong, rgba(59, 111, 237, 0.45));
 }
 
 /* Gentle "look again" nudge (§15 incorrect feedback — no red FAILED
