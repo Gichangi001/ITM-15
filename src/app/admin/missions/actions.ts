@@ -8,6 +8,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminActivity } from "@/lib/admin/audit";
 import { broadcast } from "@/lib/realtime/broadcast";
 import { notifyAllActivePlayers } from "@/lib/notifications/create";
+import { activateThemeByKey } from "@/lib/theme/activate";
+import { getJourneyStopForDay } from "@/content/journey";
 
 const MISSION_STATUSES = ["DRAFT", "SCHEDULED", "LIVE", "PAUSED", "COMPLETED", "ARCHIVED"] as const;
 
@@ -153,6 +155,20 @@ export async function updateGameDayStatus(formData: FormData) {
         sourceType: "DAY_STARTED",
         sourceId: gameDayId,
       });
+
+      // Experience Transformation Slice 2 — publishing a day is the one
+      // real, server-authoritative moment a day "starts," so it's also
+      // the right moment to shift the app's atmosphere to match (Product
+      // Guide §19.2's theme-activation flow, reused via the shared
+      // helper). Atmosphere layer only: this changes the color mood, not
+      // any game content — see src/content/journey.ts's header comment.
+      // Silently does nothing if this day number has no journey stop
+      // (e.g. a day beyond 7), so publishing a day never fails because of
+      // this.
+      const stop = getJourneyStopForDay(before.day_number);
+      if (stop) {
+        await activateThemeByKey(admin, stop.themeKey, actor.id);
+      }
     } else if (status === "COMPLETED") {
       await notifyAllActivePlayers(admin, {
         title: `Day ${before.day_number} has ended`,

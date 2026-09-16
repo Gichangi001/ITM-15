@@ -4,6 +4,8 @@ import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
 import { signOut } from "@/app/logout/actions";
 import { createClient } from "@/lib/supabase/server";
 import { PlayerTransition } from "@/components/story/founder/PlayerTransition";
+import { JourneyPattern } from "@/components/JourneyPattern";
+import { getJourneyStopForDay } from "@/content/journey";
 
 export const metadata: Metadata = {
   title: "Play — ITM@15",
@@ -177,22 +179,29 @@ export default async function PlayPage() {
       {nextMission ? (
         <Link
           href={`/play/mission/${nextMission.id}`}
-          className="itm-card itm-hero-card itm-card--interactive flex flex-col gap-3 p-7"
+          className="itm-card itm-hero-card itm-card--interactive relative flex flex-col gap-3 overflow-hidden p-7 text-walumo"
         >
-          <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
-            Day {nextMission.dayNumber} · {nextMission.dayTitle}
-          </p>
-          <h2 className="text-2xl font-semibold">{nextMission.title}</h2>
-          {nextMission.description ? (
-            <p className="max-w-md text-sm text-muted">{nextMission.description}</p>
-          ) : null}
-          <p className="mt-2 text-sm font-medium text-ink">
-            Continue the journey →
-            <span className="ml-2 text-xs font-normal text-muted">
-              {nextMission.basePoints} pts
-              {nextMission.unityPoints > 0 ? ` + ${nextMission.unityPoints} unity` : ""}
-            </span>
-          </p>
+          <JourneyPattern />
+          <div className="relative flex flex-col gap-3 text-ink">
+            <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
+              Day {nextMission.dayNumber} · {nextMission.dayTitle}
+              {(() => {
+                const stop = getJourneyStopForDay(nextMission.dayNumber);
+                return stop ? ` · ${stop.countryFlag} ${stop.countryName} — ${stop.tagline}` : "";
+              })()}
+            </p>
+            <h2 className="text-2xl font-semibold">{nextMission.title}</h2>
+            {nextMission.description ? (
+              <p className="max-w-md text-sm text-muted">{nextMission.description}</p>
+            ) : null}
+            <p className="mt-2 text-sm font-medium text-ink">
+              Continue the journey →
+              <span className="ml-2 text-xs font-normal text-muted">
+                {nextMission.basePoints} pts
+                {nextMission.unityPoints > 0 ? ` + ${nextMission.unityPoints} unity` : ""}
+              </span>
+            </p>
+          </div>
         </Link>
       ) : allCaughtUp ? (
         <div className="itm-card flex flex-col gap-2 p-7">
