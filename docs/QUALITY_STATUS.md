@@ -1,6 +1,8 @@
 # ITM@15 Quality Status
 
-_Last updated: 2026-09-16, Experience Transformation Slice 7 (theme-aware glow bug fix) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 7" section for the full account, including a real bug found and fixed: every button/card glow was hardcoded blue regardless of the active theme._
+_Last updated: 2026-09-16, Experience Transformation Slice 8 (admin-editable journey copy) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 8" section for the full account._
+
+**Experience Transformation Slice 8 (admin-editable journey copy)**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. `supabase/migrations/20260916110000_journey_theme_content_fields.sql` applied live and re-confirmed via direct read-only query (all 9 rows correctly carry countryName/countryFlag/tagline/dayNumber). **Stronger than usual verification**: after switching the homepage's DRC line to read live from the database instead of the static file, re-confirmed via `curl` that it still renders correctly — proving the full live chain (anon RLS read → helper → page) genuinely works end-to-end, not just that the code compiles. The new admin "Edit copy" form itself is unverified live — no Playwright, same gap as every slice.
 
 **Experience Transformation Slice 4 (Passport + Achievements)**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. Live `curl` confirms `/achievements`/`/passport` still redirect unauthenticated visitors to `/login`, and the public `/passport/[slug]` route still 404s (not redirects) for an unknown slug. Per the user's explicit direction, visual verification (still no Playwright tool this session) is deferred to a later pass rather than blocking further slices.
 

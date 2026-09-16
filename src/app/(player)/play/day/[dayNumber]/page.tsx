@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LiveRefresh } from "@/components/realtime/LiveRefresh";
 import { JourneyPattern } from "@/components/JourneyPattern";
-import { getJourneyStopForDay } from "@/content/journey";
+import { getJourneyContentForDay } from "@/lib/theme/journeyContent";
 
 export const metadata: Metadata = { title: "Day — ITM@15" };
 
@@ -74,7 +74,7 @@ export default async function DayPage({
     .eq("game_day_id", day.id)
     .order("created_at");
 
-  const stop = getJourneyStopForDay(dayNumber);
+  const stop = await getJourneyContentForDay(supabase, dayNumber);
 
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-16 sm:px-6">

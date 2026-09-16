@@ -5,7 +5,7 @@ import { signOut } from "@/app/logout/actions";
 import { createClient } from "@/lib/supabase/server";
 import { PlayerTransition } from "@/components/story/founder/PlayerTransition";
 import { JourneyPattern } from "@/components/JourneyPattern";
-import { getJourneyStopForDay, JOURNEY_STOPS } from "@/content/journey";
+import { getJourneyContentForDay, getJourneyContentByThemeKey, type JourneyContent } from "@/lib/theme/journeyContent";
 
 export const metadata: Metadata = {
   title: "Play — ITM@15",
@@ -174,7 +174,10 @@ export default async function PlayPage() {
     }
   }
 
-  const kinshasa = JOURNEY_STOPS.find((s) => s.themeKey === "journey_kinshasa");
+  const [nextMissionJourney, kinshasa] = await Promise.all([
+    nextMission ? getJourneyContentForDay(supabase, nextMission.dayNumber) : Promise.resolve<JourneyContent | null>(null),
+    reachedFinale ? getJourneyContentByThemeKey(supabase, "journey_kinshasa") : Promise.resolve<JourneyContent | null>(null),
+  ]);
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-10 sm:px-6">
@@ -198,10 +201,9 @@ export default async function PlayPage() {
           <div className="relative flex flex-col gap-3 text-ink">
             <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
               Day {nextMission.dayNumber} · {nextMission.dayTitle}
-              {(() => {
-                const stop = getJourneyStopForDay(nextMission.dayNumber);
-                return stop ? ` · ${stop.countryFlag} ${stop.countryName} — ${stop.tagline}` : "";
-              })()}
+              {nextMissionJourney
+                ? ` · ${nextMissionJourney.countryFlag} ${nextMissionJourney.countryName} — ${nextMissionJourney.tagline}`
+                : ""}
             </p>
             <h2 className="text-2xl font-semibold">{nextMission.title}</h2>
             {nextMission.description ? (

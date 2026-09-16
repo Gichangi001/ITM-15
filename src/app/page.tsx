@@ -3,7 +3,8 @@ import { WALLY_POSES } from "@/wally/rendering/assets";
 import { STORY_DAYS } from "@/content/story";
 import { RevealOnScroll } from "@/components/RevealOnScroll";
 import { QrCode, getAppUrl } from "@/components/QrCode";
-import { JOURNEY_STOPS } from "@/content/journey";
+import { getJourneyContentByThemeKey } from "@/lib/theme/journeyContent";
+import { createClient } from "@/lib/supabase/server";
 
 // This page reads no cookies/headers, so Next.js would otherwise prerender
 // it once at BUILD time and bake `getAppUrl()`'s result into the QR code
@@ -36,7 +37,8 @@ const HOW_IT_WORKS = [
 export default async function Home() {
   const wally = WALLY_POSES.investigate;
   const silhouette = WALLY_POSES["dance-pose"];
-  const drc = JOURNEY_STOPS.find((s) => s.themeKey === "journey_drc");
+  const supabase = await createClient();
+  const drc = await getJourneyContentByThemeKey(supabase, "journey_drc");
 
   return (
     <div className="flex flex-1 flex-col bg-bg text-ink">

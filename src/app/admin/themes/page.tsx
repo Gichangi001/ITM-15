@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { canManageThemes } from "@/lib/auth/roles";
 import { getCurrentRoles } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { activateTheme } from "./actions";
+import { activateTheme, updateThemeContent } from "./actions";
 import { JOURNEY_STOPS } from "@/content/journey";
 
 export const metadata: Metadata = { title: "Themes — ITM@15" };
@@ -22,6 +22,10 @@ type ThemeTokens = {
   colorSurface: string;
   colorWalumo: string;
   colorGold: string;
+  countryName?: string;
+  countryFlag?: string;
+  tagline?: string;
+  dayNumber?: number;
 };
 
 /**
@@ -84,7 +88,16 @@ export default async function ThemesPage({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {themes.map((theme) => {
             const tokens = theme.tokens as unknown as ThemeTokens;
-            const stop = journeyStopByThemeKey.get(theme.key);
+            const staticStop = journeyStopByThemeKey.get(theme.key);
+            // Live tokens (Slice 8) win over the static fallback — an
+            // admin edit writes here, so this is what must be shown as
+            // "current," not the file that only matters when a field is
+            // still missing.
+            const countryName = tokens.countryName ?? staticStop?.countryName;
+            const countryFlag = tokens.countryFlag ?? staticStop?.countryFlag;
+            const tagline = tokens.tagline ?? staticStop?.tagline;
+            const dayNumber = tokens.dayNumber ?? staticStop?.dayNumber;
+            const isJourneyStop = Boolean(countryName && tagline);
             return (
               <div
                 key={theme.id}
@@ -104,10 +117,10 @@ export default async function ThemesPage({
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-ink">{theme.name}</p>
-                  {stop ? (
+                  {isJourneyStop ? (
                     <p className="text-xs text-muted">
-                      {stop.countryFlag} {stop.countryName} — {stop.tagline}
-                      {stop.dayNumber ? ` · Day ${stop.dayNumber}` : ""}
+                      {countryFlag} {countryName} — {tagline}
+                      {dayNumber ? ` · Day ${dayNumber}` : ""}
                     </p>
                   ) : null}
                 </div>
@@ -121,6 +134,46 @@ export default async function ThemesPage({
                     </button>
                   </form>
                 )}
+                {isJourneyStop ? (
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-muted hover:text-ink">Edit copy</summary>
+                    <form action={updateThemeContent} className="mt-3 flex flex-col gap-2">
+                      <input type="hidden" name="themeId" value={theme.id} />
+                      <label className="flex flex-col gap-1">
+                        <span className="text-muted">Country name</span>
+                        <input
+                          name="countryName"
+                          defaultValue={countryName}
+                          maxLength={60}
+                          required
+                          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-ink outline-none focus-visible:border-walumo"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-muted">Flag emoji</span>
+                        <input
+                          name="countryFlag"
+                          defaultValue={countryFlag}
+                          maxLength={8}
+                          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-ink outline-none focus-visible:border-walumo"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-muted">Tagline</span>
+                        <input
+                          name="tagline"
+                          defaultValue={tagline}
+                          maxLength={120}
+                          required
+                          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-ink outline-none focus-visible:border-walumo"
+                        />
+                      </label>
+                      <button type="submit" className="btn-secondary mt-1 self-start">
+                        Save copy
+                      </button>
+                    </form>
+                  </details>
+                ) : null}
               </div>
             );
           })}

@@ -1,6 +1,6 @@
 # ITM@15 Project State
 
-_Last updated: 2026-09-16, Experience Transformation Slice 7 (theme-aware glow bug fix) — see "Experience Transformation — Slice 7" near the end of this file for the current state; the "full audit session" narrative directly below is historical._
+_Last updated: 2026-09-16, Experience Transformation Slice 8 (admin-editable journey copy) — see "Experience Transformation — Slice 8" near the end of this file for the current state; the "full audit session" narrative directly below is historical._
 
 ## Full audit completed 2026-09-13
 
@@ -757,3 +757,15 @@ Found while double-checking Slice 6's work, not asked for: `.itm-card--interacti
 **Also added `.itm-hero-card--gold`**: reviewing this surfaced that the Kinshasa finale card (Slice 3) would have inherited whichever destination's accent happened to be active for its glow — wrong for the one moment this project's own design language (`.btn-golden`, Day 7/legacy treatments) says should stay the reserved, fixed gold regardless of theme. Added a gold-specific variant (fixed rgba, not JS-computed, since gold is deliberately non-varying) and applied it to the finale card.
 
 **Verification**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. This is a CSS-variable/color-only change — no logic, schema, or route changed. Not independently exercised live (same disclosed no-Playwright gap as every slice), but the fix is narrowly scoped and directly addresses a bug found by re-reading the actual CSS values against the actual theme data, not a speculative one.
+
+## Experience Transformation — Slice 8: admin-editable journey copy (2026-09-16)
+
+Closed a real "looks built, isn't" gap: the brief's §8 explicitly lists "Change country copy" as an admin theme-engine control, but through Slice 7 the country name/flag/tagline for all 9 destinations only existed in the static `src/content/journey.ts` file — no admin UI could touch it, and no database column held it. Built the control properly rather than adding a form that would silently write somewhere nothing reads from.
+
+**Built:**
+- `supabase/migrations/20260916110000_journey_theme_content_fields.sql` — merges `countryName`/`countryFlag`/`tagline`/`dayNumber` into each of the 9 journey theme rows' existing `tokens` jsonb (no schema change, same flexible-column pattern as every other theme extension). Applied live and re-verified with a direct read-only query against all 9 rows before writing any app code.
+- `src/lib/theme/journeyContent.ts` (`getJourneyContentByThemeKey`, `getJourneyContentForDay`) — reads the live DB value, falling back to `journey.ts`'s static entry only for a field the database doesn't have yet (defensive, never a blank/broken display).
+- `src/app/admin/themes/actions.ts`'s new `updateThemeContent` — validated, audited (`theme_content_updated`), broadcasts `theme.changed` so a live-open tab picks up an edited tagline without reload (same mechanism Slice 2 already wired for color changes). `src/app/admin/themes/page.tsx` gained an inline "Edit copy" disclosure per journey destination, pre-filled with the current live value.
+- Switched every consumer that previously imported the static `journey.ts` lookup directly — `src/app/page.tsx` (homepage DRC line), `src/app/(player)/play/page.tsx` (hero card + Kinshasa finale), `src/app/(player)/play/day/[dayNumber]/page.tsx` — to the new live-reading helper instead. `journey.ts` itself is unchanged and still exists as the documented fallback source.
+
+**Verification, and why this one is stronger than most prior slices**: `pnpm verify` (lint/typecheck/116 tests/build) clean; route list unchanged. The 9 migrated rows were re-confirmed via a direct read-only query showing every field correctly merged. Then, critically, **the homepage's DRC line was re-checked live via `curl` after switching it to the new DB-reading code path** — it still renders "Kinshasa, DRC — ...Where Our Story Begins" correctly, which is only possible if the full live chain (anonymous RLS-scoped read of `themes` → `getJourneyContentByThemeKey` → the page) actually works end-to-end against the real database, not just "the code looks right." This is a materially stronger check than the code-review-only verification most earlier slices got. The admin edit form itself, however, still has the same disclosed gap as everything else — no Playwright, so nobody has clicked "Edit copy," submitted a change, and watched it appear live.
