@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { PlayerTransition } from "@/components/story/founder/PlayerTransition";
 import { JourneyPattern } from "@/components/JourneyPattern";
 import { getJourneyContentForDay, getJourneyContentByThemeKey, type JourneyContent } from "@/lib/theme/journeyContent";
+import { JOURNEY_STOPS } from "@/content/journey";
+
+const COMPLETED_CHAPTER_STOPS = JOURNEY_STOPS.filter((s) => s.dayNumber !== null);
 
 export const metadata: Metadata = {
   title: "Play — ITM@15",
@@ -176,9 +179,27 @@ export default async function PlayPage() {
     }
   }
 
-  const [nextMissionJourney, kinshasa] = await Promise.all([
+  const [nextMissionJourney, kinshasa, finaleStats] = await Promise.all([
     nextMission ? getJourneyContentForDay(supabase, nextMission.dayNumber) : Promise.resolve<JourneyContent | null>(null),
     reachedFinale ? getJourneyContentByThemeKey(supabase, "journey_kinshasa") : Promise.resolve<JourneyContent | null>(null),
+    reachedFinale && user
+      ? (async () => {
+          // Real, server-verified totals for the finale — never fabricated.
+          // Both queries go through the RLS-scoped client: a player may
+          // read their own score_events/player_achievements rows (the same
+          // "own row" policy the mission page already relies on for its
+          // own points display), never anyone else's.
+          const [{ data: scoreEvents }, { count: achievementCount }] = await Promise.all([
+            supabase.from("score_events").select("points").eq("player_id", user.id),
+            supabase
+              .from("player_achievements")
+              .select("id", { count: "exact", head: true })
+              .eq("player_id", user.id),
+          ]);
+          const totalPoints = (scoreEvents ?? []).reduce((sum, e) => sum + e.points, 0);
+          return { totalPoints, achievementCount: achievementCount ?? 0 };
+        })()
+      : Promise.resolve(null),
   ]);
 
   return (
@@ -221,17 +242,44 @@ export default async function PlayPage() {
           </div>
         </Link>
       ) : reachedFinale && kinshasa ? (
-        <div className="itm-card itm-hero-card itm-hero-card--gold relative flex flex-col gap-2 overflow-hidden p-7 text-gold">
+        <div className="itm-card itm-hero-card itm-hero-card--gold relative flex flex-col gap-5 overflow-hidden p-7 text-gold">
           <JourneyPattern />
-          <div className="relative flex flex-col gap-2 text-ink">
+          <div className="relative flex flex-wrap justify-center gap-3">
+            {COMPLETED_CHAPTER_STOPS.map((stop, i) => (
+              <span
+                key={stop.themeKey}
+                className="itm-pop-in text-3xl"
+                style={{ "--pop-delay": `${i * 100}ms` } as React.CSSProperties}
+                aria-hidden
+              >
+                {stop.countryFlag}
+              </span>
+            ))}
+            <span
+              className="itm-pop-in itm-flag-hero text-3xl"
+              style={{ "--pop-delay": `${COMPLETED_CHAPTER_STOPS.length * 100 + 200}ms` } as React.CSSProperties}
+              aria-hidden
+            >
+              {kinshasa.countryFlag}
+            </span>
+          </div>
+          <div className="relative flex flex-col items-center gap-2 text-center text-ink">
             <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">
-              {kinshasa.countryFlag} {kinshasa.countryName}
+              Seven Days · Eight Destinations
             </p>
             <h2 className="text-2xl font-semibold">{kinshasa.tagline}</h2>
             <p className="max-w-md text-sm text-muted">
-              You&apos;ve completed every chapter of the journey. Fifteen years, seven days, one
-              story — thank you for being part of it.
+              You&apos;ve completed every chapter of the journey — from the first story to{" "}
+              {kinshasa.countryName}. Thank you for being part of it.
             </p>
+            {finaleStats ? (
+              <p className="mt-2 text-sm font-medium text-gold">
+                {finaleStats.totalPoints} points earned
+                {finaleStats.achievementCount > 0
+                  ? ` · ${finaleStats.achievementCount} achievement${finaleStats.achievementCount === 1 ? "" : "s"} unlocked`
+                  : ""}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : allCaughtUp ? (

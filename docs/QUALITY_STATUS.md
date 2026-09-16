@@ -1,6 +1,8 @@
 # ITM@15 Quality Status
 
-_Last updated: 2026-09-16, Experience Transformation Slice 9 (DRC flight arrival cinematic) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 9" section for the full account._
+_Last updated: 2026-09-16, Experience Transformation Slice 10 (Kinshasa Grand Finale) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 10" section for the full account._
+
+**Experience Transformation Slice 10 (Kinshasa Grand Finale)**: `pnpm verify` (lint/typecheck/121 tests/build) clean; route list unchanged. The `score_events`/`player_achievements` RLS SELECT policies this relies on were independently re-confirmed via a direct `pg_policies` query against the live database before writing the code, not assumed. Same disclosed gap as Slice 9 — reaching the finale needs a player who has genuinely completed all 7 days, which doesn't exist yet in the live campaign, and there's no Playwright to simulate one.
 
 **Experience Transformation Slice 9 (DRC flight arrival cinematic)**: `pnpm verify` (lint/typecheck/121 tests/build — 5 new tests for the African-countries content list) clean. The production `.next/static/chunks/` output was `grep`'d directly and confirmed to contain the cinematic's distinctive strings, proving it's genuinely bundled. **Not done, disclosed**: this feature is gated behind real sign-in + onboarding, so — unlike Slice 8's homepage check — there was no way to `curl`-verify the actual rendered animation this session. No Playwright/browser tool available, same gap as every slice, more consequential here than most since this is a purely visual/motion feature with no way to inspect its correctness from code alone.
 
