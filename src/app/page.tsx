@@ -3,6 +3,7 @@ import { WALLY_POSES } from "@/wally/rendering/assets";
 import { STORY_DAYS } from "@/content/story";
 import { RevealOnScroll } from "@/components/RevealOnScroll";
 import { QrCode, getAppUrl } from "@/components/QrCode";
+import { JOURNEY_STOPS } from "@/content/journey";
 
 // This page reads no cookies/headers, so Next.js would otherwise prerender
 // it once at BUILD time and bake `getAppUrl()`'s result into the QR code
@@ -35,6 +36,7 @@ const HOW_IT_WORKS = [
 export default async function Home() {
   const wally = WALLY_POSES.investigate;
   const silhouette = WALLY_POSES["dance-pose"];
+  const drc = JOURNEY_STOPS.find((s) => s.themeKey === "journey_drc");
 
   return (
     <div className="flex flex-1 flex-col bg-bg text-ink">
@@ -77,9 +79,24 @@ export default async function Home() {
           Before the countries. Before the thousands. Before the Holding.
           Before Walumo.
         </p>
+        {/* Experience Transformation Slice 3 — the journey's real starting
+            point (brief §5's DRC opening), added to the existing cold-open
+            sequence rather than a separate scene: this page already has a
+            proven, JS-independent staged-reveal mechanism
+            (animation-delay), so the journey's first beat reuses it
+            instead of a new cinematic system. Static content only
+            (src/content/journey.ts) — no theme/color activation happens
+            here, since DRC isn't a game day and must never override
+            whichever day's atmosphere is actually live for connected
+            players right now. */}
+        {drc ? (
+          <p className="scene-0-line mt-6 text-sm tracking-[0.15em] text-muted uppercase [--scene0-delay:6.7s]">
+            {drc.countryFlag} Kinshasa, DRC — {drc.tagline}
+          </p>
+        ) : null}
         <a
           href="/story/founder"
-          className="scene-0-line mt-10 inline-block rounded-full border border-walumo px-8 py-3 text-sm font-medium tracking-wide text-ink uppercase transition hover:bg-walumo [--scene0-delay:6.7s]"
+          className="scene-0-line mt-10 inline-block rounded-full border border-walumo px-8 py-3 text-sm font-medium tracking-wide text-ink uppercase transition hover:bg-walumo [--scene0-delay:8.2s]"
         >
           Enter the story
         </a>

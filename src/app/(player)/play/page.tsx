@@ -5,7 +5,7 @@ import { signOut } from "@/app/logout/actions";
 import { createClient } from "@/lib/supabase/server";
 import { PlayerTransition } from "@/components/story/founder/PlayerTransition";
 import { JourneyPattern } from "@/components/JourneyPattern";
-import { getJourneyStopForDay } from "@/content/journey";
+import { getJourneyStopForDay, JOURNEY_STOPS } from "@/content/journey";
 
 export const metadata: Metadata = {
   title: "Play — ITM@15",
@@ -88,6 +88,7 @@ export default async function PlayPage() {
 
   let nextMission: LiveMission | null = null;
   let allCaughtUp = false;
+  let reachedFinale = false;
 
   if (campaign && user) {
     const { data: days } = await supabase
@@ -160,8 +161,20 @@ export default async function PlayPage() {
       };
     } else if (sortedMissions.length > 0) {
       allCaughtUp = true;
+
+      // Kinshasa finale (brief §7): only shown once the player has a real,
+      // server-verified APPROVED submission for every Day 7 mission that's
+      // actually LIVE — never just "nothing else is open right now," which
+      // could be true on Day 2 if Days 3-7 simply haven't published yet.
+      // No fabricated "you finished the journey" moment.
+      const day7Missions = sortedMissions.filter((m) => dayById.get(m.game_day_id)?.day_number === 7);
+      reachedFinale =
+        day7Missions.length > 0 &&
+        day7Missions.every((m) => (missionIdToChallengeIds.get(m.id) ?? []).some((id) => approvedChallengeIds.has(id)));
     }
   }
+
+  const kinshasa = JOURNEY_STOPS.find((s) => s.themeKey === "journey_kinshasa");
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-10 sm:px-6">
@@ -203,6 +216,20 @@ export default async function PlayPage() {
             </p>
           </div>
         </Link>
+      ) : reachedFinale && kinshasa ? (
+        <div className="itm-card itm-hero-card relative flex flex-col gap-2 overflow-hidden p-7 text-gold">
+          <JourneyPattern />
+          <div className="relative flex flex-col gap-2 text-ink">
+            <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">
+              {kinshasa.countryFlag} {kinshasa.countryName}
+            </p>
+            <h2 className="text-2xl font-semibold">{kinshasa.tagline}</h2>
+            <p className="max-w-md text-sm text-muted">
+              You&apos;ve completed every chapter of the journey. Fifteen years, seven days, one
+              story — thank you for being part of it.
+            </p>
+          </div>
+        </div>
       ) : allCaughtUp ? (
         <div className="itm-card flex flex-col gap-2 p-7">
           <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
