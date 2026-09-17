@@ -16,20 +16,20 @@ Current build phase: **Phases 0-21 of 21 complete** (Product Guide §26 numberin
 - Total checklist items tracked in this file: 217 pre-existing + 34 Experience Transformation items (see that section) + 17 Phase 21 Day Zero items (see that section)
 - Verified complete (pre-existing, Phases 0-20): ~190 of 217, per `QUALITY_STATUS.md`'s dated entries
 - Phase 21 Day Zero rehearsal: 10 of 17 directly verified in one continuous run 2026-09-17 (run twice, both green); 7 of 17 not re-checked this run but separately proven by other phases' own dedicated tests (see that section for exactly which)
-- Experience Transformation (10 slices): all 34 built; a real, if partial, live visual pass now exists (homepage cold-open + DRC line, instant sign-in, onboarding, the DRC arrival cinematic, `/play` home, and a tour of every player-shell page — mobile + desktop, zero console errors after 2 real bugs were found and fixed). Not yet individually re-walked: admin theme "Edit copy," non-Kenya theme activation, the Kinshasa finale (needs a player who's completed all 7 real days)
-- Blocked: 1 (CI push, needs a user action — see Critical Blockers)
+- Experience Transformation (10 slices): all 34 built; a real live visual pass now exists (homepage cold-open + DRC line, instant sign-in, onboarding, the DRC arrival cinematic, `/play` home, a full 7-day playthrough of every real mission, moderation, and **the Kinshasa Grand Finale** — mobile + desktop, zero console errors after 2 real bugs were found and fixed). Not yet individually re-walked: admin theme "Edit copy," non-Kenya theme activation
+- Blocked: 0 — the CI push blocker is resolved (see Critical Blockers)
 - Failed verification: 0
 - Deferred: 0
 
 Overall completion: **Phases 0-21 of 21 complete.** The Experience Transformation redesign is a separate, additive effort on top of a complete, now-rehearsed backend — it changes presentation, not game logic.
-Release readiness: **CLOSE, not yet READY** — the backend is genuinely done and now proven end-to-end (Phase 21), and the redesign has a real if partial live-verification pass. What's left: (1) a committed E2E suite exists but doesn't yet cover every surface (voting, Wally triggers, non-Kenya themes, the Kinshasa finale), (2) the CI blocker remains open pending the user's own `gh auth refresh`.
+Release readiness: **CLOSE, not yet READY** — the backend is genuinely done and proven end-to-end (Phase 21, plus a full 7-day live simulation reaching the Kinshasa finale), CI is genuinely green, and the redesign has a real live-verification pass covering the whole player journey. What's left: a committed E2E suite exists but doesn't yet cover every surface (voting, Wally triggers beyond MISSION_COMPLETED, non-Kenya theme activation, a permanent 7-day E2E test — the finale was reached live but only via a one-off script, not yet a committed regression test).
 
 ## Critical Blockers
 
 1. ~~Supabase database access~~ — **RESOLVED 2026-09-13.** A fresh session's `ToolSearch` for `mcp__supabase__*` found the tools immediately; both migrations applied, verified, and two follow-up fix migrations applied in response to real advisor findings. See "Database & RLS" below.
-2. **`.github/workflows/ci.yml` unpushed — blocks automated CI.** The `gh`/git OAuth token lacks the `workflow` scope. Fix: user runs `gh auth refresh -h github.com -s workflow` once. `pnpm verify` run manually every session substitutes for now.
+2. ~~`.github/workflows/ci.yml` unpushed — blocks automated CI~~ — **RESOLVED 2026-09-17.** User ran `gh auth refresh -h github.com -s workflow` themselves; the workflow pushed, then needed two real config fixes (step ordering for `pnpm` cache, a redundant/conflicting pnpm version input) and one real production-build fix (both `(player)` and `admin` layouts needed `dynamic = "force-dynamic"` — they create a Supabase client on every request and CI is the first environment to ever build with zero Supabase env vars configured, deliberately, since it's a lint/typecheck/build gate not a deploy step). CI is now genuinely green — verified with `gh run watch`, not just trusted.
 
-This remaining blocker is not something this session can resolve unilaterally (per `docs/PROJECT_STATE.md` — no forcing an OAuth scope grant without the user's browser).
+No open blockers remain.
 
 ## Foundation & Repository
 
@@ -67,7 +67,7 @@ This remaining blocker is not something this session can resolve unilaterally (p
   **Verified:** 2026-09-13
   **Commit:** `309efc0`
 
-- [ ] GitHub Actions CI running — STATUS: BLOCKED (see Critical Blockers #2)
+- [x] GitHub Actions CI running — RESOLVED 2026-09-17, genuinely green (checkout, pnpm/node setup, install, lint, typecheck, 121 unit tests, build), verified with `gh run watch` (see Critical Blockers #2)
 - [x] Supabase env vars configured in Vercel (Production)
 
   **Requirement:** Product Guide §31, release-gate "Environment variables verified"
@@ -959,7 +959,7 @@ A large, user-supplied "make ITM@15 feel like a journey, not an exam" creative b
 **Corrected 2026-09-17 — the block below was last updated 2026-09-13 and had drifted significantly (claimed "Phases 11-21 remain" and "79/79 unit tests" while Phases 11-20 have since shipped and the suite is at 121 tests). Re-based on `docs/QUALITY_STATUS.md`'s actual dated history, not re-verified line-by-line from scratch.**
 
 - [x] All Phase 0-20 requirements verified — yes, each live-verified at the time it shipped (see `docs/QUALITY_STATUS.md`'s dated entries). Phase 21 (one continuous Day Zero rehearsal, all systems together) has **not** run — real gap.
-- [ ] No unresolved critical blockers — no, 1 open (CI push, see Critical Blockers)
+- [x] No unresolved critical blockers — RESOLVED 2026-09-17, see Critical Blockers
 - [x] No critical security findings — Phase 20's dedicated security review (2026-09-14) found 3 real issues (1 critical point-farming path, 1 high email-leak, 1 medium rate-limiting gap), all fixed and re-verified live same day; nothing open since
 - [x] Lint passes
 - [x] Typecheck passes
