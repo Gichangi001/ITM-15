@@ -35,6 +35,19 @@ import { getCurrentUser } from "@/lib/auth/session";
  * events also now arrive through `PresenceHeartbeat` (see
  * `useWallyTriggerTick`), not a channel of its own.
  */
+// Every page in this route group shares this layout, which reads live
+// cookies/auth on every request (createClient() below) - none of them
+// can be meaningfully static. Without this, Next.js optimistically tries
+// to statically prerender at build time whichever leaf pages have no
+// dynamic dependency of their own (e.g. /help, /profile, /passport),
+// which crashes the production build in any environment without real
+// Supabase env vars configured (first caught in CI, which has none) -
+// individual pages (play, leaderboards, gallery, achievements,
+// notifications) already had their own "dynamic = force-dynamic" for
+// unrelated reasons; this closes the same gap for the rest at the root
+// instead of patching each leaf page as it happens to break.
+export const dynamic = "force-dynamic";
+
 export default async function PlayerLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
   const [{ data: campaign }, user] = await Promise.all([

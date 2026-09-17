@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   title: "Complete Your Profile — ITM@15",
 };
 
+// Not under a route group with its own dynamic layout, and reads live
+// auth directly - same class of build-time-prerender failure as the
+// (player)/admin layouts, found the same way.
+export const dynamic = "force-dynamic";
+
 /**
  * Product Guide §5.4. src/proxy.ts already redirects a signed-in visitor
  * with `onboarding_completed = true` away from this route before it ever

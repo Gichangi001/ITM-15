@@ -21,6 +21,12 @@ import { AdminNav } from "@/components/admin/AdminNav";
  * only job is computing which nav links a specific admin-surface role
  * should see, once, so every page under /admin doesn't repeat it.
  */
+// Every page under /admin shares this layout, which reads live auth on
+// every request (getCurrentRoles() below) - none of them can be
+// meaningfully static. Same reasoning, and the same real build failure
+// this was found by, as the equivalent fix in "(player)/layout.tsx".
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const roles = await getCurrentRoles();
 
