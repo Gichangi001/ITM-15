@@ -223,7 +223,11 @@ export default async function PlayPage() {
           <JourneyPattern />
           <div className="relative flex flex-col gap-3 text-ink">
             <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">
-              Day {nextMission.dayNumber} · {nextMission.dayTitle}
+              {/* nextMission.dayTitle is already "Day N — Title" (the real
+                  game_days.title), so prefixing another "Day N ·" here
+                  produced a visible duplicate ("Day 1 · Day 1 — Origin") —
+                  found live via Playwright verification, 2026-09-17. */}
+              {nextMission.dayTitle}
               {nextMissionJourney
                 ? ` · ${nextMissionJourney.countryFlag} ${nextMissionJourney.countryName} — ${nextMissionJourney.tagline}`
                 : ""}

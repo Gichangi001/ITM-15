@@ -127,7 +127,7 @@ export function PlayerTransition({
       role="dialog"
       aria-modal="true"
       aria-label="Welcome to ITM@15"
-      className="founder-scene-armed fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 overflow-hidden bg-bg/98 px-6 text-center backdrop-blur-sm"
+      className="founder-scene-armed fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 overflow-hidden bg-bg px-6 text-center backdrop-blur-sm"
     >
       {isCinematic ? (
         <button
