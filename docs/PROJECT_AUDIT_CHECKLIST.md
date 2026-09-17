@@ -1,26 +1,29 @@
 # ITM@15 Project Audit Checklist
 
-Last audit: 2026-09-13
+Last audit: 2026-09-17
 Branch: main
-Commit: `a9be3d5` (Phase 5 + audit reconciliation; Phases 6-9 audit/fix land in the commit(s) immediately after)
+Commit: `480293c` (Experience Transformation Slice 10 — Kinshasa Grand Finale; see the dedicated section near the end of this file for the full 10-slice account)
 Environment: local dev machine, Vercel production (`https://itm-15.vercel.app`, HTTP 200), Supabase project `ysjjgzakswaohmnaowmv` (schema applied and verified)
-Current build phase: Phase 0 done except one user-blocked item (CI push); **Phases 1-9 COMPLETE, verified live end-to-end against the real database**: Supabase foundation + RLS, invite-only authentication, onboarding, the full player-route shell, the admin Mission Control shell, and a full content/submission/scoring/voting loop (missions, quizzes, photo uploads, moderation, leaderboards, polls) proven end-to-end with a real Day-Zero-style rehearsal. Phase 10's core (moderation queue, private storage, gallery) also works as a byproduct of the same slice, though its admin Media Library isn't built. One real bug was found and fixed during this audit: a mission could be set LIVE and still be permanently invisible to every player because nothing ever published its containing game day — see "Content Engine" below. Wally W0 (placeholder assets/tables) on the same real database. Phase 11 (realtime engine) is next — everything from there onward is genuinely pending, not started.
+
+**This file was significantly stale before this audit** — its header still said "Phase 11 is next" and referenced a commit from 2026-09-13, while `docs/QUALITY_STATUS.md`/`docs/PROJECT_STATE.md` (kept current every session, per this project's actual working pattern) show Phases 0-20 complete and a 10-slice visual/UX redesign ("Experience Transformation," 2026-09-16/17) on top of that. Per `CLAUDE.md`, this file is supposed to be the authoritative completion tracker — it wasn't updated during any of those sessions. This audit corrects the header/executive status and adds the missing Experience Transformation section; it does **not** re-verify every one of the ~217 line items below against current code (that work was already done incrementally, session by session, and is recorded in `QUALITY_STATUS.md`'s history) — treat any phase section below dated before 2026-09-14 as historically accurate but not re-checked in this pass.
+
+Current build phase: **Phases 0-20 of 21 complete** (Product Guide §26 numbering) — Supabase foundation, auth, onboarding, full player/admin shells, content/submission/scoring/voting engines, media moderation, realtime, admin notifications (composer finished 2026-09-15), Wally W1/W2, themes, achievements/passport, spectator screen, analytics, and a Phase 20 security review (BLOCK → 3 findings fixed and re-verified, 2026-09-14) are all live-verified. Phase 21 (Day Zero rehearsal, as one continuous run including Wally/passport/theme/screen together) has never been executed as a single scenario — only per-phase in isolation. **On top of that**, a 10-slice "Experience Transformation" visual/UX redesign (2026-09-16/17, commits `dfae7d4`..`480293c`) is in progress — see its own section below. The one remaining real blocker is unchanged: `.github/workflows/ci.yml` still can't push (`gh` token missing the `workflow` scope).
 
 ## How to read this file
 
-`[x]` = evidence block backs it up (Gates A-K from `docs/ITM15_PROJECT_AUDIT_AND_PENDING_CONTROL.md` §5, at least the applicable ones). `[ ]` = pending, in progress, or blocked — the label after the item says which. This audit re-verified every previously-`[x]` item against current code/`git log`/a fresh `pnpm verify`, not just against what an earlier session claimed (§7 of the audit-control doc) — none needed reopening.
+`[x]` = evidence block backs it up (Gates A-K from `docs/ITM15_PROJECT_AUDIT_AND_PENDING_CONTROL.md` §5, at least the applicable ones). `[ ]` = pending, in progress, or blocked — the label after the item says which. Sections dated 2026-09-13 or earlier were re-verified against code/git/a fresh `pnpm verify` as of that date; they have not been re-walked line-by-line in this 2026-09-17 pass (see the note above) — `docs/QUALITY_STATUS.md`'s dated entries are the more current source for anything built since.
 
 ## Executive Status
 
-- Total checklist items tracked in this file: 217 (this count reflects splitting coarse "all pending" bullets into individually-verifiable items as phases actually get built, not new scope)
-- Verified complete: ~90 (+~24 this session across Content Engine, Submission Engine, Scoring, Voting, and Media Uploads' core loop)
-- Pending: ~127 (the rest of Phases 6-21 — squads, remaining challenge types, multi-select polls, admin Media Library, realtime, and everything from Phase 11 onward)
-- Blocked: 1 (needs a user action, not more engineering — see Critical Blockers)
+- Total checklist items tracked in this file: 217 pre-existing + 34 new Experience Transformation items (see that section)
+- Verified complete (pre-existing, Phases 0-20): ~190 of 217 — Phases 11-20 shipped in sessions after this file's last full update; treated as complete per `QUALITY_STATUS.md`'s dated entries, not re-counted line-by-line here
+- Experience Transformation (new, 10 slices): ~26 of 34 built and at least code/data verified; 0 of 34 have live visual verification (see that section — this is the single largest real gap in the project right now)
+- Blocked: 1 (CI push, needs a user action — see Critical Blockers)
 - Failed verification: 0
 - Deferred: 0
 
-Overall completion: **Phase 0 done bar one item; Phases 1-9 of 21 COMPLETE** (Product Guide §26 numbering), each verified live end-to-end against the real database, not just structurally. Phase 10's core loop also works as a byproduct of the same slice. Phase 11 (realtime engine) is next.
-Release readiness: **NOT READY.** Expected at this stage — recorded as the honest baseline, not a finding demanding immediate action beyond what's below.
+Overall completion: **Phases 0-20 of 21 complete**, each live-verified against the real database at the time it shipped. Phase 21 (one continuous Day Zero rehearsal) not yet run. The Experience Transformation redesign is a separate, additive effort on top of a complete backend — it changes presentation, not game logic.
+Release readiness: **NOT READY** — not because of missing backend functionality (Phases 0-20 are genuinely done), but because (1) Phase 21's continuous rehearsal has never run, (2) the entire Experience Transformation redesign has zero live visual verification, and (3) the CI blocker remains open.
 
 ## Critical Blockers
 
@@ -866,27 +869,102 @@ Curated to the requirements with real evidence one way or another (verified or m
 
 ---
 
+## Experience Transformation Redesign (2026-09-16/17, commits `dfae7d4`..`480293c`)
+
+A large, user-supplied "make ITM@15 feel like a journey, not an exam" creative brief, worked as 10 tracked slices rather than attempted in one pass (see `docs/PROJECT_STATE.md`'s dedicated write-up per slice for full detail — this section is the checklist-style summary that file was missing). Changes presentation only; no Phase 0-20 game logic, scoring, or authorization was touched. Every slice passed `pnpm verify` (lint/typecheck/tests/build) — **the one thing consistently missing across all 10 is live visual verification**: no Playwright/browser tool was available for any of this work, a gap disclosed in every single slice's own commit and docs entry, not discovered after the fact.
+
+### Slice 1 — De-examify the core play loop
+
+- [x] `/play` surfaces the player's real next incomplete mission instead of a stale "not built yet" placeholder — **Result:** PASS. **Verified:** clean build; live `curl` confirms the route still auth-gates correctly. **Not verified:** the actual card rendering.
+- [x] Design token/motion foundation (`.itm-card`, `.itm-choice`, `.itm-reward`, `.itm-nudge`, motion duration/easing tokens) — **Result:** PASS (code review only).
+- [x] Exam-language copy removed ("Submit" → context-specific verbs, softer correct/incorrect feedback) across day/mission/challenge-form pages — **Result:** PASS.
+- [x] Leaderboard redesigned — rank badges, signed-in player's row highlighted — **Result:** PASS. Deliberately does NOT show rank-movement arrows (↑3/↓1) — no historical snapshot table exists to derive them from honestly; a real, disclosed gap for a future slice.
+
+### Slice 2 — Theme engine v2 + Day 1 Kenya
+
+- [x] `src/content/journey.ts` — 9 journey stops (DRC, 7 countries, Kinshasa) as static content — **Result:** PASS.
+- [x] 9 new `themes` rows seeded live; `journey_kenya` activated to match the real live Day 1 — **Result:** PASS. **Verified:** confirmed directly against the live database (`is_active: true`), not assumed.
+- [x] `updateGameDayStatus` auto-activates the matching journey theme when a day publishes LIVE — **Result:** PASS (code review + the migration's real end-state; the live day-publish action itself was never executed this session to avoid disrupting the real production theme for connected players).
+- [x] `JourneyPattern` — one reusable, `currentColor`-based abstract flourish (deliberately not a bespoke pattern per country — no curated cultural pattern library exists to draw one correctly) — **Result:** PASS.
+- [x] Flag/tagline shown alongside the real day title on `/play` and `/play/day/[n]` — **Result:** PASS.
+
+### Slice 3 — DRC opening beat + Kinshasa finale (initial)
+
+- [x] DRC flag/tagline added to the homepage's existing cold-open sequence — **Result:** PASS. **Verified:** confirmed directly in the homepage's live rendered output via `curl` — the one slice-1-through-3 check that used a real request, not just a clean build.
+- [x] Kinshasa finale state gated on a real, server-verified Day-7-complete check (not just "nothing else is open") — **Result:** PASS (superseded/enriched by Slice 10). **Not verified:** no live player has ever reached this state.
+
+### Slice 4 — Passport + Achievements
+
+- [x] Achievements: unlocked badges get `.itm-reward` glow; a locked badge's real icon is now hidden behind 🔒 until earned (a genuine improvement — previously always shown, spoiling it) — **Result:** PASS.
+- [x] Passport page + the public passport share card (`/passport/[slug]`) use `.itm-hero-card` — **Result:** PASS. **Deliberately left alone:** `PassportForm`/login/onboarding forms — brief's own §20.1 separates "premium game UI" from "normal polished UI" for forms/auth.
+
+### Slice 5 — Gallery/Notifications/Profile consistency
+
+- [x] Last plain bordered boxes in the player shell (gallery grid, notification list, profile detail list) swapped to `.itm-card` — **Result:** PASS. Closes the mechanical consistency sweep started in Slice 1.
+
+### Slice 6 — Admin theme controls show journey identity
+
+- [x] `/admin/themes` cross-references `journey.ts`/live tokens to show each destination's flag/country/tagline/day number instead of just an internal name — **Result:** PASS (read-only display change).
+
+### Slice 7 — Theme-aware glow bug fix
+
+- [x] **Real bug found and fixed**: `.itm-card--interactive:hover`, `.itm-hero-card`, `.itm-choice:has(input:checked)`, `.itm-reward`, and the pre-existing `.btn-primary` glow all hardcoded a walumo-blue rgba instead of the active theme's accent — invisible while only blue-ish themes existed, wrong the moment Senegal/Nigeria/etc. activate. Fixed once in `ThemeProvider` (computes translucent tints from the active theme's hex, no `color-mix()`) rather than per-component. — **Result:** PASS. **Not verified:** nobody has seen a non-Kenya theme active in a browser.
+- [x] `.itm-hero-card--gold` variant so the Kinshasa finale stays the reserved gold regardless of the active destination theme — **Result:** PASS.
+
+### Slice 8 — Admin-editable journey copy
+
+- [x] `countryName`/`countryFlag`/`tagline`/`dayNumber` merged into each journey theme's `tokens` jsonb; admin `updateThemeContent` action (validated, audited, broadcasts `theme.changed`) + inline "Edit copy" form — **Result:** PASS. Closes a real "control with nothing behind it" gap — the brief's §8 explicitly lists "change country copy" as a required admin control, which didn't exist before this.
+- [x] Every consumer (homepage DRC line, `/play`, `/play/day/[n]`) switched from the static `journey.ts` lookup to a live-reading helper (`journey.ts` remains the fallback for a field the DB doesn't have) — **Result:** PASS. **Verified more strongly than most items in this section**: after switching, re-confirmed via `curl` that the homepage's DRC line still renders correctly from the live database — proof the full read chain genuinely works, not just that it compiles. **Not verified:** the admin edit form itself — nobody has submitted an edit and watched it appear.
+
+### Slice 9 — DRC flight arrival cinematic
+
+- [x] `src/content/africanCountries.ts` — all 54 UN-member African countries + flags (real content, contested territories deliberately excluded), with a 5-test sanity suite (exact count, no duplicate names/flags) — **Result:** PASS.
+- [x] `PlayerTransition` rebuilt into an auto-advancing `Beat` state machine: all-Africa flag marquee → 7 journey destinations → the player's own real country highlighted → Kinshasa revealed → animated flight path (SVG trail-draw + CSS `offset-path` plane) → the original welcome content — **Result:** PASS (code review + confirmed present in the built production JS bundle via `grep`). **Not verified: this feature has never been seen rendered.** It is gated behind real sign-in + onboarding, so unlike Slice 8's homepage check there was no way to `curl`-verify it.
+- [x] Skip control; `prefers-reduced-motion` skips the entire cinematic rather than showing a motionless flight animation; a player with no country on file skips the personalized beats rather than fabricating a departure point — **Result:** PASS (code review).
+
+### Slice 10 — Kinshasa Grand Finale
+
+- [x] Finale card shows all 7 journey-country flags + Kinshasa popping in staggered, plus real stats — total points (summed live from the player's own `score_events`) and achievement count (`player_achievements`), both RLS-scoped, never fabricated — **Result:** PASS. **Verified:** the two RLS SELECT policies this depends on were independently re-confirmed via a direct `pg_policies` query against the live database before writing the code (not assumed from an existing comment elsewhere). **Not verified:** no live player has ever completed all 7 days to reach this state, and there is no Playwright to simulate one.
+
+### Explicitly not built (real, disclosed scope — not silently implied as done)
+
+- [ ] DRC opening as a full cinematic scene (map zoom, country-by-country illumination) — only one text beat exists on the homepage, not the brief's fuller sequence.
+- [ ] Kinshasa finale as a full cinematic (motion/light/depth "EVENT" sequence) — only a staggered flag reveal + stats card exists, not the brief's fuller vision.
+- [ ] A real `AnimatedButton`/`DestinationCard` component library (brief §40) — still CSS classes (`.itm-card`, `.itm-choice`, etc.), not named React components with documented variants/states.
+- [ ] Audio/haptics (brief §25/§26) — no audio pipeline or asset exists anywhere in this project; hard-blocked, not attempted.
+- [ ] Accessibility scan (contrast ratios, keyboard nav, ARIA) beyond ad hoc code review — no scanner tool run against any of this work.
+- [ ] Performance pass (bundle size, animation performance on low-end devices) — not measured.
+- [ ] Bespoke per-country visual patterns — deliberately one generic `JourneyPattern` reused everywhere; this project has no curated cultural asset library to draw 7 authentic distinct patterns from.
+- [ ] Login/onboarding/first-login visual redesign — deliberately left alone; the brief's own §20.1 says forms/auth should stay "normal polished UI," not gamified.
+- [ ] `/screen` (spectator/event screen) — untouched this redesign; a large-display mode that's riskier to change with no way to see it rendered.
+- [ ] Admin content surfaces (`/admin/scoring`, `/admin/analytics`, `/admin/notifications`, `/admin/media`, the Wally trigger form) — untouched, deliberately treated as admin/forms scope like login/onboarding.
+- [ ] **Live visual verification of any of the above** — zero, across all 10 slices. This is the single largest, most consequential gap in the entire redesign, and has been disclosed in every slice's own commit message and docs entry rather than discovered now.
+
+---
+
 ## Release Gate
 
-- [ ] All critical requirements verified — no, Phases 11-21 remain
+**Corrected 2026-09-17 — the block below was last updated 2026-09-13 and had drifted significantly (claimed "Phases 11-21 remain" and "79/79 unit tests" while Phases 11-20 have since shipped and the suite is at 121 tests). Re-based on `docs/QUALITY_STATUS.md`'s actual dated history, not re-verified line-by-line from scratch.**
+
+- [x] All Phase 0-20 requirements verified — yes, each live-verified at the time it shipped (see `docs/QUALITY_STATUS.md`'s dated entries). Phase 21 (one continuous Day Zero rehearsal, all systems together) has **not** run — real gap.
 - [ ] No unresolved critical blockers — no, 1 open (CI push, see Critical Blockers)
-- [x] No critical security findings — one functional (not security) gap found and fixed this session (game days never publishable); no authorization bypass found across Phases 1-10's expanded surface
+- [x] No critical security findings — Phase 20's dedicated security review (2026-09-14) found 3 real issues (1 critical point-farming path, 1 high email-leak, 1 medium rate-limiting gap), all fixed and re-verified live same day; nothing open since
 - [x] Lint passes
 - [x] Typecheck passes
-- [x] Unit tests pass (79/79)
-- [ ] Integration tests pass — covered only by live E2E runs, no maintained suite
-- [ ] E2E critical flows pass — live-verified manually each phase (Phases 2-9), not yet a committed automated suite under `tests/e2e/`
-- [ ] Realtime tests pass — none exist (Phase 11 not started)
+- [x] Unit tests pass (121/121 as of Experience Transformation Slice 10, commit `480293c`)
+- [ ] Integration tests pass — still covered only by live E2E runs, no maintained suite
+- [ ] E2E critical flows pass — live-verified manually per phase throughout Phases 2-20; still not a committed automated suite under `tests/e2e/` — a real, long-standing gap this project keeps re-disclosing rather than closing
+- [x] Realtime tests pass — Phase 11 shipped and live-verified (six scenarios, zero-reload), unlike this line's 2026-09-13 status
 - [x] Production build passes
-- [x] Mobile QA passes — checked live at 390px for the landing page, walkthrough preview, player shell, and admin shell; not a full formal accessibility pass
-- [ ] Accessibility critical checks pass — not formally tested with a scanner
-- [x] Vercel Preview/Production verified — Production confirmed live; Preview env vars still pending the user running the provided script
-- [x] Supabase migrations verified — applied and verified live against the real project (4 migrations)
-- [x] RLS verified — verified live against the real project, including a real inserted-and-deleted row test, not just structural inspection
-- [x] Environment variables verified in Vercel — Production only (see evidence below); still not in GitHub Actions secrets (CI itself is blocked, see Critical Blockers #2)
-- [ ] Rollback procedure verified — not written
-- [x] Project state updated
-- [x] Quality status updated
+- [ ] Mobile QA passes — true through Phase 20 (checked live at 390px repeatedly); **false for the entire Experience Transformation redesign** — zero live visual verification, mobile or otherwise, across all 10 slices (see that section above)
+- [ ] Accessibility critical checks pass — not formally tested with a scanner at any point in this project's history
+- [x] Vercel Preview/Production verified — Production confirmed live; Preview env vars status not re-checked this pass
+- [x] Supabase migrations verified — many more than 4 now (journey themes, notifications, achievements/passport, analytics_events, rate limiting, etc.), each applied and confirmed live at the time; not re-enumerated in this pass
+- [x] RLS verified — verified live against the real project repeatedly throughout the project's history, including real insert/delete-based tests, not just structural inspection
+- [x] Environment variables verified in Vercel — Production confirmed; still not in GitHub Actions secrets (CI itself is blocked, see Critical Blockers #2)
+- [ ] Rollback procedure verified — still not written
+- [x] Project state updated — current as of this audit
+- [x] Quality status updated — current as of this audit
 - [ ] Knowledge graph updated — no MCP memory graph connected; auto-memory used instead
 
-**Release readiness: NOT READY.** Correct and expected this early — recorded as the baseline this checklist tracks forward from.
+**Release readiness: NOT READY.** The backend (Phases 0-20) is substantially more ready than "NOT READY" alone suggests — the real blockers are the CI push, the never-run continuous Day Zero rehearsal, the long-standing missing `tests/e2e/` suite, and now the Experience Transformation redesign's complete lack of live visual verification. None of these are "more features to build" — they're verification/process gaps on top of what's already built.

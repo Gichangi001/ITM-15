@@ -1,6 +1,6 @@
 # ITM@15 Quality Status
 
-_Last updated: 2026-09-16, Experience Transformation Slice 10 (Kinshasa Grand Finale) — see `docs/PROJECT_STATE.md`'s "Experience Transformation — Slice 10" section for the full account._
+_Last updated: 2026-09-17, full backlog audit — `docs/PROJECT_AUDIT_CHECKLIST.md` was significantly stale (last touched 2026-09-13) and has been corrected; see `docs/PROJECT_STATE.md`'s "Backlog audit" section for the full account._
 
 **Experience Transformation Slice 10 (Kinshasa Grand Finale)**: `pnpm verify` (lint/typecheck/121 tests/build) clean; route list unchanged. The `score_events`/`player_achievements` RLS SELECT policies this relies on were independently re-confirmed via a direct `pg_policies` query against the live database before writing the code, not assumed. Same disclosed gap as Slice 9 — reaching the finale needs a player who has genuinely completed all 7 days, which doesn't exist yet in the live campaign, and there's no Playwright to simulate one.
 

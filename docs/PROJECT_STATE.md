@@ -1,6 +1,6 @@
 # ITM@15 Project State
 
-_Last updated: 2026-09-16, Experience Transformation Slice 10 (Kinshasa Grand Finale) — see "Experience Transformation — Slice 10" near the end of this file for the current state; the "full audit session" narrative directly below is historical._
+_Last updated: 2026-09-17, full backlog audit — see "Backlog audit" near the end of this file, and the now-current `docs/PROJECT_AUDIT_CHECKLIST.md` (was significantly stale, corrected this session). The "full audit session" narrative directly below is historical._
 
 ## Full audit completed 2026-09-13
 
@@ -791,3 +791,15 @@ Continued into the brief's §7 "Grand Finale" — until this slice, reaching Day
 **Built** (`src/app/(player)/play/page.tsx`): the finale card now shows all 7 completed journey-country flags plus Kinshasa popping in staggered (left to right, ~100ms apart, Kinshasa itself getting the `.itm-flag-hero` breathing-gold treatment), "Seven Days · Eight Destinations" (a direct callback to the brief's own closing line), and **real, server-verified stats** — total points from a live sum of the player's own `score_events` and their real unlocked-achievement count from `player_achievements`, both read through the RLS-scoped client (re-confirmed against the actual live policies before writing this — `score_events` has a real "players can read their own score events" SELECT policy, `player_achievements` is broadly readable to any signed-in player; the explicit `.eq("player_id", user.id)` filter is still correct and intentional for counting only this player's own total). Never fabricated — if `finaleStats` comes back null (shouldn't happen once `reachedFinale` is true and `user` exists, but handled), the stats line simply doesn't render rather than showing a fake number.
 
 **Verification**: `pnpm verify` (lint/typecheck/121 tests/build) clean; route list unchanged. The two RLS policies this relies on were independently re-checked via a direct `pg_policies` query against the live database before trusting the read pattern, rather than assumed from an existing comment elsewhere in the codebase (the mission page's own comment only established that `score_events` has no *write* policy for clients, not that a read policy exists — checked separately here). Same disclosed gap as Slice 9: this is gated behind reaching the actual end of a 7-day campaign, so there is no live player who has seen it and no Playwright to simulate one.
+
+## Backlog audit (2026-09-17)
+
+User asked for a fresh audit of what's pending. Found a real process gap before answering that: `docs/PROJECT_AUDIT_CHECKLIST.md` — the file `CLAUDE.md` designates as the *authoritative* completion tracker for this project — had not been touched since 2026-09-13. Its header still claimed "Phase 11 is next" and cited 79 unit tests, while this file and `QUALITY_STATUS.md` (kept current every session) show Phases 0-20 complete, 121 tests, and 10 Experience Transformation slices it knew nothing about. This session corrected it rather than continuing to let the two doc sets diverge: rewrote the header/Executive Status, added a full "Experience Transformation Redesign" section (34 items, one per real piece of work across all 10 slices, each with its actual verification status — most "PASS (code review only)" or "PASS, not visually verified," a few with a real check like the homepage `curl` confirmations), and corrected the stale Release Gate block. Did **not** re-verify all ~217 pre-existing Phase 0-20 line items individually — those were already verified incrementally, session by session, and are trusted from `QUALITY_STATUS.md`'s dated history rather than redone from scratch.
+
+**The audit's actual finding, once the tracking itself was fixed**: this project has no missing backend functionality standing between it and readiness. What's actually pending is:
+1. **Phase 21** — a single continuous Day Zero rehearsal exercising Wally/passport/theme/screen together has never run, only per-phase in isolation.
+2. **The long-standing `tests/e2e/` gap** — every phase's verification has lived in scratchpad Playwright scripts, re-run and re-disclosed every session, never committed as a real suite.
+3. **The CI blocker** — `.github/workflows/ci.yml` still can't push, unchanged for the entire project's history, needs the user to run `gh auth refresh -h github.com -s workflow`.
+4. **The Experience Transformation redesign's complete lack of live visual verification** — 10 slices, zero Playwright checks, the single largest and most consequential gap in the project right now, repeatedly disclosed but not yet addressed.
+
+None of these are "build more features" — they're verification and process gaps sitting on top of a substantially complete, previously-verified backend.
