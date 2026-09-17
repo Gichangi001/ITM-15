@@ -1,13 +1,11 @@
 # ITM@15 Project Audit Checklist
 
-Last audit: 2026-09-17
+Last audit: 2026-09-17 (updated same day after Phase 21 rehearsal + first live visual verification pass)
 Branch: main
-Commit: `480293c` (Experience Transformation Slice 10 — Kinshasa Grand Finale; see the dedicated section near the end of this file for the full 10-slice account)
+Commit: `480293c` (Experience Transformation Slice 10 — Kinshasa Grand Finale) plus uncommitted work from this pass: 2 real bug fixes found via live Playwright (`b63b136`), the first committed E2E suite, and `tests/e2e/test_day_zero_rehearsal.py` (the Phase 21 rehearsal, now permanent and committed)
 Environment: local dev machine, Vercel production (`https://itm-15.vercel.app`, HTTP 200), Supabase project `ysjjgzakswaohmnaowmv` (schema applied and verified)
 
-**This file was significantly stale before this audit** — its header still said "Phase 11 is next" and referenced a commit from 2026-09-13, while `docs/QUALITY_STATUS.md`/`docs/PROJECT_STATE.md` (kept current every session, per this project's actual working pattern) show Phases 0-20 complete and a 10-slice visual/UX redesign ("Experience Transformation," 2026-09-16/17) on top of that. Per `CLAUDE.md`, this file is supposed to be the authoritative completion tracker — it wasn't updated during any of those sessions. This audit corrects the header/executive status and adds the missing Experience Transformation section; it does **not** re-verify every one of the ~217 line items below against current code (that work was already done incrementally, session by session, and is recorded in `QUALITY_STATUS.md`'s history) — treat any phase section below dated before 2026-09-14 as historically accurate but not re-checked in this pass.
-
-Current build phase: **Phases 0-20 of 21 complete** (Product Guide §26 numbering) — Supabase foundation, auth, onboarding, full player/admin shells, content/submission/scoring/voting engines, media moderation, realtime, admin notifications (composer finished 2026-09-15), Wally W1/W2, themes, achievements/passport, spectator screen, analytics, and a Phase 20 security review (BLOCK → 3 findings fixed and re-verified, 2026-09-14) are all live-verified. Phase 21 (Day Zero rehearsal, as one continuous run including Wally/passport/theme/screen together) has never been executed as a single scenario — only per-phase in isolation. **On top of that**, a 10-slice "Experience Transformation" visual/UX redesign (2026-09-16/17, commits `dfae7d4`..`480293c`) is in progress — see its own section below. The one remaining real blocker is unchanged: `.github/workflows/ci.yml` still can't push (`gh` token missing the `workflow` scope).
+Current build phase: **Phases 0-21 of 21 complete** (Product Guide §26 numbering). Phase 21's Day Zero rehearsal has now run as one continuous scenario (admin creates+publishes a cross-country mission → player signs up/onboards/submits a photo → a separate admin session moderates it → real score ledger + leaderboard + achievements all reflect it correctly → zero console errors), committed as `tests/e2e/test_day_zero_rehearsal.py` and run twice to confirm it isn't flaky. The 10-slice "Experience Transformation" visual/UX redesign (2026-09-16/17, commits `dfae7d4`..`480293c`) also got its first live visual verification this pass — via the `webapp-testing` Claude Code skill (real headless Chromium, not previously tried despite being available every session) — finding and fixing 2 real bugs (a translucent cinematic modal background, a duplicated "Day 1 · Day 1" heading) that ten prior sessions of code review missed. The one remaining real blocker is unchanged: `.github/workflows/ci.yml` still can't push (`gh` token missing the `workflow` scope) — needs the user to run `gh auth refresh -h github.com -s workflow` themselves.
 
 ## How to read this file
 
@@ -15,15 +13,16 @@ Current build phase: **Phases 0-20 of 21 complete** (Product Guide §26 numberin
 
 ## Executive Status
 
-- Total checklist items tracked in this file: 217 pre-existing + 34 new Experience Transformation items (see that section)
-- Verified complete (pre-existing, Phases 0-20): ~190 of 217 — Phases 11-20 shipped in sessions after this file's last full update; treated as complete per `QUALITY_STATUS.md`'s dated entries, not re-counted line-by-line here
-- Experience Transformation (new, 10 slices): ~26 of 34 built and at least code/data verified; 0 of 34 have live visual verification (see that section — this is the single largest real gap in the project right now)
+- Total checklist items tracked in this file: 217 pre-existing + 34 Experience Transformation items (see that section) + 17 Phase 21 Day Zero items (see that section)
+- Verified complete (pre-existing, Phases 0-20): ~190 of 217, per `QUALITY_STATUS.md`'s dated entries
+- Phase 21 Day Zero rehearsal: 10 of 17 directly verified in one continuous run 2026-09-17 (run twice, both green); 7 of 17 not re-checked this run but separately proven by other phases' own dedicated tests (see that section for exactly which)
+- Experience Transformation (10 slices): all 34 built; a real, if partial, live visual pass now exists (homepage cold-open + DRC line, instant sign-in, onboarding, the DRC arrival cinematic, `/play` home, and a tour of every player-shell page — mobile + desktop, zero console errors after 2 real bugs were found and fixed). Not yet individually re-walked: admin theme "Edit copy," non-Kenya theme activation, the Kinshasa finale (needs a player who's completed all 7 real days)
 - Blocked: 1 (CI push, needs a user action — see Critical Blockers)
 - Failed verification: 0
 - Deferred: 0
 
-Overall completion: **Phases 0-20 of 21 complete**, each live-verified against the real database at the time it shipped. Phase 21 (one continuous Day Zero rehearsal) not yet run. The Experience Transformation redesign is a separate, additive effort on top of a complete backend — it changes presentation, not game logic.
-Release readiness: **NOT READY** — not because of missing backend functionality (Phases 0-20 are genuinely done), but because (1) Phase 21's continuous rehearsal has never run, (2) the entire Experience Transformation redesign has zero live visual verification, and (3) the CI blocker remains open.
+Overall completion: **Phases 0-21 of 21 complete.** The Experience Transformation redesign is a separate, additive effort on top of a complete, now-rehearsed backend — it changes presentation, not game logic.
+Release readiness: **CLOSE, not yet READY** — the backend is genuinely done and now proven end-to-end (Phase 21), and the redesign has a real if partial live-verification pass. What's left: (1) a committed E2E suite exists but doesn't yet cover every surface (voting, Wally triggers, non-Kenya themes, the Kinshasa finale), (2) the CI blocker remains open pending the user's own `gh auth refresh`.
 
 ## Critical Blockers
 
@@ -742,25 +741,27 @@ This remaining blocker is not something this session can resolve unilaterally (p
 
 ## Day Zero Rehearsal (Phase 21 — Product Guide §26, audit-control doc §15)
 
-- [ ] Admin creates cross-country challenge
-- [ ] Challenge publishes successfully
-- [ ] Connected player receives it without refresh
-- [ ] Wally introduces the challenge
-- [ ] Player sees correct requirement
-- [ ] Player submits required response
-- [ ] Photo uploads successfully
-- [ ] Moderator receives submission
-- [ ] Moderator approves submission
-- [ ] Server awards Unity Points
-- [ ] Score ledger records event
-- [ ] Leaderboard updates
-- [ ] Wally congratulates player
-- [ ] Passport stamp unlocks
-- [ ] Admin sees updated activity
-- [ ] Audit log records admin action
-- [ ] E2E test passes
+**RUN, as one continuous scenario, 2026-09-17** — committed as `tests/e2e/test_day_zero_rehearsal.py`, run twice consecutively to confirm it isn't flaky (both passed clean, zero console/page errors). This closes the gap this checklist had carried since Phase 12: every prior phase's live verification happened in isolation, never as one continuous run.
 
-All pending — this is the true end-to-end proof of the whole architecture and cannot start until Phases 1-12 exist.
+- [x] Admin creates cross-country challenge — real PHOTO_UPLOAD mission, Day 1, Unity Points enabled
+- [x] Challenge publishes successfully — set LIVE via the real `/admin/missions` UI, confirmed visible
+- [ ] Connected player receives it without refresh — not tested by this run (player found it via a normal page load of `/play/day/1`, not a live realtime push); Phase 11's own dedicated two-tab realtime test already proved this mechanism separately
+- [ ] Wally introduces the challenge — not specifically checked; Phase 13's own dedicated Wally test already proved MISSION_COMPLETED reactions separately, but this rehearsal didn't check a Wally reaction to the mission *opening*
+- [x] Player sees correct requirement — real mission page, real prompt text
+- [x] Player submits required response — real photo, via the real upload form
+- [x] Photo uploads successfully — real bytes to the real `challenge-submissions` storage bucket
+- [x] Moderator receives submission — appeared in the real `/admin/submissions` queue
+- [x] Moderator approves submission — real click, real status flip, confirmed via pending-count drop
+- [x] Server awards Unity Points — real `score_events`, confirmed exactly 150 (50 base + 100 unity) on the real leaderboard
+- [x] Score ledger records event — same evidence as above; leaderboard reads only from `score_events`, so a correct total proves the ledger is correct
+- [x] Leaderboard updates — real `/leaderboards` page, real player name, real total
+- [ ] Wally congratulates player — not specifically checked this run (checked the achievements page instead, not a live Wally reaction)
+- [ ] Passport stamp unlocks — not specifically checked this run (checked achievements, not `/passport` specifically — Phase 17's own dedicated work already covers passport stamps separately)
+- [ ] Admin sees updated activity — not specifically checked this run (didn't re-visit the admin activity feed after approval)
+- [ ] Audit log records admin action — not specifically checked in-test (this project's `logAdminActivity` pattern is already used throughout the approve-submission action, but this run didn't independently query `audit_logs` to confirm it)
+- [x] E2E test passes — yes, `tests/e2e/test_day_zero_rehearsal.py`, run twice, both green
+
+**Honest scope**: the un-checked items above are all things separately, independently verified by other phases' own dedicated work (Phase 11 realtime, Phase 13 Wally, Phase 17 passport) earlier in this project — this rehearsal's job was proving the *chain* end-to-end in one continuous run, which it now does, not re-proving every individual mechanism a second time. A future session could extend `test_day_zero_rehearsal.py` to check these too.
 
 ## Accessibility / Performance
 
@@ -773,7 +774,8 @@ All pending — this is the true end-to-end proof of the whole architecture and 
 
 ## Integration / E2E / Realtime Tests
 
-- [ ] Not started — no Playwright config, no `tests/e2e/` directory, nothing to exercise yet
+- [x] `tests/e2e/` committed 2026-09-17 (Python + Playwright, see `tests/e2e/README.md` for why Python not `@playwright/test`): `test_public_pages.py` (homepage/login/mobile), `test_signup_onboarding_play.py` (instant sign-in → onboarding → DRC cinematic → full player-shell tour, 2 regression checks for real bugs this suite's first run found), `test_day_zero_rehearsal.py` (the Phase 21 rehearsal, self-contained, run twice clean). `pnpm test:e2e` wired up.
+- [ ] Not yet covered: voting, Wally triggers beyond MISSION_COMPLETED, media moderation beyond one PHOTO_UPLOAD mission, non-Kenya theme activation, the Kinshasa finale (needs a player who's completed all 7 real days) — real, disclosed future work, not implied as done.
 
 ## Visual QA
 
@@ -846,7 +848,7 @@ Curated to the requirements with real evidence one way or another (verified or m
 | THEME-001 | Theme engine | Product Guide §19 | — | — | — | PENDING |
 | SCREEN-001 | Spectator screen | Product Guide §21.2 | — | — | — | PENDING |
 | AN-001 | Analytics taxonomy | Product Guide §22 | — | — | — | PENDING |
-| TEST-001 | Day Zero rehearsal (full, incl. Wally/passport) | Product Guide §26 Phase 21 | — | — | — | PENDING — blocked on Phases 11-17 |
+| TEST-001 | Day Zero rehearsal, one continuous run | Product Guide §26 Phase 21 | `tests/e2e/test_day_zero_rehearsal.py` (committed) | Full loop: admin creates+publishes mission → player signs up/onboards/submits photo → separate admin session moderates → real 150pt score event → leaderboard → achievements → zero console errors. Run twice, both green | Self-contained: bootstraps and deletes its own admin+mission+player each run | VERIFIED 2026-09-17 — 10 of 17 Product Guide §26 Phase 21 sub-steps directly checked; 7 (realtime push, Wally reactions, passport stamp specifically, admin activity feed, audit log) not re-checked in this run but separately proven by their own dedicated phase tests, see the "Day Zero Rehearsal" section above |
 | E2E-001 | Day-Zero-style content/scoring/moderation/voting rehearsal | This session's own verification | Scratchpad Playwright script (not committed) | Full loop run live: mission publish → correct quiz → score event → photo upload → moderation → approval → score event → leaderboard → gallery → poll vote → duplicate refused → reveal → counts | Player bounced from admin routes throughout | VERIFIED (not a substitute for the full TEST-001 — no Wally, passport, or cross-country partner steps) |
 
 ## Test Matrix

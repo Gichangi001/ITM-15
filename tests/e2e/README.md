@@ -71,15 +71,42 @@ deployment, for example) instead of `http://localhost:3000`.
   letting the page behind it visibly ghost through once the cinematic ran
   10+ seconds), and the `/play` hero card must not show a duplicated
   "Day 1 · Day 1" (the mission's own `dayTitle` already includes "Day N").
+- `test_day_zero_rehearsal.py` — the Phase 21 "Day Zero" rehearsal
+  (Product Guide §26 Phase 21 / WALLY.md §44's "Meet Another Country"
+  scenario), as one continuous, permanent, self-contained test instead of
+  the per-phase-in-isolation verification this project's `PROJECT_STATE.md`
+  had disclosed every prior session. Bootstraps its own synthetic
+  GAME_MASTER admin (`_lib/adminAccount.py` — there's no self-serve path
+  to an admin role, Product Guide §4.5), then: admin creates + publishes a
+  real cross-country PHOTO_UPLOAD mission on Day 1 → a synthetic player
+  signs up/onboards/uploads a real photo → the admin approves it in a
+  separate, independently-authenticated browser session → the real score
+  ledger (50 base + 100 unity = 150pts) shows up on the public
+  leaderboard → the player's own achievements page shows a real unlocked
+  badge → zero console/page errors. Deletes the mission, player, and
+  admin it created when it finishes, success or failure (`_lib/content.py`
+  + `_lib/cleanup.py`). Run twice back-to-back to confirm it isn't flaky
+  before committing (2026-09-17) — both passed clean.
 
 ## What's not covered yet
 
-Everything else in the app — admin flows, mission answering/scoring,
-voting, media moderation, Wally triggers, the Kinshasa finale (needs a
-player who's completed all 7 days), theme activation. This suite proves
-the pattern works and covers the newest, least-verified surface
-(Experience Transformation); extending it to the rest of the app is real,
-tracked future work, not implied as done by this file existing.
+Voting, media moderation beyond one PHOTO_UPLOAD mission, Wally triggers,
+the Kinshasa finale (needs a player who's completed all 7 real days),
+and theme activation. Extending coverage to these is real, tracked
+future work, not implied as done by this file existing.
+
+## A local-dev-only rate-limit note
+
+`instant_join`/`login_method_check` (Phase 20's
+`src/lib/security/rateLimit.ts`) key by client IP via the
+`x-forwarded-for` header, which local dev never sets — every local
+request shares one identifier (`::1`), so running this suite many times
+back-to-back in a few minutes can trip the limiter (`instant_join`:
+8/10min). Real, disclosed, local-only (Vercel always sets the header in
+Preview/Production) — not a bug to route around, just something to know
+if a run of `test_day_zero_rehearsal.py` or
+`test_signup_onboarding_play.py` times out waiting for instant-join to
+redirect after several rapid re-runs. Wait a few minutes and retry.
 
 ## Cleanup safety
 
