@@ -43,4 +43,4 @@ Next.js + TypeScript, Tailwind CSS + shadcn/ui, Supabase (Postgres, Auth, Realti
 
 ## Product owner
 
-Walumo.
+Alexander Gichangi Maina.
