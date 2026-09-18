@@ -141,6 +141,17 @@ export function canManageThemes(roles: readonly Role[]): boolean {
 }
 
 /**
+ * "Chairman's Egg" golden cards (direct product-owner request 2026-09-18)
+ * - allocating a real gold card to a real player is a content/recognition
+ * control in the same spirit as bonus points and mission scheduling, so it
+ * shares Game Master/Super Admin's existing capability set rather than
+ * inventing a new role tier for one feature.
+ */
+export function canManageGoldenCards(roles: readonly Role[]): boolean {
+  return roles.some((role) => CONTENT_MANAGEMENT_ROLES.includes(role));
+}
+
+/**
  * Product Guide §4.6: "Analytics Viewer — Read-only access to dashboards
  * and exports." A distinct role set from CONTENT_MANAGEMENT_ROLES —
  * ANALYTICS_VIEWER can see the dashboard without being able to touch

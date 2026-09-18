@@ -87,13 +87,34 @@ deployment, for example) instead of `http://localhost:3000`.
   admin it created when it finishes, success or failure (`_lib/content.py`
   + `_lib/cleanup.py`). Run twice back-to-back to confirm it isn't flaky
   before committing (2026-09-17) — both passed clean.
+- `test_multiday_and_golden_cards.py` — two things checked directly at
+  the product owner's request (2026-09-18): (1) the per-day mission
+  controls generalize beyond Day 1 — admin creates and publishes a real
+  mission on Day 4, a real player sees it there; (2) the "Chairman's Egg"
+  golden card feature end to end — admin allocates a card to a real
+  synthetic player for a day, a second synthetic player finds them and
+  claims it with the real code, real `score_events` land on both sides,
+  and a double-claim on the same code is correctly refused. Checks the
+  durable, server-derived confirmation banner on a fresh `/play` load
+  rather than the claim form's own transient success message — see
+  `src/app/(player)/play/goldenCardActions.ts`'s own comment: a
+  `revalidatePath`-triggered re-render can remount the client form and
+  lose a transient `useActionState` message before the player reads it,
+  the same bug class already found and fixed once in this project (the
+  mission page's "already completed" branch, Phase 12). Run three times
+  to confirm it isn't flaky before committing — all three passed clean,
+  after tracking down what looked at first like an app bug but turned out
+  to be severe local memory pressure from ~80 leftover Chromium processes
+  accumulated across a long debugging session (worth remembering: if this
+  suite ever seems to hang unpredictably, check `ps aux | grep -i chrome`
+  and system memory before assuming the app is broken).
 
 ## What's not covered yet
 
 Voting, media moderation beyond one PHOTO_UPLOAD mission, Wally triggers,
-the Kinshasa finale (needs a player who's completed all 7 real days),
-and theme activation. Extending coverage to these is real, tracked
-future work, not implied as done by this file existing.
+the Kinshasa finale (needs a player who's completed all 7 real days), and
+theme activation. Extending coverage to these is real, tracked future
+work, not implied as done by this file existing.
 
 ## A local-dev-only rate-limit note
 

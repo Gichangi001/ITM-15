@@ -7,6 +7,7 @@ import { PlayerTransition } from "@/components/story/founder/PlayerTransition";
 import { JourneyPattern } from "@/components/JourneyPattern";
 import { getJourneyContentForDay, getJourneyContentByThemeKey, type JourneyContent } from "@/lib/theme/journeyContent";
 import { JOURNEY_STOPS } from "@/content/journey";
+import { ClaimGoldenCardForm } from "@/components/player/ClaimGoldenCardForm";
 
 const COMPLETED_CHAPTER_STOPS = JOURNEY_STOPS.filter((s) => s.dayNumber !== null);
 
@@ -179,6 +180,41 @@ export default async function PlayPage() {
     }
   }
 
+  // "Chairman's Egg" — a durable, server-derived confirmation of the
+  // player's most recent successful find, shown instead of relying on the
+  // claim form's own transient useActionState message (which a
+  // Server-Action-triggered re-render can race and lose before the
+  // player reads it - the exact same class of bug already found and
+  // fixed once in this project for the mission page's "already
+  // completed" branch, Phase 12). Own-row RLS policy on golden_cards.
+  // No time window - shown for as long as it's the player's most recent
+  // claim, the same "permanent record, not a disappearing toast" pattern
+  // the carrier's own banner already uses. Avoids a Date.now()/new Date()
+  // call in the render body entirely (React's purity rules forbid impure
+  // calls during render, even in a Server Component).
+  const { data: recentClaim } = user
+    ? await supabase
+        .from("golden_cards")
+        .select("bonus_points, claimed_at")
+        .eq("claimed_by", user.id)
+        .order("claimed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+  const showRecentClaim = Boolean(recentClaim);
+
+  // "Chairman's Egg" — the player's own ACTIVE golden card, if they're
+  // currently carrying one (own-row RLS policy on golden_cards). Never a
+  // list of every active card - that would spoil the whole hunt.
+  const { data: carrierCard } = user
+    ? await supabase
+        .from("golden_cards")
+        .select("code, bonus_points")
+        .eq("carrier_id", user.id)
+        .eq("status", "ACTIVE")
+        .maybeSingle()
+    : { data: null };
+
   const [nextMissionJourney, kinshasa, finaleStats] = await Promise.all([
     nextMission ? getJourneyContentForDay(supabase, nextMission.dayNumber) : Promise.resolve<JourneyContent | null>(null),
     reachedFinale ? getJourneyContentByThemeKey(supabase, "journey_kinshasa") : Promise.resolve<JourneyContent | null>(null),
@@ -214,6 +250,22 @@ export default async function PlayPage() {
         </p>
         <h1 className="text-3xl">Hi, {greetingName}.</h1>
       </div>
+
+      {carrierCard ? (
+        <div className="itm-card itm-hero-card--gold flex flex-col gap-2 p-5 text-gold">
+          <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">
+            🥚 You&apos;re carrying the Chairman&apos;s Egg today
+          </p>
+          <p className="text-sm text-ink">
+            Someone who finds you in person and enters your code claims a real prize. Keep it fair — don&apos;t
+            just hand it to the first person who asks.
+          </p>
+          <p className="text-sm">
+            Your code: <span className="font-mono text-lg text-gold">{carrierCard.code}</span>
+            <span className="ml-2 text-xs text-muted">({carrierCard.bonus_points} pts for whoever finds you)</span>
+          </p>
+        </div>
+      ) : null}
 
       {nextMission ? (
         <Link
@@ -310,6 +362,17 @@ export default async function PlayPage() {
           </p>
         </div>
       )}
+
+      {showRecentClaim && recentClaim ? (
+        <div className="itm-reward flex flex-col gap-1 p-5">
+          <p className="text-xs font-semibold tracking-[0.2em] text-walumo uppercase">🥚 Found them!</p>
+          <p className="text-sm text-ink">
+            You tracked down the Chairman&apos;s Egg carrier — +{recentClaim.bonus_points} points.
+          </p>
+        </div>
+      ) : null}
+
+      <ClaimGoldenCardForm />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {SHELL_LINKS.map((link) => (

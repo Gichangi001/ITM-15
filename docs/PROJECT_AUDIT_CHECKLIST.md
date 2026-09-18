@@ -775,6 +775,7 @@ No open blockers remain.
 ## Integration / E2E / Realtime Tests
 
 - [x] `tests/e2e/` committed 2026-09-17 (Python + Playwright, see `tests/e2e/README.md` for why Python not `@playwright/test`): `test_public_pages.py` (homepage/login/mobile), `test_signup_onboarding_play.py` (instant sign-in → onboarding → DRC cinematic → full player-shell tour, 2 regression checks for real bugs this suite's first run found), `test_day_zero_rehearsal.py` (the Phase 21 rehearsal, self-contained, run twice clean). `pnpm test:e2e` wired up.
+- [x] `test_multiday_and_golden_cards.py` added 2026-09-18 (run three times clean): admin publishes a mission on Day 4 (not Day 1, proving the per-day controls generalize) and a real player sees it; the new Chairman's Egg golden card feature end to end (allocate → carrier sees code → finder claims it → real score_events on both sides → double-claim correctly refused). Found and fixed 2 real bugs along the way — a duplicated day-title string in the admin form, and a `revalidatePath`-triggered remount losing the claim form's transient success message (same bug class as Phase 12's mission-page fix) — see `docs/PROJECT_STATE.md`'s 2026-09-18 write-up for the full account.
 - [ ] Not yet covered: voting, Wally triggers beyond MISSION_COMPLETED, media moderation beyond one PHOTO_UPLOAD mission, non-Kenya theme activation, the Kinshasa finale (needs a player who's completed all 7 real days) — real, disclosed future work, not implied as done.
 
 ## Visual QA

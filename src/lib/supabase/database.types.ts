@@ -382,6 +382,67 @@ export type Database = {
           },
         ]
       }
+      golden_cards: {
+        Row: {
+          bonus_points: number
+          carrier_id: string
+          claimed_at: string | null
+          claimed_by: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          game_day_id: string
+          id: string
+          status: string
+        }
+        Insert: {
+          bonus_points?: number
+          carrier_id: string
+          claimed_at?: string | null
+          claimed_by?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          game_day_id: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          bonus_points?: number
+          carrier_id?: string
+          claimed_at?: string | null
+          claimed_by?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          game_day_id?: string
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "golden_cards_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "golden_cards_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "golden_cards_game_day_id_fkey"
+            columns: ["game_day_id"]
+            isOneToOne: false
+            referencedRelation: "game_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_rate_limit_hits: {
         Row: {
           bucket: string
@@ -1315,7 +1376,7 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals["public"]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends

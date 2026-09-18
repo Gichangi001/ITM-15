@@ -6,6 +6,7 @@ import {
   canAwardBonusPoints,
   canControlGameState,
   canManageContent,
+  canManageGoldenCards,
   canManageThemes,
   canManageVoting,
   canModerateSubmissions,
@@ -38,6 +39,7 @@ const QUICK_ACTIONS = [
   { label: "🗳 Open a vote", href: "/admin/voting/new", capability: "canManageVoting" },
   { label: "🧍 Trigger Wally", href: "/admin/live/wally", capability: "canTriggerWally" },
   { label: "🎨 Change theme", href: "/admin/themes", capability: "canManageThemes" },
+  { label: "🥚 Allocate golden card", href: "/admin/golden-cards", capability: "canManageGoldenCards" },
   { label: "📊 View analytics", href: "/admin/analytics", capability: "canViewAnalytics" },
 ] as const;
 
@@ -66,6 +68,9 @@ const ACTIVITY_ICONS: Record<string, string> = {
   wally_event_published: "🧍",
   event_photo_approved: "📸",
   event_photo_rejected: "📸",
+  golden_card_allocated: "🥚",
+  golden_card_expired: "🥚",
+  golden_card_claimed: "🥚",
 };
 
 /**
@@ -116,6 +121,7 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
     canTriggerWally: canTriggerWally(roles),
     canManageThemes: canManageThemes(roles),
     canViewAnalytics: canViewAnalytics(roles),
+    canManageGoldenCards: canManageGoldenCards(roles),
   } as const;
 
   const [
