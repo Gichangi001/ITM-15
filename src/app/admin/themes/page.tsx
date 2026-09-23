@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { canManageThemes } from "@/lib/auth/roles";
+import { ActionToast } from "@/components/admin/ActionToast";
 import { getCurrentRoles } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { activateTheme, updateThemeContent } from "./actions";
@@ -36,18 +37,12 @@ type ThemeTokens = {
  * environment, Wally skin, sound pack), which need real asset pipelines
  * that don't exist yet.
  */
-export default async function ThemesPage({
-  searchParams,
-}: PageProps<"/admin/themes">) {
+export default async function ThemesPage() {
   const roles = await getCurrentRoles();
   if (!canManageThemes(roles)) {
     redirect("/admin");
   }
 
-  const params = await searchParams;
-  const errorParam = typeof params.error === "string" ? params.error : undefined;
-  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] : undefined;
-  const succeeded = params.success === "1";
 
   const admin = createAdminClient();
   const { data: themes } = await admin
@@ -71,16 +66,7 @@ export default async function ThemesPage({
         </p>
       </div>
 
-      {succeeded ? (
-        <p role="status" className="text-sm text-walumo">
-          Activated.
-        </p>
-      ) : null}
-      {errorMessage ? (
-        <p role="alert" className="text-sm text-red-400">
-          {errorMessage}
-        </p>
-      ) : null}
+      <ActionToast successMessage="Activated." errorMessages={ERROR_MESSAGES} />
 
       {!themes || themes.length === 0 ? (
         <p className="text-sm text-muted">No themes defined yet.</p>

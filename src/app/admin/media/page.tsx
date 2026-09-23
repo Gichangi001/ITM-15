@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentRoles } from "@/lib/auth/session";
+import { ActionToast } from "@/components/admin/ActionToast";
 import { canManageContent } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MediaUploadForm } from "./MediaUploadForm";
@@ -24,18 +25,12 @@ const ERROR_MESSAGES: Record<string, string> = {
  * read policy already on `media_assets` — consistent with every other
  * admin list page in this app.
  */
-export default async function MediaLibraryPage({
-  searchParams,
-}: PageProps<"/admin/media">) {
+export default async function MediaLibraryPage() {
   const roles = await getCurrentRoles();
   if (!canManageContent(roles)) {
     redirect("/admin");
   }
 
-  const params = await searchParams;
-  const errorParam = typeof params.error === "string" ? params.error : undefined;
-  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] : undefined;
-  const succeeded = params.success === "1";
 
   const admin = createAdminClient();
   const { data: assets } = await admin
@@ -62,16 +57,7 @@ export default async function MediaLibraryPage({
         </p>
       </div>
 
-      {succeeded ? (
-        <p role="status" className="text-sm text-walumo">
-          Saved.
-        </p>
-      ) : null}
-      {errorMessage ? (
-        <p role="alert" className="text-sm text-red-400">
-          {errorMessage}
-        </p>
-      ) : null}
+      <ActionToast successMessage="Saved." errorMessages={ERROR_MESSAGES} />
 
       <section className="flex flex-col gap-4">
         <h2 className="text-xs font-semibold tracking-[0.15em] text-muted uppercase">Upload</h2>

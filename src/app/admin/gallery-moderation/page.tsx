@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentRoles } from "@/lib/auth/session";
+import { ActionToast } from "@/components/admin/ActionToast";
 import { canModerateSubmissions } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LiveRefresh } from "@/components/realtime/LiveRefresh";
@@ -22,18 +23,11 @@ const ERROR_MESSAGES: Record<string, string> = {
  * (Product Guide §26 Phase 10 rule) but on its own page/queue rather than
  * mixed into /admin/submissions.
  */
-export default async function GalleryModerationPage({
-  searchParams,
-}: PageProps<"/admin/gallery-moderation">) {
+export default async function GalleryModerationPage() {
   const roles = await getCurrentRoles();
   if (!canModerateSubmissions(roles)) {
     redirect("/admin");
   }
-
-  const params = await searchParams;
-  const errorParam = typeof params.error === "string" ? params.error : undefined;
-  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] : undefined;
-  const succeeded = params.success === "1";
 
   const admin = createAdminClient();
   const { data: photos } = await admin
@@ -75,16 +69,7 @@ export default async function GalleryModerationPage({
         </p>
       </div>
 
-      {succeeded ? (
-        <p role="status" className="text-sm text-walumo">
-          Saved.
-        </p>
-      ) : null}
-      {errorMessage ? (
-        <p role="alert" className="text-sm text-red-400">
-          {errorMessage}
-        </p>
-      ) : null}
+      <ActionToast successMessage="Saved." errorMessages={ERROR_MESSAGES} />
 
       {withUrls.length === 0 ? (
         <p className="text-sm text-muted">Nothing pending.</p>

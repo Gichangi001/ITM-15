@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentRoles } from "@/lib/auth/session";
+import { ActionToast } from "@/components/admin/ActionToast";
 import { canModerateSubmissions } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { moderateSubmission } from "./actions";
@@ -26,18 +27,12 @@ const ERROR_MESSAGES: Record<string, string> = {
  * the challenge-submissions bucket itself is private, so nothing here is
  * ever publicly reachable outside this authenticated, role-gated page.
  */
-export default async function SubmissionsPage({
-  searchParams,
-}: PageProps<"/admin/submissions">) {
+export default async function SubmissionsPage() {
   const roles = await getCurrentRoles();
   if (!canModerateSubmissions(roles)) {
     redirect("/admin");
   }
 
-  const params = await searchParams;
-  const errorParam = typeof params.error === "string" ? params.error : undefined;
-  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] : undefined;
-  const succeeded = params.success === "1";
 
   const admin = createAdminClient();
   const { data: submissions } = await admin
@@ -102,16 +97,7 @@ export default async function SubmissionsPage({
         </p>
       </div>
 
-      {succeeded ? (
-        <p role="status" className="text-sm text-walumo">
-          Saved.
-        </p>
-      ) : null}
-      {errorMessage ? (
-        <p role="alert" className="text-sm text-red-400">
-          {errorMessage}
-        </p>
-      ) : null}
+      <ActionToast successMessage="Saved." errorMessages={ERROR_MESSAGES} />
 
       {!submissions || submissions.length === 0 ? (
         <p className="text-sm text-muted">Nothing pending review.</p>

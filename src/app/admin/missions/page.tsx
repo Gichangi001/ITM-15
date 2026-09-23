@@ -5,8 +5,12 @@ import { getCurrentRoles } from "@/lib/auth/session";
 import { canManageContent } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { updateGameDayStatus, updateMissionStatus } from "./actions";
+import { ActionToast } from "@/components/admin/ActionToast";
+import { DeleteMissionButton } from "./DeleteMissionButton";
+import { DeactivateAllButton } from "./DeactivateAllButton";
 
 export const metadata: Metadata = { title: "Missions — ITM@15" };
+export const dynamic = "force-dynamic";
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_authorized: "You are not authorized to manage content.",
@@ -25,18 +29,11 @@ const DAY_STATUS_OPTIONS = ["DRAFT", "SCHEDULED", "LIVE", "COMPLETED"] as const;
  * regardless of status/audience, which the player-facing RLS policy
  * correctly refuses.
  */
-export default async function MissionsPage({
-  searchParams,
-}: PageProps<"/admin/missions">) {
+export default async function MissionsPage() {
   const roles = await getCurrentRoles();
   if (!canManageContent(roles)) {
     redirect("/admin");
   }
-
-  const params = await searchParams;
-  const errorParam = typeof params.error === "string" ? params.error : undefined;
-  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] : undefined;
-  const succeeded = params.success === "1";
 
   const admin = createAdminClient();
   const [{ data: days }, { data: missions }, { data: challenges }] = await Promise.all([
@@ -51,6 +48,18 @@ export default async function MissionsPage({
   const dayById = new Map((days ?? []).map((d) => [d.id, d]));
   const challengeByMission = new Map((challenges ?? []).map((c) => [c.mission_id, c]));
 
+  const challengeIds = (challenges ?? []).map((c) => c.id);
+  const { data: submissionRows } =
+    challengeIds.length > 0
+      ? await admin.from("submissions").select("challenge_id").in("challenge_id", challengeIds)
+      : { data: [] as { challenge_id: string }[] };
+  const submissionCountByChallenge = new Map<string, number>();
+  for (const row of submissionRows ?? []) {
+    submissionCountByChallenge.set(row.challenge_id, (submissionCountByChallenge.get(row.challenge_id) ?? 0) + 1);
+  }
+
+  const liveMissionCount = (missions ?? []).filter((m) => m.status === "LIVE").length;
+
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 bg-bg px-6 py-16">
       <div className="flex flex-col gap-2">
@@ -62,21 +71,15 @@ export default async function MissionsPage({
           Create missions and control their visibility. Players only ever see
           LIVE, PAUSED or COMPLETED missions.
         </p>
-        <Link href="/admin/missions/new" className="btn-secondary self-start">
-          New mission
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/admin/missions/new" className="btn-secondary self-start">
+            New mission
+          </Link>
+          <DeactivateAllButton liveCount={liveMissionCount} />
+        </div>
       </div>
 
-      {succeeded ? (
-        <p role="status" className="text-sm text-walumo">
-          Updated.
-        </p>
-      ) : null}
-      {errorMessage ? (
-        <p role="alert" className="text-sm text-red-400">
-          {errorMessage}
-        </p>
-      ) : null}
+      <ActionToast successMessage="Saved." errorMessages={ERROR_MESSAGES} />
 
       {/* A mission's own status is necessary but not sufficient — its
           containing day must also be LIVE/COMPLETED before a player can see
@@ -127,6 +130,7 @@ export default async function MissionsPage({
           {missions.map((mission) => {
             const day = dayById.get(mission.game_day_id);
             const challenge = challengeByMission.get(mission.id);
+            const submissionCount = challenge ? (submissionCountByChallenge.get(challenge.id) ?? 0) : 0;
             return (
               <div
                 key={mission.id}
@@ -138,25 +142,32 @@ export default async function MissionsPage({
                     Day {day?.day_number ?? "?"} · {challenge?.type ?? "no challenge"} ·{" "}
                     {mission.base_points} pts
                     {mission.unity_points > 0 ? ` + ${mission.unity_points} unity` : ""}
+                    {submissionCount > 0 ? ` · ${submissionCount} submission${submissionCount === 1 ? "" : "s"}` : ""}
                   </p>
                 </div>
-                <form action={updateMissionStatus} className="flex items-center gap-2">
-                  <input type="hidden" name="missionId" value={mission.id} />
-                  <select
-                    name="status"
-                    defaultValue={mission.status}
-                    className="rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-ink"
-                  >
-                    {STATUS_OPTIONS.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit" className="btn-secondary px-3 py-1.5 text-xs">
-                    Save
-                  </button>
-                </form>
+                <div className="flex flex-wrap items-center gap-2">
+                  <form action={updateMissionStatus} className="flex items-center gap-2">
+                    <input type="hidden" name="missionId" value={mission.id} />
+                    <select
+                      name="status"
+                      defaultValue={mission.status}
+                      className="rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-ink"
+                    >
+                      {STATUS_OPTIONS.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="submit" className="btn-secondary px-3 py-1.5 text-xs">
+                      Save
+                    </button>
+                  </form>
+                  <Link href={`/admin/missions/${mission.id}/edit`} className="btn-secondary px-3 py-1.5 text-xs">
+                    Edit
+                  </Link>
+                  <DeleteMissionButton missionId={mission.id} title={mission.title} submissionCount={submissionCount} />
+                </div>
               </div>
             );
           })}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ActionToast } from "@/components/admin/ActionToast";
 import { getCurrentRoles } from "@/lib/auth/session";
 import { canManageVoting } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -26,18 +27,12 @@ const STATUS_OPTIONS = ["DRAFT", "OPEN", "CLOSED", "REVEALED"] as const;
  * poll can see) — reads via the service-role client, same pattern as every
  * other cross-user admin aggregate view in this project.
  */
-export default async function VotingPage({
-  searchParams,
-}: PageProps<"/admin/voting">) {
+export default async function VotingPage() {
   const roles = await getCurrentRoles();
   if (!canManageVoting(roles)) {
     redirect("/admin");
   }
 
-  const params = await searchParams;
-  const errorParam = typeof params.error === "string" ? params.error : undefined;
-  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] : undefined;
-  const succeeded = params.success === "1";
 
   const admin = createAdminClient();
   const [{ data: polls }, { data: options }, { data: votes }] = await Promise.all([
@@ -79,16 +74,7 @@ export default async function VotingPage({
         </Link>
       </div>
 
-      {succeeded ? (
-        <p role="status" className="text-sm text-walumo">
-          Updated.
-        </p>
-      ) : null}
-      {errorMessage ? (
-        <p role="alert" className="text-sm text-red-400">
-          {errorMessage}
-        </p>
-      ) : null}
+      <ActionToast successMessage="Updated." errorMessages={ERROR_MESSAGES} />
 
       {!polls || polls.length === 0 ? (
         <p className="text-sm text-muted">No polls yet.</p>

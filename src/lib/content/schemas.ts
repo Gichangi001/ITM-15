@@ -73,6 +73,34 @@ export const createMissionSchema = z
 
 export type CreateMissionInput = z.infer<typeof createMissionSchema>;
 
+/**
+ * Direct request 2026-09-18: "I can't edit, delete and correct missions."
+ * Genuinely true before this - only a status dropdown existed, no way to
+ * fix a title/points/prompt/typo after creation. Challenge TYPE is
+ * deliberately not editable here (changing SINGLE_CHOICE to FREE_TEXT
+ * after real submissions exist would be a different, harder problem -
+ * not attempted in this slice); everything else that createMission can
+ * set can also be corrected.
+ */
+const editChallengeOptionSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string().trim().min(1, "Option text is required"),
+  isCorrect: z.boolean().default(false),
+});
+
+export const updateMissionContentSchema = z.object({
+  missionId: z.string().uuid(),
+  title: z.string().trim().min(1, "Title is required"),
+  description: z.string().trim().optional(),
+  basePoints: z.coerce.number().int().min(0).default(0),
+  unityPoints: z.coerce.number().int().min(0).default(0),
+  isUnityChallenge: z.boolean().default(false),
+  prompt: z.string().trim().min(1, "Prompt is required"),
+  options: z.array(editChallengeOptionSchema).optional(),
+});
+
+export type UpdateMissionContentInput = z.infer<typeof updateMissionContentSchema>;
+
 export const submitAnswerSchema = z.object({
   challengeId: z.string().uuid(),
   answerText: z.string().trim().optional(),

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentRoles } from "@/lib/auth/session";
+import { ActionToast } from "@/components/admin/ActionToast";
 import { canTriggerWally } from "@/lib/auth/roles";
 import { WallyTriggerForm } from "./WallyTriggerForm";
 
@@ -21,18 +22,12 @@ const ERROR_MESSAGES: Record<string, string> = {
  * pose + priority — not the full 9-quick-action/skin/scheduling panel
  * §16.1/§16.4 eventually describes.
  */
-export default async function WallyControlRoomPage({
-  searchParams,
-}: PageProps<"/admin/live/wally">) {
+export default async function WallyControlRoomPage() {
   const roles = await getCurrentRoles();
   if (!canTriggerWally(roles)) {
     redirect("/admin");
   }
 
-  const params = await searchParams;
-  const errorParam = typeof params.error === "string" ? params.error : undefined;
-  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] : undefined;
-  const succeeded = params.success === "1";
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 bg-bg px-6 py-16">
@@ -47,16 +42,7 @@ export default async function WallyControlRoomPage({
         </p>
       </div>
 
-      {succeeded ? (
-        <p role="status" className="text-sm text-walumo">
-          Sent.
-        </p>
-      ) : null}
-      {errorMessage ? (
-        <p role="alert" className="text-sm text-red-400">
-          {errorMessage}
-        </p>
-      ) : null}
+      <ActionToast successMessage="Sent." errorMessages={ERROR_MESSAGES} />
 
       <WallyTriggerForm />
     </main>

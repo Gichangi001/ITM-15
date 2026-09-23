@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentRoles, getCurrentUser } from "@/lib/auth/session";
+import { ActionToast } from "@/components/admin/ActionToast";
 import { canManageUserRoles, ROLES, type Role } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { updateUser } from "./actions";
@@ -34,9 +35,6 @@ export default async function PlayersPage({
 
   const currentUser = await getCurrentUser();
   const params = await searchParams;
-  const errorParam = typeof params.error === "string" ? params.error : undefined;
-  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] : undefined;
-  const succeeded = params.success === "1";
 
   // Product Guide §26 Phase 5 build list: "Role filters." A plain query
   // param rather than client-side JS — this page is otherwise a Server
@@ -103,16 +101,7 @@ export default async function PlayersPage({
         </button>
       </form>
 
-      {succeeded ? (
-        <p role="status" className="text-sm text-walumo">
-          Updated.
-        </p>
-      ) : null}
-      {errorMessage ? (
-        <p role="alert" className="text-sm text-red-400">
-          {errorMessage}
-        </p>
-      ) : null}
+      <ActionToast successMessage="Updated." errorMessages={ERROR_MESSAGES} />
 
       {visibleProfiles.length === 0 ? (
         <p className="text-sm text-muted">No users match that filter.</p>

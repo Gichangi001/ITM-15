@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { ActionToast } from "@/components/admin/ActionToast";
 import { getCurrentProfile, getCurrentRoles } from "@/lib/auth/session";
 import {
   canAwardBonusPoints,
@@ -104,14 +105,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   update_failed: "Something went wrong saving that change. Try again.",
 };
 
-export default async function AdminHomePage({ searchParams }: PageProps<"/admin">) {
+export default async function AdminHomePage() {
   const [profile, roles] = await Promise.all([getCurrentProfile(), getCurrentRoles()]);
   const admin = createAdminClient();
-
-  const params = await searchParams;
-  const errorParam = typeof params.error === "string" ? params.error : undefined;
-  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] : undefined;
-  const succeeded = params.success === "1";
 
   const capabilities = {
     canManageContent: canManageContent(roles),
@@ -195,16 +191,7 @@ export default async function AdminHomePage({ searchParams }: PageProps<"/admin"
         </p>
       </div>
 
-      {succeeded ? (
-        <p role="status" className="text-sm text-walumo">
-          Updated.
-        </p>
-      ) : null}
-      {errorMessage ? (
-        <p role="alert" className="text-sm text-red-400">
-          {errorMessage}
-        </p>
-      ) : null}
+      <ActionToast successMessage="Updated." errorMessages={ERROR_MESSAGES} />
 
       <section className="flex flex-col gap-4">
         <h2 className="text-xs font-semibold tracking-[0.15em] text-muted uppercase">

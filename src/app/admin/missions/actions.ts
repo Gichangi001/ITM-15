@@ -10,6 +10,7 @@ import { broadcast } from "@/lib/realtime/broadcast";
 import { notifyAllActivePlayers } from "@/lib/notifications/create";
 import { activateThemeByKey } from "@/lib/theme/activate";
 import { getJourneyStopForDay } from "@/content/journey";
+import { updateMissionContentSchema } from "@/lib/content/schemas";
 
 const MISSION_STATUSES = ["DRAFT", "SCHEDULED", "LIVE", "PAUSED", "COMPLETED", "ARCHIVED"] as const;
 
@@ -181,5 +182,180 @@ export async function updateGameDayStatus(formData: FormData) {
 
   revalidatePath("/admin/missions");
   revalidatePath("/play/day/[dayNumber]", "page");
+  redirect("/admin/missions?success=1");
+}
+
+/**
+ * Direct request 2026-09-18: "I can't edit, delete and correct missions."
+ * Corrects a mission's own title/description/points/prompt/options after
+ * creation - matches createMission's writes exactly, just as an update
+ * instead of an insert. Challenge type stays fixed (see the schema's own
+ * comment for why). Existing submissions/score_events are untouched -
+ * correcting a typo in the prompt doesn't retroactively invalidate
+ * answers already given, matching Product Guide §18.3's "safe editing of
+ * live content" precedent.
+ */
+export async function updateMissionContent(formData: FormData) {
+  const actor = await getCurrentUser();
+  if (!actor) redirect("/login");
+
+  const roles = await getCurrentRoles();
+  if (!canManageContent(roles)) {
+    redirect("/admin/missions?error=not_authorized");
+  }
+
+  const missionId = formData.get("missionId");
+  if (typeof missionId !== "string") {
+    redirect("/admin/missions?error=invalid_input");
+  }
+
+  const optionIds = formData.getAll("optionId").map((v) => String(v));
+  const optionLabels = formData.getAll("optionLabel").map((v) => String(v));
+  const correctIds = new Set(formData.getAll("optionCorrect").map((v) => String(v)));
+  const options = optionIds.map((id, index) => ({
+    id,
+    label: optionLabels[index] ?? "",
+    isCorrect: correctIds.has(id),
+  }));
+
+  const parsed = updateMissionContentSchema.safeParse({
+    missionId,
+    title: formData.get("title"),
+    description: formData.get("description"),
+    basePoints: formData.get("basePoints"),
+    unityPoints: formData.get("unityPoints"),
+    isUnityChallenge: formData.get("isUnityChallenge") === "on",
+    prompt: formData.get("prompt"),
+    options: options.length > 0 ? options : undefined,
+  });
+
+  if (!parsed.success) {
+    redirect(`/admin/missions/${missionId}/edit?error=invalid_input`);
+  }
+
+  const admin = createAdminClient();
+  const { data: challenge } = await admin
+    .from("challenges")
+    .select("id")
+    .eq("mission_id", missionId)
+    .maybeSingle();
+
+  const { error: missionError } = await admin
+    .from("missions")
+    .update({
+      title: parsed.data.title,
+      description: parsed.data.description || null,
+      base_points: parsed.data.basePoints,
+      unity_points: parsed.data.unityPoints,
+      is_unity_challenge: parsed.data.isUnityChallenge,
+    })
+    .eq("id", missionId);
+
+  if (missionError) {
+    redirect(`/admin/missions/${missionId}/edit?error=update_failed`);
+  }
+
+  if (challenge) {
+    await admin.from("challenges").update({ prompt: parsed.data.prompt }).eq("id", challenge.id);
+
+    for (const option of parsed.data.options ?? []) {
+      await admin
+        .from("challenge_options")
+        .update({ label: option.label, is_correct: option.isCorrect })
+        .eq("id", option.id)
+        .eq("challenge_id", challenge.id); // never let a submitted option id edit a DIFFERENT challenge's row
+    }
+  }
+
+  await logAdminActivity(admin, {
+    actorId: actor.id,
+    action: "mission_content_updated",
+    targetType: "mission",
+    targetId: missionId,
+    metadata: { title: parsed.data.title },
+  });
+
+  revalidatePath("/admin/missions");
+  redirect("/admin/missions?success=1");
+}
+
+/**
+ * Direct request 2026-09-18: same "can't delete" gap. Real, not
+ * decorative - cascades to challenges/challenge_options/submissions
+ * (confirmed via pg_constraint before building this: all ON DELETE
+ * CASCADE), so deleting a mission with real player submissions destroys
+ * those too. The confirming client (DeleteMissionButton) makes this cost
+ * explicit before submitting - not something this action can enforce on
+ * its own from a bare form POST, so the honesty lives in the UI copy.
+ */
+export async function deleteMission(formData: FormData) {
+  const actor = await getCurrentUser();
+  if (!actor) redirect("/login");
+
+  const roles = await getCurrentRoles();
+  if (!canManageContent(roles)) {
+    redirect("/admin/missions?error=not_authorized");
+  }
+
+  const missionId = formData.get("missionId");
+  if (typeof missionId !== "string") {
+    redirect("/admin/missions?error=invalid_input");
+  }
+
+  const admin = createAdminClient();
+  const { data: mission } = await admin.from("missions").select("title").eq("id", missionId).maybeSingle();
+
+  const { error } = await admin.from("missions").delete().eq("id", missionId);
+  if (error) {
+    redirect("/admin/missions?error=update_failed");
+  }
+
+  await logAdminActivity(admin, {
+    actorId: actor.id,
+    action: "mission_deleted",
+    targetType: "mission",
+    targetId: missionId,
+    metadata: { title: mission?.title },
+  });
+
+  revalidatePath("/admin/missions");
+  redirect("/admin/missions?success=1");
+}
+
+/**
+ * Direct request 2026-09-18: "deactivate all missions." A real bulk
+ * action, not a script run once and forgotten - pauses every currently
+ * LIVE mission in one audited operation. PAUSED, not DRAFT or ARCHIVED:
+ * players who already have an APPROVED submission keep their points
+ * (score_events are never touched), and re-activating later is a normal
+ * per-mission status change, not un-drafting/un-archiving content.
+ */
+export async function deactivateAllMissions() {
+  const actor = await getCurrentUser();
+  if (!actor) redirect("/login");
+
+  const roles = await getCurrentRoles();
+  if (!canManageContent(roles)) {
+    redirect("/admin/missions?error=not_authorized");
+  }
+
+  const admin = createAdminClient();
+  const { data: liveMissions } = await admin.from("missions").select("id, title").eq("status", "LIVE");
+
+  if (liveMissions && liveMissions.length > 0) {
+    const { error } = await admin.from("missions").update({ status: "PAUSED" }).eq("status", "LIVE");
+    if (error) {
+      redirect("/admin/missions?error=update_failed");
+    }
+
+    await logAdminActivity(admin, {
+      actorId: actor.id,
+      action: "all_missions_deactivated",
+      targetType: "mission",
+      metadata: { count: liveMissions.length, titles: liveMissions.map((m) => m.title) },
+    });
+  }
+
+  revalidatePath("/admin/missions");
   redirect("/admin/missions?success=1");
 }
