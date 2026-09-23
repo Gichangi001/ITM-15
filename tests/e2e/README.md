@@ -129,6 +129,38 @@ if a run of `test_day_zero_rehearsal.py` or
 `test_signup_onboarding_play.py` times out waiting for instant-join to
 redirect after several rapid re-runs. Wait a few minutes and retry.
 
+## Manual-only scripts (`manual/`) — NOT run by `pnpm test:e2e`
+
+`run_all.py`'s glob is `test_*.py` directly in this directory, non-
+recursive — anything under `manual/`, or not named `test_*.py`, is never
+auto-discovered. This is deliberate: `manual/audit_admin_missions_panel.py`
+exercises every button on `/admin/missions` (status save, edit, delete,
+new mission, and — the point of its existence — the real "deactivate all
+missions" bulk action), and that last one genuinely pauses every mission
+that is actually LIVE in the real campaign at the moment it runs. That
+must never happen silently as a side effect of "run the E2E suite" — only
+when a human deliberately runs this file, knowing what it does. Run it
+directly:
+
+```bash
+pnpm build && pnpm start &
+python3 tests/e2e/manual/audit_admin_missions_panel.py
+```
+
+Found and fixed a real app bug on its first run (2026-09-23):
+`ActionToast`'s own `router.replace()` call raced its `setToast()` state
+update — the toast component's effect scheduled the state update via
+`queueMicrotask` and then called `router.replace()` synchronously right
+after; the transition that triggers landed before the microtask resolved,
+so the state update hit a component instance the transition had already
+moved past. Every underlying action (save/edit/delete/deactivate-all) was
+working correctly the whole time — only the pop-up confirmation itself
+was silently failing. Same bug class already fixed twice elsewhere in
+this project (Phase 12's mission-page fix, the golden card claim
+confirmation) — see `src/components/admin/ActionToast.tsx`'s own header
+comment for the fix (two effects instead of one, so the URL cleanup only
+runs after the toast has actually committed to the DOM).
+
 ## Cleanup safety
 
 `_lib/cleanup.py` reads `SUPABASE_URL`/`SUPABASE_SECRET_KEY` from
