@@ -33,11 +33,13 @@ export function ActionToast({
   const error = searchParams.get("error");
   const [toast, setToast] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
+  // Step 1: notice the redirect signal and show the toast. Nothing else
+  // happens here - in particular, no router.replace() - see the second
+  // effect below for why.
   useEffect(() => {
     if (success !== "1" && !error) {
       return;
     }
-
     // Matches this project's existing PlayerTransition fix for the same
     // rule: queueMicrotask defers the setState out of the synchronous
     // effect body, avoiding react-hooks/set-state-in-effect's cascading-
@@ -49,24 +51,40 @@ export function ActionToast({
         setToast({ kind: "error", text: errorMessages[error] ?? "Something went wrong. Try again." });
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [success, error]);
 
-    // Strip the param immediately so a later manual refresh (or the
-    // params changing again for an unrelated reason) doesn't re-trigger
-    // this same toast - the URL itself was never meant to be a durable
-    // record of "you just did something," only a one-shot signal.
+  // Step 2: only once the toast has actually committed to the DOM (this
+  // effect depends on `toast`, so it runs after that render), schedule
+  // its auto-dismiss AND strip the query param. Doing this in the same
+  // effect that shows the toast (as an earlier version of this component
+  // did) raced router.replace()'s own re-render against the still-queued
+  // setToast microtask and reliably lost the toast before a player ever
+  // saw it - found live, the same bug class already fixed twice
+  // elsewhere in this project (Phase 12's mission-page fix, the golden
+  // card claim confirmation).
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      setToast(null);
+      const next = new URLSearchParams(searchParams);
+      next.delete("success");
+      next.delete("error");
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }, 4000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast]);
+
+  function dismiss() {
+    setToast(null);
     const next = new URLSearchParams(searchParams);
     next.delete("success");
     next.delete("error");
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-
-    const timer = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(timer);
-    // Deliberately depends only on the raw success/error values, not the
-    // whole searchParams/router/pathname objects - this must NOT re-run
-    // just because our own router.replace() below changed the URL.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [success, error]);
+  }
 
   if (!toast) return null;
 
@@ -79,12 +97,7 @@ export function ActionToast({
     >
       <span aria-hidden>{toast.kind === "success" ? "✓" : "✕"}</span>
       <span className="text-ink">{toast.text}</span>
-      <button
-        type="button"
-        onClick={() => setToast(null)}
-        aria-label="Dismiss"
-        className="ml-2 text-muted hover:text-ink"
-      >
+      <button type="button" onClick={dismiss} aria-label="Dismiss" className="ml-2 text-muted hover:text-ink">
         ×
       </button>
     </div>
